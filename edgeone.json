@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "runtime": "nodejs20.x",
+    "routes": [
+      { "src": "/api/push", "dest": "/functions/api/push.ts" },
+      { "src": "/api/poll", "dest": "/functions/api/poll.ts" },
+      { "src": "/api/episode/(.*)", "dest": "/functions/api/episode/[id].ts" },
+      { "src": "/api/share/(.*)", "dest": "/functions/api/share/[id].ts" },
+      { "src": "/ws", "dest": "/functions/ws.ts" }
+    ]
+  },
+  "kv": {
+    "bindings": [
+      { "name": "RADIO_KV", "namespace": "ai-radio" }
+    ]
+  },
+  "headers": [
+    {
+      "source": "/episode/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
+  ]
+}
