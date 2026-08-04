@@ -1,0 +1,46 @@
+{
+  "name": "ai-radio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI 个人电台 - 音乐播放器 + DJ 串场 + 搞笑音效 + 天气/金融/历史趣闻解说",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx watch server/index.ts",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "cap:sync": "cap sync",
+    "cap:add:ios": "cap add ios",
+    "cap:open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "node-edge-tts": "^1.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ws": "^8.18.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@capacitor/cli": "^6.1.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.5.12",
+    "@vitejs/plugin-react": "^4.3.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}

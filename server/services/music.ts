@@ -1,0 +1,136 @@
+/**
+ * 网易云音乐服务封装
+ * 通过 HTTP 调用 vendor/NeteaseCloudMusicApi（端口 3000）
+ * 零凭证，首期只用免登录接口
+ */
+
+const NETEASE_BASE = process.env.NETEASE_BASE || "http://localhost:3000";
+
+export interface NeteaseSong {
+  songmid: string;
+  name: string;
+  artist: string;
+  url: string;
+  picUrl?: string;
+  lyric?: string;
+}
+
+interface NeteaseSearchItem {
+  id: number;
+  name: string;
+  artists: { name: string }[];
+  album: { picUrl?: string };
+}
+
+interface NeteaseUrlResponse {
+  data: Record<string, { url: string; size: number }>;
+}
+
+interface NeteaseDetailResponse {
+  songs: {
+    id: number;
+    name: string;
+    ar: { name: string }[];
+    al: { picUrl?: string };
+  }[];
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${NETEASE_BASE}${path}`);
+  if (!res.ok) {
+    throw new Error(`Netease API ${res.status}: ${res.statusText}`);
+  }
+  return (await res.json()) as T;
+}
+
+export const musicService = {
+  /**
+   * 搜索歌曲
+   * @param keyword 关键词
+   * @param limit 返回条数，默认 10
+   */
+  async search(keyword: string, limit = 10): Promise<NeteaseSong[]> {
+    // 用 /cloudsearch（/search 常被风控返回 50000005）
+    const data = await fetchJson<{ result: { songs?: NeteaseSearchItem[] } }>(
+      `/cloudsearch?keywords=${encodeURIComponent(keyword)}&limit=${limit}`
+    );
+    const songs = data.result?.songs ?? [];
+    return songs.map((s) => ({
+      songmid: String(s.id),
+      name: s.name,
+      artist: (s.artists ?? []).map((a) => a.name).join(" / "),
+      url: "", // 需要单独调 getSongUrl
+      picUrl: s.album?.picUrl,
+    }));
+  },
+
+  /**
+   * 获取歌曲播放链接
+   * @param songmid 歌曲 ID（可批量，逗号分隔）
+   */
+  async getSongUrl(songmid: string | string[]): Promise<string> {
+    const ids = Array.isArray(songmid) ? songmid.join(",") : songmid;
+    const data = await fetchJson<NeteaseUrlResponse>(`/song/url?id=${ids}`);
+    const first = Object.values(data.data)[0];
+    if (!first?.url) {
+      throw new Error(`歌曲 ${ids} 无可用播放链接（可能版权限制）`);
+    }
+    return first.url;
+  },
+
+  /**
+   * 获取歌曲详情（名/艺术家/封面）
+   */
+  async getSongDetail(ids: string | string[]): Promise<NeteaseSong[]> {
+    const idStr = Array.isArray(ids) ? ids.join(",") : ids;
+    const data = await fetchJson<NeteaseDetailResponse>(`/song/detail?ids=${idStr}`);
+    return data.songs.map((s) => ({
+      songmid: String(s.id),
+      name: s.name,
+      artist: s.ar.map((a) => a.name).join(" / "),
+      url: "",
+      picUrl: s.al?.picUrl,
+    }));
+  },
+
+  /**
+   * 获取歌词
+   */
+  async getLyric(id: string): Promise<string> {
+    const data = await fetchJson<{ lrc?: { lyric?: string } }>(`/lyric?id=${id}`);
+    return data.lrc?.lyric ?? "";
+  },
+
+  /**
+   * 完整获取一首歌（详情 + URL + 歌词），一次到位
+   */
+  async getCompleteSong(songmid: string): Promise<NeteaseSong> {
+    const [details, url, lyric] = await Promise.all([
+      this.getSongDetail(songmid),
+      this.getSongUrl(songmid),
+      this.getLyric(songmid).catch(() => ""),
+    ]);
+    const detail = details[0];
+    if (!detail) throw new Error(`歌曲 ${songmid} 不存在`);
+    return {
+      songmid,
+      name: detail.name,
+      artist: detail.artist,
+      url,
+      picUrl: detail.picUrl,
+      lyric,
+    };
+  },
+
+  /**
+   * 获取歌单所有歌曲 ID（用于初始化播放队列）
+   * @param playlistId 歌单 ID
+   */
+  async getPlaylistTrackIds(playlistId: string): Promise<string[]> {
+    const data = await fetchJson<{ playlist?: { trackIds?: { id: number }[] } }>(
+      `/playlist/detail?id=${playlistId}`
+    );
+    const trackIds = data.playlist?.trackIds ?? [];
+    return trackIds.map((t) => String(t.id));
+  },
+};
