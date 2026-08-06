@@ -1,0 +1,116 @@
+
+/* ============== Cloud Banner（云端模式横幅） ============== */
+.cloud-banner {
+  margin: 0 16px 12px;
+  border: 1px solid rgba(115, 89, 192, 0.30);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(115, 89, 192, 0.10), rgba(19, 135, 192, 0.06));
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  font-size: 13px;
+  animation: cloud-fade-in 0.5s ease-out;
+}
+@keyframes cloud-fade-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cloud-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.cloud-banner-icon { font-size: 22px; line-height: 1; }
+.cloud-banner-text { flex: 1; min-width: 0; }
+.cloud-banner-title { font-weight: 600; color: var(--text); font-size: 14px; }
+.cloud-banner-sub { color: var(--text-soft); font-size: 12px; margin-top: 2px; }
+.cloud-banner-cta {
+  background: linear-gradient(135deg, #7359C0, #4FB3D9);
+  color: white;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 12px rgba(115, 89, 192, 0.3);
+}
+.cloud-banner-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(115, 89, 192, 0.5);
+}
+.cloud-banner-remote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(19, 135, 192, 0.08);
+  border-top: 1px solid rgba(115, 89, 192, 0.18);
+  font-size: 13px;
+  overflow: hidden;
+}
+.cloud-banner-remote-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4FB3D9;
+  box-shadow: 0 0 8px #4FB3D9;
+  animation: cloud-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes cloud-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.cloud-banner-remote-label {
+  color: #4FB3D9;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.cloud-banner-remote-name {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cloud-banner-remote-artist {
+  color: var(--text-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.cloud-banner-remote-age {
+  color: var(--text-soft);
+  font-size: 11px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============== Cloud Empty ============== */
+.cloud-empty {
+  margin: 40px 16px;
+  padding: 40px 24px;
+  text-align: center;
+  border: 1px dashed rgba(115, 89, 192, 0.30);
+  border-radius: 16px;
+  background: rgba(115, 89, 192, 0.04);
+}
+.cloud-empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.8; }
+.cloud-empty-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.cloud-empty-sub {
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 360px;
+  margin: 0 auto;
+}
+.cloud-empty-sub a { color: #7359C0; text-decoration: none; font-weight: 600; }
+.cloud-empty-sub a:hover { text-decoration: underline; }
