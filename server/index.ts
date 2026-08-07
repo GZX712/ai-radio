@@ -16,8 +16,11 @@ import { musicService, type NeteaseSong } from "./services/music";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = 8787;
+const PORT = Number(process.env.PORT) || 8787;
 const NETEASE_PORT = 3000;
+
+// 部署到 Render 时：NETEASE_BASE 已指向外部网易云 API 服务，跳过子进程启动
+const IS_DEPLOYED = !!process.env.NETEASE_BASE;
 
 app.use(cors());
 app.use(express.json());
@@ -26,10 +29,14 @@ app.use(express.json());
 const AUDIO_DIR = ttsService.getAudioDir();
 app.use("/audio", express.static(AUDIO_DIR, { maxAge: "1h" }));
 
-// ============== 启动网易云 API 子进程 ==============
+// ============== 启动网易云 API 子进程（仅本地开发用） ==============
 let neteaseProc: ReturnType<typeof spawn> | null = null;
 
 function startNeteaseApi() {
+  if (IS_DEPLOYED) {
+    console.log(`[AI-Radio] 已部署模式：使用外部 NETEASE_BASE=${process.env.NETEASE_BASE}，跳过子进程启动`);
+    return;
+  }
   const neteaseDir = path.resolve(__dirname, "../vendor/NeteaseCloudMusicApi");
   console.log(`[AI-Radio] 启动网易云 API 子进程 (port ${NETEASE_PORT})...`);
 
@@ -511,10 +518,10 @@ app.get(/^(?!\/api\/|\/audio\/|\/ws).*/, (_req, res) =>
   res.sendFile(path.join(dist, "index.html"))
 );
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`[AI-Radio] server on http://localhost:${PORT}`);
   console.log(`[AI-Radio] WS on ws://localhost:${PORT}/ws`);
-  console.log(`[AI-Radio] 网易云 API 代理到 http://localhost:${NETEASE_PORT}`);
+  console.log(`[AI-Radio] 网易云 API ${IS_DEPLOYED ? "外部" : `本地 http://localhost:${NETEASE_PORT}`}`);
 
   // 调度器启动：cron 17:30 + 切歌间隔计数
   setSchedulerBroadcast(broadcast);

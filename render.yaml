@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: ai-radio-netease
+    runtime: node
+    plan: free
+    rootDir: vendor/NeteaseCloudMusicApi
+    buildCommand: npm install
+    startCommand: node app.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    autoDeploy: true
+
+  - type: web
+    name: ai-radio-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 8787
+      - key: NODE_ENV
+        value: production
+      - key: NETEASE_BASE
+        sync: false  # 填 ai-radio-netease 的 URL，例如 https://ai-radio-netease.onrender.com
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: TTS_VOICE
+        value: en-US-GuyNeural
+      - key: PLAYLIST_ID
+        value: "6920950691"
+    healthCheckPath: /api/health
+    autoDeploy: true
