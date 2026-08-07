@@ -219,8 +219,11 @@ export function useAudioEngine() {
   };
 
   const setVolume = (v: number): void => {
-    const { musicGain } = getNodes();
-    musicGain.gain.value = Math.max(0, Math.min(1, v));
+    const { musicGain, djGain } = getNodes();
+    const vol = Math.max(0, Math.min(1, v));
+    // 同时控制音乐 + DJ 双通道（DJ 保持 1.6 倍人声增强比例）
+    musicGain.gain.value = vol;
+    djGain.gain.value = vol * 1.6;
     useRadioStore.getState().setVolume(v);
   };
 
