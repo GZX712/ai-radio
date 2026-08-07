@@ -13,8 +13,11 @@ ios/
 android/
 .capacitor/
 
-# Vendor (third-party cloned services)
-vendor/
+# Vendor (third-party cloned services, needed for Render deploy)
+# vendor/   # 已取消忽略：Render 部署需要 vendor/NeteaseCloudMusicApi
+vendor/*/.git/
+vendor/*/node_modules/
+vendor/*/.husky/
 
 # Editor
 .vscode/*
