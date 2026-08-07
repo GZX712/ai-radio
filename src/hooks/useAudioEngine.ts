@@ -63,10 +63,12 @@ export function useAudioEngine() {
     music.addEventListener("loadedmetadata", () => {
       useRadioStore.getState().setDuration(music.duration);
     });
-    music.addEventListener("ended", () => {
-      useRadioStore.getState().setIsPlaying(false);
-      useRadioStore.getState().setProgress(0);
-      // 播完自动切下一首（随机歌单）
+    // 自动切歌保护：3 秒内只允许一次自动 skip（防"莫名其妙连环切歌"）
+    let lastAutoSkip = 0;
+    const safeAutoSkip = () => {
+      const now = Date.now();
+      if (now - lastAutoSkip < 3000) return; // 刚切过，忽略（防循环）
+      lastAutoSkip = now;
       radioApi.skip().then((next) => {
         if (next) {
           music.src = next.url;
@@ -74,6 +76,21 @@ export function useAudioEngine() {
           useRadioStore.getState().setNow(next);
         }
       }).catch(() => {});
+    };
+    music.addEventListener("ended", () => {
+      useRadioStore.getState().setIsPlaying(false);
+      useRadioStore.getState().setProgress(0);
+      // 播完自动切下一首（随机歌单）
+      safeAutoSkip();
+    });
+    // 播放出错：多半是音乐流 URL 过期/防盗链——2 秒后重试切下一首（避免卡死，但防连环切）
+    music.addEventListener("error", () => {
+      const err = music.error?.code;
+      console.warn("[audio] 音乐流错误 code=", err);
+      // MEDIA_ERR_SRC_NOT_SUPPORTED(4)/网络错误(2) → 自动换歌；其他情况等网络恢复
+      if (err === 2 || err === 4) {
+        setTimeout(safeAutoSkip, 2000);
+      }
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
