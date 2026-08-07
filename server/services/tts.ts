@@ -38,6 +38,21 @@ export const EDGE_VOICES: EdgeVoice[] = [
 const DEFAULT_VOICE = process.env.TTS_VOICE || "en-US-GuyNeural";
 const OUTPUT_DIR = path.resolve(__dirname, "../../public/audio");
 
+/** 无 MIMO_API_KEY 时：MiMo 音色 → 对应语言/性别的 Edge 音色兜底（保证选不同音色真的会变声） */
+const MIMO_FALLBACK: Record<string, string> = {
+  "mimo_default": "en-US-GuyNeural",
+  "default_zh": "zh-CN-XiaoxiaoNeural",
+  "default_en": "en-US-JennyNeural",
+  冰糖: "zh-CN-XiaoxiaoNeural",
+  茉莉: "zh-CN-XiaoxiaoNeural",
+  苏打: "zh-CN-YunxiNeural",
+  白桦: "zh-CN-YunxiNeural",
+  Mia: "en-US-JennyNeural",
+  Chloe: "en-US-AriaNeural",
+  Milo: "en-US-GuyNeural",
+  Dean: "en-US-DavisNeural",
+};
+
 async function ensureDir() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 }
@@ -81,8 +96,8 @@ export const ttsService = {
       }
     }
 
-    // Edge-TTS（voice 若是 MiMo 音色但未配 key → 降级默认 Edge 音色，避免无效音色报错）
-    const edgeVoice = isMiMoVoice(voice) ? DEFAULT_VOICE : voice;
+    // Edge-TTS（voice 若是 MiMo 音色但未配 key → 降级对应语言 Edge 音色，保证音色选择真实有效）
+    const edgeVoice = isMiMoVoice(voice) ? (MIMO_FALLBACK[voice] || DEFAULT_VOICE) : voice;
     const tts = new EdgeTTS({ voice: edgeVoice, lang: "en-US", volume: "+40%" });
     const filename = `${prefix}-${Date.now()}.mp3`;
     const filepath = path.join(OUTPUT_DIR, filename);
