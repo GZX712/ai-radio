@@ -9,7 +9,7 @@ import { musicService, type NeteaseSong } from "./music";
  * - prev 从 history 回退（prefetch 分支也正确记录历史）
  */
 
-const USER_PLAYLIST_ID = process.env.PLAYLIST_ID || "6920950691";
+const USER_PLAYLIST_ID = process.env.PLAYLIST_ID || "8023646590"; // 「爬墙」氛围感微醺R&B卧室音乐 (245首)
 
 const DEFAULT_PLAYLIST = [
   "186016", "28815230", "436514312", "254574",
