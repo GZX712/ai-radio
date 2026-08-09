@@ -48,6 +48,8 @@ body::before {
   inset: 0;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.7  0 0 0 0 0.85  0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   background-size: 220px 220px;
+  /* fixed 背景锁定视口：大屏平铺不露边缘（修 PC 端"错角"） */
+  background-attachment: fixed;
   pointer-events: none;
   z-index: 0;
   opacity: 0.55;
@@ -75,6 +77,8 @@ body::after {
       transparent 1px,
       transparent 3px
     );
+  /* fixed 背景锁定视口：扫描线移动不露边缘（修 PC 端"错角"） */
+  background-attachment: fixed;
   pointer-events: none;
   z-index: 1;
   animation: pixel-scanline-move var(--scanline-speed) linear infinite;
@@ -897,10 +901,31 @@ body::after {
   padding: 22px 22px 18px;
   max-width: 380px;
   width: 100%;
+  /* 限制高度，让内容在手机端可滚动（避免溢出屏幕） */
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow: hidden; /* 防止整张卡片溢出；body 内部可滚 */
   animation: msg-in 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto; /* 关键：内容多时这里滚动 */
+  /* 优化手机端滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+  padding-right: 2px;
+}
+
+.modal-body::-webkit-scrollbar { width: 4px; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+.modal-actions {
+  flex-shrink: 0; /* 防止按钮被压缩/挤出可见区 */
+  margin-top: 4px;
 }
 
 .modal-header {
