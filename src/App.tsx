@@ -38,15 +38,8 @@ export default function App() {
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
     setStarted(true);
-    engine.handlePlay().catch(() => {
-      // 播放失败也继续（可能已解锁但网络慢）
-      useRadioStore.getState().setError("播放失败，请重试");
-    });
-    // 触发 DJ 开场（只一段，不重复）
-    window.setTimeout(() => {
-      fetch("/api/dj/open", { method: "POST" }).catch(() => {});
-    }, 300);
-  }, [engine]);
+    // 不自动播放、不自动调 DJ 开场 — 让用户自己点 ▶ / 聊天按钮
+  }, []);
 
   // 播放控制命令执行（聊天/语音触发）
   const handleAction = useCallback((action: string, payload?: unknown) => {
