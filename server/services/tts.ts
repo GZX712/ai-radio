@@ -86,8 +86,8 @@ export const ttsService = {
         return r;
       } catch (err) {
         console.warn("[TTS] MiMo 合成失败，降级 Edge-TTS:", err instanceof Error ? err.message : err);
-        // 降级 Edge（用同语言 Edge 音色兜底）
-        const fallbackEdge = style && /[\u4e00-\u9fa5]/.test(text) ? "zh-CN-YunxiNeural" : DEFAULT_VOICE;
+        // 降级 Edge：按"所选音色"映射到同语言/性别 Edge 音色（不是按文本语言！）
+        const fallbackEdge = MIMO_FALLBACK[voice] || (style && /[\u4e00-\u9fa5]/.test(text) ? "zh-CN-YunxiNeural" : DEFAULT_VOICE);
         const tts = new EdgeTTS({ voice: fallbackEdge, lang: "en-US", volume: "+40%" });
         const filename = `${prefix}-${Date.now()}.mp3`;
         const filepath = path.join(OUTPUT_DIR, filename);
