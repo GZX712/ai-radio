@@ -56,3 +56,6 @@ pnpm-debug.log*
 
 # TTS 生成音频（运行时产物）
 public/audio/
+
+# TTS 生成音频（运行时产物）
+public/audio/
