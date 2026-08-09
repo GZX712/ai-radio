@@ -53,3 +53,6 @@ pnpm-debug.log*
 *.sqlite
 *.sqlite3
 /tmp/
+
+# TTS 生成音频（运行时产物）
+public/audio/
