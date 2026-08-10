@@ -306,6 +306,57 @@ app.get("/api/voices", (_req, res) => {
   res.json({ code: 0, data: ttsService.getVoiceCatalog() });
 });
 
+// ============== MiMo 诊断 ==============
+// 在 Render 服务器上直接请求小米 API，返回详细状态（判断是环境变量/网络/IP 哪个问题）
+app.get("/api/dj/mimo-diag", async (_req, res) => {
+  const key = process.env.MIMO_API_KEY || "";
+  const base = process.env.MIMO_BASE_URL || "https://api.xiaomimimo.com/v1";
+  const out: Record<string, unknown> = {
+    hasKey: !!key,
+    keyPrefix: key ? key.slice(0, 6) + "..." : "",
+    keyLen: key.length,
+    base,
+  };
+  if (!key) {
+    out.conclusion = "MIMO_API_KEY 未配置（环境变量没注入）";
+    res.json({ code: 0, data: out });
+    return;
+  }
+  try {
+    const t0 = Date.now();
+    const resp = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": key },
+      body: JSON.stringify({
+        model: process.env.MIMO_MODEL || "mimo-v2.5-tts",
+        messages: [{ role: "assistant", content: "你好，测试。" }],
+        audio: { format: "mp3", voice: "冰糖" },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    out.httpStatus = resp.status;
+    out.latencyMs = Date.now() - t0;
+    const body = await resp.text().catch(() => "");
+    out.bodyPreview = body.slice(0, 300);
+    if (resp.ok) {
+      try {
+        const j = JSON.parse(body);
+        const b64 = j?.choices?.[0]?.message?.audio?.data;
+        out.audioB64Len = b64 ? b64.length : 0;
+        out.conclusion = b64 ? "MiMo API 正常，返回音频" : "MiMo API 200 但无音频数据";
+      } catch {
+        out.conclusion = "MiMo API 200 但响应不是 JSON";
+      }
+    } else {
+      out.conclusion = `MiMo API 拒绝：HTTP ${resp.status}`;
+    }
+  } catch (err) {
+    out.error = err instanceof Error ? err.message : String(err);
+    out.conclusion = "网络错误（连不上 api.xiaomimimo.com）";
+  }
+  res.json({ code: 0, data: out });
+});
+
 // 同步 DJ personality（用户选音色/性格后立即调用，后端所有 TTS 立即生效）
 app.post("/api/dj/personality", (req, res) => {
   const { gender, voice, traits, humorStyle } = (req.body || {}) as {
