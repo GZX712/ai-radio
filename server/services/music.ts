@@ -36,11 +36,26 @@ interface NeteaseDetailResponse {
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${NETEASE_BASE}${path}`);
-  if (!res.ok) {
-    throw new Error(`Netease API ${res.status}: ${res.statusText}`);
+  // 超时 + 2 次重试（新加坡节点访问网易云偶发超时/风控，重试可大幅提升成功率）
+  const MAX_RETRY = 2;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRY; attempt++) {
+    try {
+      const res = await fetch(`${NETEASE_BASE}${path}`, {
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        throw new Error(`Netease API ${res.status}: ${res.statusText}`);
+      }
+      return (await res.json()) as T;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_RETRY) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
   }
-  return (await res.json()) as T;
+  throw lastErr instanceof Error ? lastErr : new Error("Netease API 请求失败");
 }
 
 export const musicService = {
