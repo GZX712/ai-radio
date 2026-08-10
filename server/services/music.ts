@@ -75,7 +75,8 @@ export const musicService = {
     if (!first?.url) {
       throw new Error(`歌曲 ${ids} 无可用播放链接（可能版权限制）`);
     }
-    return first.url;
+    // 强制 https：Render 是 HTTPS，http:// 流会被浏览器 Mixed Content 拦截 → 疯狂跳歌
+    return first.url.replace(/^http:/, "https:");
   },
 
   /**
