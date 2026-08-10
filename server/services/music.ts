@@ -75,8 +75,9 @@ export const musicService = {
     if (!first?.url) {
       throw new Error(`歌曲 ${ids} 无可用播放链接（可能版权限制）`);
     }
-    // 强制 https：Render 是 HTTPS，http:// 流会被浏览器 Mixed Content 拦截 → 疯狂跳歌
-    return first.url.replace(/^http:/, "https:");
+    // 走同源代理：https 页面加载 http:// 网易云流会被浏览器 Mixed Content 拦截（疯狂跳歌）
+    // 后端代理带 UA/Referer 拉流，浏览器拿到的是同源 https URL
+    return `/api/proxy-audio?url=${encodeURIComponent(first.url)}`;
   },
 
   /**

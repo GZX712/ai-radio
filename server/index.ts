@@ -12,6 +12,7 @@ import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/sch
 import { weatherService } from "./services/weather";
 import { triviaService, type TriviaCategory } from "./services/trivia";
 import { withDjLock } from "./services/djBusy";
+import { Readable } from "node:stream";
 import { musicService, type NeteaseSong } from "./services/music";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,49 @@ app.use(express.json());
 // 静态文件：TTS 生成的 mp3（前端 /audio/dj-xxx.mp3 拉取）
 const AUDIO_DIR = ttsService.getAudioDir();
 app.use("/audio", express.static(AUDIO_DIR, { maxAge: "1h" }));
+
+// ============== 音乐流代理 ==============
+// 前端页面是 HTTPS，浏览器加载 http:// 网易云流会被 Mixed Content 拦截 → 疯狂跳歌。
+// 这里后端用 http 拉流（带 UA/Referer 防盗链头），流式转发给前端（同源 https）。
+app.get("/api/proxy-audio", async (req, res) => {
+  const raw = String(req.query.url || "");
+  if (!raw) {
+    res.status(400).json({ code: 400, message: "缺少 url" });
+    return;
+  }
+  const upstreamUrl = raw.replace(/^https:/, "http:"); // 网易云防盗链只认 http
+  try {
+    const headers: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      Referer: "https://music.163.com/",
+    };
+    const range = String(req.headers.range || "");
+    if (range) headers.Range = range;
+    const upstream = await fetch(upstreamUrl, {
+      headers,
+      redirect: "follow",
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!upstream.ok || !upstream.body) {
+      res.status(502).json({ code: 502, message: `upstream ${upstream.status}` });
+      return;
+    }
+    res.status(upstream.status);
+    const ct = upstream.headers.get("content-type");
+    if (ct) res.setHeader("Content-Type", ct);
+    const cl = upstream.headers.get("content-length");
+    if (cl) res.setHeader("Content-Length", cl);
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "private, max-age=300");
+    const stream = Readable.fromWeb(upstream.body as import("node:stream/web").ReadableStream);
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
+  } catch (err) {
+    if (!res.headersSent) res.status(502).json({ code: 502, message: err instanceof Error ? err.message : "proxy fail" });
+    else res.destroy();
+  }
+});
 
 // ============== 启动网易云 API 子进程（仅本地开发用） ==============
 let neteaseProc: ReturnType<typeof spawn> | null = null;
