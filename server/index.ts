@@ -15,6 +15,22 @@ import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
 import { musicService, type NeteaseSong } from "./services/music";
 
+// ============== Netease 服务保活 ==============
+// Render 免费版 15 分钟无请求会自动 spin down；保活定时任务每 5 分钟 ping 一次
+let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+function startNeteaseKeepalive() {
+  if (keepaliveTimer) return;
+  if (!process.env.NETEASE_BASE) return; // 本地开发（sub-process 模式）跳过
+  const target = `${process.env.NETEASE_BASE}/`;
+  const ping = () => {
+    fetch(target, { method: "HEAD", signal: AbortSignal.timeout(5000) })
+      .then(() => console.log("[keepalive] netease alive ✓"))
+      .catch((err) => console.warn("[keepalive] netease ping fail:", err instanceof Error ? err.message : err));
+  };
+  ping(); // 启动时立即 ping 一次
+  keepaliveTimer = setInterval(ping, 5 * 60 * 1000);
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT) || 8787;
@@ -617,6 +633,9 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`[AI-Radio] server on http://localhost:${PORT}`);
   console.log(`[AI-Radio] WS on ws://localhost:${PORT}/ws`);
   console.log(`[AI-Radio] 网易云 API ${IS_DEPLOYED ? "外部" : `本地 http://localhost:${NETEASE_PORT}`}`);
+
+  // 部署到 Render 时启动 netease 服务保活（防 spin down）
+  if (IS_DEPLOYED) startNeteaseKeepalive();
 
   // 调度器启动：cron 17:30 + 切歌间隔计数
   setSchedulerBroadcast(broadcast);

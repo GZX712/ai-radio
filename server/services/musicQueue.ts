@@ -1,5 +1,7 @@
 import { musicService, type NeteaseSong } from "./music";
 
+const IS_DEPLOYED = !!process.env.NETEASE_BASE; // 部署到 Render 时 NETEASE_BASE 已设
+
 /**
  * 播放队列管理 v4
  * - 默认从网易云歌单拉取（辛老师"我喜欢的音乐" 294 首），失败 5 分钟后自动重试
@@ -36,7 +38,7 @@ export class MusicQueue {
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    // 拉取失败后 30 秒内不重试（避免每次切歌都卡在网易云请求上）
+    // 拉取失败后等待（避免每次切歌都卡在网易云请求上）
     if (Date.now() < this.initRetryAt) return;
     try {
       const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
@@ -47,8 +49,11 @@ export class MusicQueue {
       this.initRetryAt = 0; // 重置，下次可以重新拉
       console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首`);
     } catch (err) {
-      this.initRetryAt = Date.now() + 30 * 1000; // 30 秒后重试（比 5 分钟快）
-      console.warn("[musicQueue] 歌单拉取失败，30 秒后重试:", err instanceof Error ? err.message : err);
+      // 部署环境（Render）netease 服务可能冷启动（首次 502），8 秒后再试
+      // 本地开发 netease 子进程启动慢，30 秒后再试
+      const wait = IS_DEPLOYED ? 8000 : 30000;
+      this.initRetryAt = Date.now() + wait;
+      console.warn(`[musicQueue] 歌单拉取失败，${wait / 1000} 秒后重试:`, err instanceof Error ? err.message : err);
     }
   }
 
