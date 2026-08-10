@@ -31,6 +31,8 @@ export class MusicQueue {
   // 最近播放集合（随机去重）
   private recent: string[] = [];
   private readonly RECENT_LIMIT = 40;
+  // 本会话失败的歌曲 ID（移到队列末尾，下次不再尝试；进程重启后清空）
+  private failedIds = new Set<string>();
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -75,19 +77,22 @@ export class MusicQueue {
     if (this.recent.length > this.RECENT_LIMIT) this.recent.shift();
   }
 
-  /** 随机选下一首索引：避开当前 + 最近播放过的歌 */
+  /** 随机选下一首索引：避开当前 + 最近播放过的歌 + 本会话失败的歌 */
   private pickRandomIndex(): number {
     if (this.queue.length <= 1) return 0;
     const candidates: number[] = [];
     for (let i = 0; i < this.queue.length; i++) {
       if (i === this.cursor) continue;
       if (this.recent.includes(this.queue[i])) continue;
+      if (this.failedIds.has(this.queue[i])) continue;
       candidates.push(i);
     }
     if (candidates.length === 0) {
-      // 候选全在 recent 里 → 至少避开当前
+      // 候选全在 recent/failed 里 → 清掉 recent（让所有歌都能被选）
+      this.recent = [];
       const others: number[] = [];
       for (let i = 0; i < this.queue.length; i++) if (i !== this.cursor) others.push(i);
+      if (others.length === 0) return 0;
       return others[Math.floor(Math.random() * others.length)];
     }
     return candidates[Math.floor(Math.random() * candidates.length)];
@@ -185,15 +190,28 @@ export class MusicQueue {
     if (!songmid) return null;
     // 限制递归深度（连续版权失败 5 次就停，让 next() 触发 refresh）
     if (depth > 5) return null;
+    // 本会话已经失败的歌 → 直接移到末尾 + 跳过
+    if (this.failedIds.has(songmid)) {
+      if (this.queue.length > 1) {
+        this.queue.splice(index, 1);
+        this.queue.push(songmid);
+        const nextIdx = index >= this.queue.length ? 0 : index;
+        this.cursor = nextIdx;
+        return this.loadAt(this.cursor, depth + 1);
+      }
+      return null;
+    }
     try {
       this.currentSong = await musicService.getCompleteSong(songmid);
       return this.currentSong;
     } catch (err) {
-      console.error(`[musicQueue] 加载 ${songmid} 失败（版权限制，跳过）`);
+      console.error(`[musicQueue] 加载 ${songmid} 失败（版权限制，移到末尾）`);
+      this.failedIds.add(songmid); // 标记本会话失败
       if (this.queue.length > 1) {
-        // 不再 splice 删歌（保留 id 让下次重试），改用 cursor 跳过
-        let nextIdx = index + 1;
-        if (nextIdx >= this.queue.length) nextIdx = 0;
+        // 移到队列末尾（不再尝试）
+        this.queue.splice(index, 1);
+        this.queue.push(songmid);
+        const nextIdx = index >= this.queue.length ? 0 : index;
         this.cursor = nextIdx;
         return this.loadAt(this.cursor, depth + 1);
       }
