@@ -92,9 +92,15 @@ export default function App() {
   useEffect(() => {
     radioApi
       .getNow()
-      .then(setNow)
+      .then((s) => {
+        setNow(s);
+        // 拉到了歌就尝试自动播放（电脑浏览器 autoplay 不需要 user gesture；移动端 catch 忽略让用户点 ▶）
+        if (s?.url) {
+          window.setTimeout(() => engine.handlePlay().catch(() => {}), 500);
+        }
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Init failed"));
-  }, [setNow, setError]);
+  }, [setNow, setError, engine]);
 
   // ☁️ 云端模式：每 2.5 秒轮询 EdgeOne KV，看辛老师本机电脑正在播什么
   useEffect(() => {
