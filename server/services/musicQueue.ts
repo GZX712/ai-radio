@@ -34,7 +34,7 @@ export class MusicQueue {
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    // 拉取失败后 5 分钟内不重试（避免每次切歌都卡在网易云请求上）
+    // 拉取失败后 30 秒内不重试（避免每次切歌都卡在网易云请求上）
     if (Date.now() < this.initRetryAt) return;
     try {
       const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
@@ -42,11 +42,21 @@ export class MusicQueue {
       this.queue = ids;
       this.playlistName = "我喜欢的音乐";
       this.initialized = true;
+      this.initRetryAt = 0; // 重置，下次可以重新拉
       console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首`);
     } catch (err) {
-      this.initRetryAt = Date.now() + 5 * 60 * 1000;
-      console.warn("[musicQueue] 歌单拉取失败，暂用内置歌单（5 分钟后重试）:", err instanceof Error ? err.message : err);
+      this.initRetryAt = Date.now() + 30 * 1000; // 30 秒后重试（比 5 分钟快）
+      console.warn("[musicQueue] 歌单拉取失败，30 秒后重试:", err instanceof Error ? err.message : err);
     }
+  }
+
+  /** 强制重新拉歌单（队列太短时自动调用） */
+  async refresh(): Promise<void> {
+    this.initialized = false;
+    this.initRetryAt = 0;
+    this.recent = []; // 清空 recent 让所有歌都能被选
+    this.prefetch = null;
+    await this.init();
   }
 
   async current(): Promise<NeteaseSong | null> {
@@ -85,7 +95,17 @@ export class MusicQueue {
 
   async next(): Promise<NeteaseSong | null> {
     await this.init();
-    if (this.queue.length === 0) return null;
+    if (this.queue.length === 0) {
+      // 队列空了 → 强制重新拉歌单
+      await this.refresh();
+      if (this.queue.length === 0) return null;
+    }
+
+    // 队列太短时（多数歌曲被 splice 或版权踢掉） → 重新拉歌单补充
+    if (this.queue.length < 5 && this.initialized) {
+      console.log(`[musicQueue] 队列仅剩 ${this.queue.length} 首，触发重新拉歌单`);
+      await this.refresh();
+    }
 
     // 记录上一首（prefetch 命中也要记录，否则 prev 失效）
     if (this.currentSong) {
@@ -160,19 +180,22 @@ export class MusicQueue {
     tryIndex(nextIndex);
   }
 
-  private async loadAt(index: number): Promise<NeteaseSong | null> {
+  private async loadAt(index: number, depth = 0): Promise<NeteaseSong | null> {
     const songmid = this.queue[index];
     if (!songmid) return null;
+    // 限制递归深度（连续版权失败 5 次就停，让 next() 触发 refresh）
+    if (depth > 5) return null;
     try {
       this.currentSong = await musicService.getCompleteSong(songmid);
       return this.currentSong;
     } catch (err) {
       console.error(`[musicQueue] 加载 ${songmid} 失败（版权限制，跳过）`);
       if (this.queue.length > 1) {
-        this.queue.splice(index, 1);
-        if (index >= this.queue.length) index = 0;
-        this.cursor = index;
-        return this.loadAt(this.cursor);
+        // 不再 splice 删歌（保留 id 让下次重试），改用 cursor 跳过
+        let nextIdx = index + 1;
+        if (nextIdx >= this.queue.length) nextIdx = 0;
+        this.cursor = nextIdx;
+        return this.loadAt(this.cursor, depth + 1);
       }
       return null;
     }
