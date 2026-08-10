@@ -131,7 +131,13 @@ export class MusicQueue {
 
     this.cursor = nextIndex;
     const song = await this.loadAt(this.cursor);
-    if (song) this.pushRecent(song.songmid);
+    if (song) {
+      this.pushRecent(song.songmid);
+    } else {
+      // 连跳失败（loadAt 深度耗尽）→ 清空 failedIds 重试（可能只是瞬时失败）
+      console.warn(`[musicQueue] 连续失败，清空 failedIds 重试（当前 ${this.failedIds.size} 个失败）`);
+      this.failedIds.clear();
+    }
     this.prefetchNext();
     return song;
   }
