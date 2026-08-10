@@ -118,9 +118,14 @@ export function useAudioEngine() {
     return nodes;
   }, []);
 
-  // mount 时立即创建 AudioContext 并注册 duck 回调
+  // mount 时**不**自动创建 AudioContext（让 ctx 在 user gesture 内创建，state 直接 running，否则 iOS/Chrome 会阻止 autoplay）
   useEffect(() => {
-    getNodes();
+    // 注册 duck 回调（不创建 nodes）
+    const u = useRadioStore.getState();
+    u.setDuckCallbacks(
+      () => {}, // 先占位，getNodes 后才覆盖
+      () => {},
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -164,6 +169,11 @@ export function useAudioEngine() {
     }
 
     const { now } = useRadioStore.getState();
+    // 确保 audio context 在 user gesture 内（首次）
+    const { ctx } = getNodes();
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch {}
+    }
     if (!now?.url) {
       try {
         const next = await radioApi.next();
