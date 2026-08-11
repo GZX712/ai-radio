@@ -89,19 +89,15 @@ export default function App() {
     }
   }, [engine]);
 
-  // 初始拉当前播放
+  // 初始拉当前播放（仅展示，不自动播放——避免无 user gesture 触发被浏览器拦截，也避免与用户点 ▶ 双重触发话术）
   useEffect(() => {
     radioApi
       .getNow()
       .then((s) => {
         setNow(s);
-        // 拉到了歌就尝试自动播放（电脑浏览器 autoplay 不需要 user gesture；移动端 catch 忽略让用户点 ▶）
-        if (s?.url) {
-          window.setTimeout(() => engine.handlePlay().catch(() => {}), 500);
-        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Init failed"));
-  }, [setNow, setError, engine]);
+  }, [setNow, setError]);
 
   // ☁️ 云端模式：每 2.5 秒轮询 EdgeOne KV，看辛老师本机电脑正在播什么
   useEffect(() => {

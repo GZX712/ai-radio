@@ -148,14 +148,27 @@ export function useAudioEngine() {
     const { music, ctx } = getNodes();
     useRadioStore.getState().setIsLoading(true);
     try {
-      if (ctx.state === "suspended") await ctx.resume();
+      if (ctx.state === "suspended") {
+        try { await ctx.resume(); } catch {}
+      }
       music.src = song.url;
       await music.play();
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
       useRadioStore.getState().setProgress(0);
     } catch (err) {
-      useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
+      // WebAudio 链路失败（autoplay policy / ctx suspended）→ 纯 HTML5 audio 降级播放
+      console.warn("[audio] WebAudio play failed, falling back to plain HTML5 audio:", err instanceof Error ? err.message : err);
+      try {
+        const plain = new Audio(song.url);
+        plain.volume = useRadioStore.getState().volume;
+        await plain.play();
+        useRadioStore.getState().setNow(song);
+        useRadioStore.getState().setIsPlaying(true);
+        useRadioStore.getState().setProgress(0);
+      } catch (err2) {
+        useRadioStore.getState().setError(err2 instanceof Error ? err2.message : "播放失败");
+      }
     } finally {
       useRadioStore.getState().setIsLoading(false);
     }
