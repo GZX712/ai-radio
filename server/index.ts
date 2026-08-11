@@ -378,9 +378,12 @@ app.get("/api/dj/mimo-diag", async (_req, res) => {
 app.get("/api/phrase/status", (_req, res) => {
   res.json({ code: 0, data: phraseBankStatus() });
 });
-app.post("/api/phrase/refresh", async (_req, res) => {
-  const n = await regeneratePhraseBank("british");
-  res.json({ code: 0, data: { count: n } });
+app.post("/api/phrase/refresh", (_req, res) => {
+  // 立即返回，后台生成（100 条需 5-10 分钟）
+  res.json({ code: 0, data: { started: true, hint: "后台生成中，查看 /api/phrase/status 轮询进度" } });
+  regeneratePhraseBank("british")
+    .then((n) => console.log(`[API] 话术库手动刷新完成：${n} 条`))
+    .catch((err) => console.warn("[API] 话术库刷新失败:", err instanceof Error ? err.message : err));
 });
 
 // 同步 DJ personality（用户选音色/性格后立即调用，后端所有 TTS 立即生效）
