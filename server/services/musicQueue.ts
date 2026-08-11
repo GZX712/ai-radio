@@ -35,6 +35,8 @@ export class MusicQueue {
   private readonly RECENT_LIMIT = 40;
   // 本会话失败的歌曲 ID（移到队列末尾，下次不再尝试；进程重启后清空）
   private failedIds = new Set<string>();
+  // 版权预筛进行中标记
+  private screening = false;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -48,12 +50,35 @@ export class MusicQueue {
       this.initialized = true;
       this.initRetryAt = 0; // 重置，下次可以重新拉
       console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首`);
+      // 后台预筛版权可播歌曲（不阻塞 init；筛完只保留能播的）
+      this.screenPlayable();
     } catch (err) {
       // 部署环境（Render）netease 服务可能冷启动（首次 502），8 秒后再试
       // 本地开发 netease 子进程启动慢，30 秒后再试
       const wait = IS_DEPLOYED ? 8000 : 30000;
       this.initRetryAt = Date.now() + wait;
       console.warn(`[musicQueue] 歌单拉取失败，${wait / 1000} 秒后重试:`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  /** 后台批量检查版权，把拿不到 URL 的歌曲移出 queue（避免逐首碰运气连续失败） */
+  private async screenPlayable(): Promise<void> {
+    if (this.screening) return;
+    this.screening = true;
+    try {
+      const playable = await musicService.getPlayableIds(this.queue);
+      if (playable.size === 0) {
+        console.warn("[musicQueue] 预筛 0 首可播（netease 可能刚冷启动），保留原队列稍后重筛");
+      } else {
+        this.queue = this.queue.filter((id) => playable.has(id));
+        this.cursor = 0;
+        this.failedIds.clear();
+        console.log(`[musicQueue] 版权预筛完成：保留 ${this.queue.length}/${playable.size} 首可播`);
+      }
+    } catch (err) {
+      console.warn("[musicQueue] 版权预筛失败（稍后重试）:", err instanceof Error ? err.message : err);
+    } finally {
+      this.screening = false;
     }
   }
 

@@ -119,6 +119,29 @@ export const musicService = {
   },
 
   /**
+   * 批量检查哪些歌曲有播放链接（版权筛选）
+   * 一次请求测一批，返回能播放的 ID 集合（防止逐首碰运气导致连续失败）
+   */
+  async getPlayableIds(ids: string[]): Promise<Set<string>> {
+    const playable = new Set<string>();
+    // 网易云 /song/url 支持逗号批量；分批（每批 50）避免超长 URL
+    const BATCH = 50;
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const chunk = ids.slice(i, i + BATCH);
+      try {
+        const data = await fetchJson<NeteaseUrlResponse>(`/song/url?id=${chunk.join(",")}`);
+        for (const id of chunk) {
+          const v = data.data?.[id];
+          if (v?.url) playable.add(id);
+        }
+      } catch {
+        // 该批失败不致命，跳过
+      }
+    }
+    return playable;
+  },
+
+  /**
    * 完整获取一首歌（详情 + URL + 歌词），一次到位
    */
   async getCompleteSong(songmid: string): Promise<NeteaseSong> {
