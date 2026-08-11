@@ -4,6 +4,7 @@ import { generateDJLine, warmImprovCache } from "./dj";
 import { weatherService } from "./weather";
 import { triviaService, type TriviaCategory } from "./trivia";
 import { withDjLock } from "./djBusy";
+import { regeneratePhraseBank } from "./phraseBank";
 
 let broadcastFn: ((msg: unknown) => void) | null = null;
 
@@ -22,6 +23,7 @@ export class RadioScheduler {
   private triviaIndex = 0;
   private cronJob: cron.ScheduledTask | null = null;
   private hourlyJob: cron.ScheduledTask | null = null;
+  private phraseJob: cron.ScheduledTask | null = null;
   private lastWeather: Awaited<ReturnType<typeof weatherService.getCurrent>> = null;
 
   start() {
@@ -34,8 +36,17 @@ export class RadioScheduler {
       this.handleHourlyChime();
     }, { timezone: "Asia/Shanghai" });
 
+    // 每日 04:00 更新 100 条话术库（避开晚高峰，生成量大会耗时 5-10 分钟）
+    this.phraseJob = cron.schedule("0 4 * * *", () => {
+      console.log("[Scheduler] 每日话术库更新开始（04:00）");
+      regeneratePhraseBank("british")
+        .then((n) => console.log(`[Scheduler] 话术库更新完成：${n} 条`))
+        .catch((err) => console.warn("[Scheduler] 话术库更新失败:", err instanceof Error ? err.message : err));
+    }, { timezone: "Asia/Shanghai" });
+
     console.log("[Scheduler] 定时开播已注册：每日 17:30 Asia/Shanghai");
     console.log("[Scheduler] 整点报时已注册：每小时 0 分");
+    console.log("[Scheduler] 话术库更新已注册：每日 04:00（100 条）");
     console.log("[Scheduler] DJ 串场间隔：每", this.DJ_INTERVAL, "首歌");
 
     // 启动时异步拉一次天气 + 预热切歌话术缓存（0.3s 秒回）

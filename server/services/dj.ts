@@ -4,6 +4,7 @@ import { MIMO_VOICES } from "./tts/mimo";
 import type { NeteaseSong } from "./music";
 import type { WeatherResult } from "./weather";
 import type { Trivia } from "./trivia";
+import { pickPhrase } from "./phraseBank";
 
 /**
  * DJ 串场服务（v4 · 英文双语 + 可定制性格/音色）
@@ -379,8 +380,13 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   // 记住最新 personality（音色/性格全场景生效）
   if (ctx.personality) currentPersonality = ctx.personality;
 
-  // 切歌：单条话术——缓存（<10ms 秒回）或 fallback 兜底，不播第二层（避免"跳切"混乱）
+  // 切歌：优先从"每日 100 条话术库"取（场景+幽默风格匹配，秒回且不重复）
   if (ctx.scene === "transition") {
+    const fromBank = pickPhrase("transition", currentPersonality.humorStyle);
+    if (fromBank) {
+      lastDjEn = fromBank.en;
+      return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank" };
+    }
     const fast = improvCache.pop() ?? (await fallbackDJLine(ctx));
     warmImprovCache().catch(() => {});
     lastDjEn = fast.en;

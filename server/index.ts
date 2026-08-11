@@ -14,6 +14,7 @@ import { triviaService, type TriviaCategory } from "./services/trivia";
 import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
 import { musicService, type NeteaseSong } from "./services/music";
+import { regeneratePhraseBank, phraseBankStatus } from "./services/phraseBank";
 
 // ============== Netease 服务保活 ==============
 // Render 免费版 15 分钟无请求会自动 spin down；保活定时任务每 5 分钟 ping 一次
@@ -371,6 +372,15 @@ app.get("/api/dj/mimo-diag", async (_req, res) => {
     out.conclusion = "网络错误（连不上 api.xiaomimimo.com）";
   }
   res.json({ code: 0, data: out });
+});
+
+// ============== 话术库管理 ==============
+app.get("/api/phrase/status", (_req, res) => {
+  res.json({ code: 0, data: phraseBankStatus() });
+});
+app.post("/api/phrase/refresh", async (_req, res) => {
+  const n = await regeneratePhraseBank("british");
+  res.json({ code: 0, data: { count: n } });
 });
 
 // 同步 DJ personality（用户选音色/性格后立即调用，后端所有 TTS 立即生效）
