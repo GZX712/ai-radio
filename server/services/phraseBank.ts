@@ -49,6 +49,9 @@ const STYLE_DESC: Record<PhraseStyle, string> = {
 let bank: PhraseItem[] = [];
 let bankLoaded = false;
 let generating = false;
+// 冷却池：最近用过的话术不重复（避免连续 2 次切换听到同一句）
+const COOLING_LIMIT = 12;
+const recentUsed: PhraseItem[] = [];
 
 function scenePrompt(scene: PhraseScene): string {
   switch (scene) {
@@ -163,16 +166,23 @@ async function loadFromDisk(): Promise<void> {
   regeneratePhraseBank().catch(() => {});
 }
 
-/** 按场景+风格取一条（audioUrl 为空时后端再实时合成） */
+/** 按场景+风格取一条（带冷却：最近 COOLING_LIMIT 条不再用） */
 export function pickPhrase(scene: PhraseScene, style?: PhraseStyle): PhraseItem | null {
   if (bank.length === 0) return null;
   const s = style && PHRASE_STYLES.includes(style) ? style : "british";
-  // 优先精确匹配 场景+风格；其次 同场景任意风格；最后全库随机
-  const exact = bank.filter((p) => p.scene === scene && p.style === s);
-  const sceneAny = bank.filter((p) => p.scene === scene);
-  const pool = exact.length > 0 ? exact : sceneAny.length > 0 ? sceneAny : bank;
+  // 优先精确匹配 场景+风格 - 冷却
+  const exact = bank.filter((p) => p.scene === scene && p.style === s && !recentUsed.includes(p));
+  const sceneAny = bank.filter((p) => p.scene === scene && !recentUsed.includes(p));
+  const pool = exact.length > 0 ? exact : sceneAny.length > 0 ? sceneAny : bank.filter((p) => !recentUsed.includes(p));
+  if (pool.length === 0) {
+    // 库全部冷却过了 → 清空冷却重启（库本来 30+ 条场景，多样性够用）
+    recentUsed.length = 0;
+    return pickPhrase(scene, style);
+  }
   const item = pool[Math.floor(Math.random() * pool.length)];
-  // 用后不删除（100 条循环用），避免资源浪费
+  // 记入冷却池
+  recentUsed.push(item);
+  if (recentUsed.length > COOLING_LIMIT) recentUsed.shift();
   return item;
 }
 

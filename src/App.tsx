@@ -21,7 +21,7 @@ export default function App() {
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
   const engine = useAudioEngine();
   const [ws, setWs] = useState<ReconnectingWS | null>(null);
-  const [started, setStarted] = useState(false); // 开始电台引导层
+  const [started, setStarted] = useState(true); // 开始电台引导层（默认跳过：直入主界面，User 点 ▶ 播放）
   // 云端模式：当前正在播的远端电脑状态（每 2s 轮询 EdgeOne KV）
   const [remoteNow, setRemoteNow] = useState<NowPlaying | null>(null);
   const [remoteLastSeen, setRemoteLastSeen] = useState<number>(0);
