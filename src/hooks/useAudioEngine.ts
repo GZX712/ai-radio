@@ -118,29 +118,24 @@ export function useAudioEngine() {
     return nodes;
   }, []);
 
-  // mount 时**不**自动创建 AudioContext（让 ctx 在 user gesture 内创建，state 直接 running，否则 iOS/Chrome 会阻止 autoplay）
+  // mount 时立即创建 AudioContext 并注册 duck 回调
   useEffect(() => {
-    // 注册 duck 回调（不创建 nodes）
-    const u = useRadioStore.getState();
-    u.setDuckCallbacks(
-      () => {}, // 先占位，getNodes 后才覆盖
-      () => {},
-    );
+    getNodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
    * 🔓 解锁音频（必须在 user gesture 的同步代码块内调用！）
-   * 浏览器 autoplay policy：只有在"用户点击"的同步调用栈里 resume()/play() 才算用户主动播放
-   * 一旦 await 网络请求，user gesture 上下文就丢了 → play() 被静默拒绝（这就是"代码正常但浏览器不播"的原因）
+   * 浏览器 autoplay policy：只有在"用户点击"的同步调用栈里 resume() 才算用户主动播放
+   * 一旦 await 网络请求，user gesture 上下文就丢了 → play() 被静默拒绝
    */
   const unlockAudio = useCallback((): void => {
     try {
-      const { ctx } = getNodes(); // 同步创建（在 user gesture 内 → state 直接 running）
+      const { ctx } = getNodes();
       if (ctx.state === "suspended") {
         void ctx.resume(); // 同步发起 resume（不 await）
       }
-      // 播一个"静音占位"音频：告诉浏览器"用户点击了播放"（后续异步 play 不再被拦）
+      // 播一个"静音占位"音频：告诉浏览器"用户点击了播放"
       const probe = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAABjW3s=");
       probe.volume = 0.001;
       void probe.play().then(() => {
@@ -171,27 +166,14 @@ export function useAudioEngine() {
     const { music, ctx } = getNodes();
     useRadioStore.getState().setIsLoading(true);
     try {
-      if (ctx.state === "suspended") {
-        try { await ctx.resume(); } catch {}
-      }
+      if (ctx.state === "suspended") await ctx.resume();
       music.src = song.url;
       await music.play();
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
       useRadioStore.getState().setProgress(0);
     } catch (err) {
-      // WebAudio 链路失败（autoplay policy / ctx suspended）→ 纯 HTML5 audio 降级播放
-      console.warn("[audio] WebAudio play failed, falling back to plain HTML5 audio:", err instanceof Error ? err.message : err);
-      try {
-        const plain = new Audio(song.url);
-        plain.volume = useRadioStore.getState().volume;
-        await plain.play();
-        useRadioStore.getState().setNow(song);
-        useRadioStore.getState().setIsPlaying(true);
-        useRadioStore.getState().setProgress(0);
-      } catch (err2) {
-        useRadioStore.getState().setError(err2 instanceof Error ? err2.message : "播放失败");
-      }
+      useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
     } finally {
       useRadioStore.getState().setIsLoading(false);
     }
@@ -205,11 +187,6 @@ export function useAudioEngine() {
     }
 
     const { now } = useRadioStore.getState();
-    // 确保 audio context 在 user gesture 内（首次）
-    const { ctx } = getNodes();
-    if (ctx.state === "suspended") {
-      try { await ctx.resume(); } catch {}
-    }
     if (!now?.url) {
       try {
         const next = await radioApi.next();
@@ -218,8 +195,15 @@ export function useAudioEngine() {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
       }
     } else {
-      // 修复：即使 now 有 url，也走 loadAndPlay（先 setSrc 再 play()），否则 audio 没源 play() 静默失败
-      await loadAndPlay(now);
+      try {
+        const { music, ctx } = getNodes();
+        if (ctx.state === "suspended") await ctx.resume();
+        // 直接 play() 从暂停位置继续——不重置 src（否则会从头播放）
+        await music.play();
+        useRadioStore.getState().setIsPlaying(true);
+      } catch (err) {
+        useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
+      }
     }
   };
 

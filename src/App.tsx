@@ -21,7 +21,7 @@ export default function App() {
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
   const engine = useAudioEngine();
   const [ws, setWs] = useState<ReconnectingWS | null>(null);
-  const [started, setStarted] = useState(false); // 开始电台引导层（点击后才显示 Player）
+  const [started, setStarted] = useState(false); // 开始电台引导层
   // 云端模式：当前正在播的远端电脑状态（每 2s 轮询 EdgeOne KV）
   const [remoteNow, setRemoteNow] = useState<NowPlaying | null>(null);
   const [remoteLastSeen, setRemoteLastSeen] = useState<number>(0);
@@ -37,13 +37,11 @@ export default function App() {
 
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
-    // 🔓 关键：必须在 user gesture 同步调用栈里解锁音频，否则浏览器 autoplay policy 拒绝 play()
-    engine.unlockAudio();
     setStarted(true);
-    // 用户主动点击开始 → 自动开始播放（解锁后异步 play 不再被拦）
-    engine.handlePlay().catch((err) => {
-      console.warn("[start] handlePlay failed:", err);
-    });
+    // 🔓 同步解锁音频（user gesture 内），否则浏览器 autoplay policy 静默拒绝 play()
+    if (engine.unlockAudio) engine.unlockAudio();
+    // 用户主动点击开始 → 自动播放第一首（保持"点开始就播"的预期）
+    engine.handlePlay().catch(() => {});
   }, [engine]);
 
   // 播放控制命令执行（聊天/语音触发）
@@ -89,13 +87,11 @@ export default function App() {
     }
   }, [engine]);
 
-  // 初始拉当前播放（仅展示，不自动播放——避免无 user gesture 触发被浏览器拦截，也避免与用户点 ▶ 双重触发话术）
+  // 初始拉当前播放
   useEffect(() => {
     radioApi
       .getNow()
-      .then((s) => {
-        setNow(s);
-      })
+      .then(setNow)
       .catch((err) => setError(err instanceof Error ? err.message : "Init failed"));
   }, [setNow, setError]);
 
@@ -284,7 +280,7 @@ export default function App() {
 
       <Player
         onToggle={() => {
-          engine.unlockAudio(); // 同步解锁（user gesture 内）
+          if (engine.unlockAudio) engine.unlockAudio();
           return engine.handleToggle();
         }}
         onSkip={engine.handleSkip}
