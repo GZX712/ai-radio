@@ -4,7 +4,25 @@
  * 零凭证，首期只用免登录接口
  */
 
-const NETEASE_BASE = process.env.NETEASE_BASE || "http://localhost:3000";
+// NETEASE_BASE 支持逗号分隔多个节点，按顺序优先使用；失败自动切换下一个（美国节点优先 → 新加坡备用）
+const NETEASE_BASES = (process.env.NETEASE_BASE || "http://localhost:3000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+let activeBaseIndex = 0; // 当前活跃节点索引（失败后 +1，自动切换）
+
+/** 当前使用的节点 */
+export function getActiveNeteaseBase(): string {
+  return NETEASE_BASES[activeBaseIndex] ?? NETEASE_BASES[0] ?? "";
+}
+
+export function neteaseNodeStatus() {
+  return {
+    nodes: NETEASE_BASES,
+    active: getActiveNeteaseBase(),
+    activeIndex: activeBaseIndex,
+  };
+}
 
 export interface NeteaseSong {
   songmid: string;
@@ -36,23 +54,32 @@ interface NeteaseDetailResponse {
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  // 超时 + 2 次重试（新加坡节点访问网易云偶发超时/风控，重试可大幅提升成功率）
-  const MAX_RETRY = 2;
+  // 多节点故障转移：当前节点失败 → 切换下一个（最多把所有节点试一遍）
+  const MAX_RETRY_PER_NODE = 2;
   let lastErr: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRY; attempt++) {
-    try {
-      const res = await fetch(`${NETEASE_BASE}${path}`, {
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!res.ok) {
-        throw new Error(`Netease API ${res.status}: ${res.statusText}`);
+  const attempts = Math.max(NETEASE_BASES.length, 1);
+  for (let nodeTry = 0; nodeTry < attempts; nodeTry++) {
+    const base = getActiveNeteaseBase();
+    for (let attempt = 0; attempt <= MAX_RETRY_PER_NODE; attempt++) {
+      try {
+        const res = await fetch(`${base}${path}`, {
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!res.ok) {
+          throw new Error(`Netease API ${res.status}: ${res.statusText}`);
+        }
+        return (await res.json()) as T;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < MAX_RETRY_PER_NODE) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        }
       }
-      return (await res.json()) as T;
-    } catch (err) {
-      lastErr = err;
-      if (attempt < MAX_RETRY) {
-        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
-      }
+    }
+    // 当前节点彻底失败 → 切下一个节点
+    if (NETEASE_BASES.length > 1) {
+      activeBaseIndex = (activeBaseIndex + 1) % NETEASE_BASES.length;
+      console.warn(`[netease] 节点 ${base} 失败，切换到 ${getActiveNeteaseBase()}`);
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("Netease API 请求失败");

@@ -13,7 +13,7 @@ import { weatherService } from "./services/weather";
 import { triviaService, type TriviaCategory } from "./services/trivia";
 import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
-import { musicService, type NeteaseSong } from "./services/music";
+import { musicService, neteaseNodeStatus, type NeteaseSong } from "./services/music";
 import { regeneratePhraseBank, phraseBankStatus } from "./services/phraseBank";
 
 // ============== Netease 服务保活 ==============
@@ -127,6 +127,7 @@ app.get("/api/health", (_req, res) => {
     uptime: process.uptime(),
     queue: musicQueue.getQueueInfo(),
     scheduler: { trackCount: scheduler.getTrackCount() },
+    netease: neteaseNodeStatus(),
   });
 });
 
