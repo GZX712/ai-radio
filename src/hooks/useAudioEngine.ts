@@ -63,12 +63,10 @@ export function useAudioEngine() {
     music.addEventListener("loadedmetadata", () => {
       useRadioStore.getState().setDuration(music.duration);
     });
-    // 自动切歌保护：3 秒内只允许一次自动 skip（防"莫名其妙连环切歌"）
-    let lastAutoSkip = 0;
-    const safeAutoSkip = () => {
-      const now = Date.now();
-      if (now - lastAutoSkip < 3000) return; // 刚切过，忽略（防循环）
-      lastAutoSkip = now;
+    music.addEventListener("ended", () => {
+      useRadioStore.getState().setIsPlaying(false);
+      useRadioStore.getState().setProgress(0);
+      // 播完自动切下一首（随机歌单）
       radioApi.skip().then((next) => {
         if (next) {
           music.src = next.url;
@@ -76,21 +74,6 @@ export function useAudioEngine() {
           useRadioStore.getState().setNow(next);
         }
       }).catch(() => {});
-    };
-    music.addEventListener("ended", () => {
-      useRadioStore.getState().setIsPlaying(false);
-      useRadioStore.getState().setProgress(0);
-      // 播完自动切下一首（随机歌单）
-      safeAutoSkip();
-    });
-    // 播放出错：多半是音乐流 URL 过期/防盗链——2 秒后重试切下一首（避免卡死，但防连环切）
-    music.addEventListener("error", () => {
-      const err = music.error?.code;
-      console.warn("[audio] 音乐流错误 code=", err);
-      // MEDIA_ERR_SRC_NOT_SUPPORTED(4)/网络错误(2) → 自动换歌；其他情况等网络恢复
-      if (err === 2 || err === 4) {
-        setTimeout(safeAutoSkip, 2000);
-      }
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
@@ -123,29 +106,6 @@ export function useAudioEngine() {
     getNodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /**
-   * 🔓 解锁音频（必须在 user gesture 的同步代码块内调用！）
-   * 浏览器 autoplay policy：只有在"用户点击"的同步调用栈里 resume() 才算用户主动播放
-   * 一旦 await 网络请求，user gesture 上下文就丢了 → play() 被静默拒绝
-   */
-  const unlockAudio = useCallback((): void => {
-    try {
-      const { ctx } = getNodes();
-      if (ctx.state === "suspended") {
-        void ctx.resume(); // 同步发起 resume（不 await）
-      }
-      // 播一个"静音占位"音频：告诉浏览器"用户点击了播放"
-      const probe = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAABjW3s=");
-      probe.volume = 0.001;
-      void probe.play().then(() => {
-        probe.pause();
-        probe.src = "";
-      }).catch(() => {});
-    } catch {
-      /* 解锁失败不致命 */
-    }
-  }, [getNodes]);
 
   /**
    * 停止 DJ：暂停 + 清空排队 + 恢复音乐音量
@@ -195,8 +155,8 @@ export function useAudioEngine() {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
       }
     } else {
-      // 🔧 关键修复：即使 now 有 url，也走 loadAndPlay（先 setSrc 再 play()）
-      // 否则 audio.src 为空时 play() 静默失败 → "音乐不能播放"
+      // 🔧 关键修复：now.url 存在也走 loadAndPlay（先 setSrc 再 play）
+      // 否则 music.src 为空时 play() 静默失败 → "音乐不能播放"
       await loadAndPlay(now);
     }
   };
@@ -253,11 +213,8 @@ export function useAudioEngine() {
   };
 
   const setVolume = (v: number): void => {
-    const { musicGain, djGain } = getNodes();
-    const vol = Math.max(0, Math.min(1, v));
-    // 同时控制音乐 + DJ 双通道（DJ 保持 1.6 倍人声增强比例）
-    musicGain.gain.value = vol;
-    djGain.gain.value = vol * 1.6;
+    const { musicGain } = getNodes();
+    musicGain.gain.value = Math.max(0, Math.min(1, v));
     useRadioStore.getState().setVolume(v);
   };
 
@@ -332,6 +289,6 @@ export function useAudioEngine() {
   return {
     handlePlay, handlePause, handleToggle, handleSkip, handlePrev,
     handleSeek, handleSeekTo, setPlaybackRate, setVolume,
-    getAnalyser, playDj, stopDj, loadAndPlay, unlockAudio,
+    getAnalyser, playDj, stopDj, loadAndPlay,
   };
 }

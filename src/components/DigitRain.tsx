@@ -44,12 +44,12 @@ export function DigitRain() {
       if (now - last < interval) return;
       last = now;
 
-      // 浅灰半透不涂背景（避免右上/右下出现实心色块）
-      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(0, 243, 255, 0.08)";
+      ctx.fillRect(0, 0, W, H);
 
-      ctx.fillStyle = "rgba(222, 222, 222, 0.85)"; // 柔灰银主调（取代青色）
+      ctx.fillStyle = "#00f3ff";
       ctx.font = `${fontSize}px "JetBrains Mono", monospace`;
-      ctx.shadowColor = "rgba(222, 222, 222, 0.6)";
+      ctx.shadowColor = "#00f3ff";
       ctx.shadowBlur = 4;
 
       for (let i = 0; i < columns; i++) {

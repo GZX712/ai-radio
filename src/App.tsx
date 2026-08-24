@@ -9,8 +9,6 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { DigitRain } from "@/components/DigitRain";
-import { CloudBanner } from "@/components/CloudBanner";
-import { isCloudDemo, buildPushHeaders, PUSH_URL } from "@/lib/cloudMode";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -22,9 +20,6 @@ export default function App() {
   const engine = useAudioEngine();
   const [ws, setWs] = useState<ReconnectingWS | null>(null);
   const [started, setStarted] = useState(false); // 开始电台引导层
-  // 云端模式：当前正在播的远端电脑状态（每 2s 轮询 EdgeOne KV）
-  const [remoteNow, setRemoteNow] = useState<NowPlaying | null>(null);
-  const [remoteLastSeen, setRemoteLastSeen] = useState<number>(0);
   // APP 使用时长（打开页面即开始累计，每秒 +1）
   const [appTime, setAppTime] = useState(0);
   useEffect(() => {
@@ -38,10 +33,14 @@ export default function App() {
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
     setStarted(true);
-    // 🔓 同步解锁音频（user gesture 内），否则浏览器 autoplay policy 静默拒绝 play()
-    if (engine.unlockAudio) engine.unlockAudio();
-    // 用户主动点击开始 → 自动播放第一首（保持"点开始就播"的预期）
-    engine.handlePlay().catch(() => {});
+    engine.handlePlay().catch(() => {
+      // 播放失败也继续（可能已解锁但网络慢）
+      useRadioStore.getState().setError("播放失败，请重试");
+    });
+    // 触发 DJ 开场（只一段，不重复）
+    window.setTimeout(() => {
+      fetch("/api/dj/open", { method: "POST" }).catch(() => {});
+    }, 300);
   }, [engine]);
 
   // 播放控制命令执行（聊天/语音触发）
@@ -94,73 +93,6 @@ export default function App() {
       .then(setNow)
       .catch((err) => setError(err instanceof Error ? err.message : "Init failed"));
   }, [setNow, setError]);
-
-  // ☁️ 云端模式：每 2.5 秒轮询 EdgeOne KV，看辛老师本机电脑正在播什么
-  useEffect(() => {
-    if (!isCloudDemo()) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch("/api/poll", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (cancelled) return;
-        if (json?.now) {
-          setRemoteNow(json.now as NowPlaying);
-          setRemoteLastSeen(Date.now());
-          // 同步到 store（让 Player/Visualizer 也能显示）
-          setNow(json.now as NowPlaying);
-        }
-      } catch {
-        /* 网络/EdgeOne 故障静默 */
-      }
-    };
-    tick();
-    const t = window.setInterval(tick, 2500);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [setNow]);
-
-  // 🚀 本机模式：每 5 秒把当前正在播放的歌推到 EdgeOne KV（云端才能看到）
-  useEffect(() => {
-    if (isCloudDemo()) return; // 云端页面自身不推
-    // 读取用户配置的 DJ_TOKEN（辛老师从 EdgeOne 控制台拿）
-    let token = "";
-    try {
-      token = localStorage.getItem("ai-radio-dj-token") || "";
-    } catch { /* ignore */ }
-    let lastSentKey = "";
-    const tick = async () => {
-      const now = useRadioStore.getState().now;
-      const isPlaying = useRadioStore.getState().isPlaying;
-      const progress = useRadioStore.getState().progress;
-      if (!now) return;
-      // 只在变化时推（避免无谓请求）
-      const key = `${now.songmid}|${isPlaying ? 1 : 0}|${Math.floor(progress)}`;
-      if (key === lastSentKey) return;
-      lastSentKey = key;
-      try {
-        await fetch(PUSH_URL, {
-          method: "POST",
-          headers: buildPushHeaders(token),
-          body: JSON.stringify({
-            now,
-            isPlaying,
-            progress,
-            timestamp: Date.now(),
-            source: "local-pc",
-          }),
-        });
-      } catch {
-        /* 推送失败静默（不影响本机播放） */
-      }
-    };
-    const t = window.setInterval(tick, 5000);
-    tick(); // 立即推一次
-    return () => clearInterval(t);
-  }, []);
 
   // 启动时恢复 DJ personality（localStorage → 后端），切歌等场景立即用用户音色
   useEffect(() => {
@@ -265,24 +197,14 @@ export default function App() {
           <div className="header-avatar" aria-label="DJ">DJ</div>
           <div>
             <div className="header-name">AI Radio</div>
-            <div className="header-status">
-              {isCloudDemo()
-                ? (remoteNow ? "📡 Synced" : "☁️ Cloud")
-                : (isPlaying ? "Speaking" : "Online")}
-            </div>
+            <div className="header-status">{isPlaying ? "Speaking" : "Online"}</div>
           </div>
         </div>
         <div className="header-timer" title="本次使用时长">{fmt(appTime)}</div>
       </header>
 
-      {/* ☁️ 云端模式横幅：明确告诉用户这是 EdgeOne 部署版 + 远端同步状态 */}
-      <CloudBanner remoteNow={remoteNow} remoteLastSeen={remoteLastSeen} />
-
       <Player
-        onToggle={() => {
-          if (engine.unlockAudio) engine.unlockAudio();
-          return engine.handleToggle();
-        }}
+        onToggle={engine.handleToggle}
         onSkip={engine.handleSkip}
         onPrev={engine.handlePrev}
         onSeek={engine.handleSeek}
@@ -306,8 +228,8 @@ export default function App() {
       <DigitRain />
       <Toast />
 
-      {/* 开始电台引导层（iOS autoplay 解锁）；云端模式不显示（点播需要本地后端） */}
-      {!started && !isCloudDemo() && (
+      {/* 开始电台引导层（iOS autoplay 解锁） */}
+      {!started && (
         <div className="start-overlay" onClick={handleStart}>
           <div className="start-card">
             <h2 className="start-title">AI 电台</h2>
@@ -316,19 +238,6 @@ export default function App() {
               ▶ 开始电台
             </button>
           </div>
-        </div>
-      )}
-
-      {/* 云端模式：完全没数据时显示空状态 */}
-      {isCloudDemo() && !remoteNow && (
-        <div className="cloud-empty">
-          <div className="cloud-empty-icon">📡</div>
-          <div className="cloud-empty-title">等待远端电脑连接</div>
-          <p className="cloud-empty-sub">
-            辛老师，本机电脑访问 <a href={location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:8787' : `http://${location.hostname}:8787`} target="_blank" rel="noopener noreferrer">http://{location.hostname}:8787</a> 开启本地服务并播放音乐
-            <br />
-            远端电脑开始播放后，当前页面会同步显示正在播的曲目
-          </p>
         </div>
       )}
     </div>
