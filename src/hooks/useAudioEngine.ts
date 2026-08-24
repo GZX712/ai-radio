@@ -195,15 +195,9 @@ export function useAudioEngine() {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
       }
     } else {
-      try {
-        const { music, ctx } = getNodes();
-        if (ctx.state === "suspended") await ctx.resume();
-        // 直接 play() 从暂停位置继续——不重置 src（否则会从头播放）
-        await music.play();
-        useRadioStore.getState().setIsPlaying(true);
-      } catch (err) {
-        useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
-      }
+      // 🔧 关键修复：即使 now 有 url，也走 loadAndPlay（先 setSrc 再 play()）
+      // 否则 audio.src 为空时 play() 静默失败 → "音乐不能播放"
+      await loadAndPlay(now);
     }
   };
 
