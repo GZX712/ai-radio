@@ -224,16 +224,21 @@ export class MusicQueue {
   private async loadAt(index: number, depth = 0): Promise<NeteaseSong | null> {
     const songmid = this.queue[index];
     if (!songmid) return null;
-    // 限制递归深度（连续版权失败 5 次就停，让 next() 触发 refresh）
-    if (depth > 5) return null;
-    // 本会话已经失败的歌 → 直接移到末尾 + 跳过
+    // 限制递归深度（真实尝试失败 8 次就停）
+    if (depth > 8) return null;
+    // 本会话已经失败的歌 → 直接移到末尾 + 跳过（**不消耗深度**，一直找到能播的为止）
     if (this.failedIds.has(songmid)) {
+      // 防死循环：如果几乎所有歌都被标记失败 → 清空 failedIds 重新试（可能只是瞬时风控）
+      if (this.failedIds.size >= this.queue.length - 1) {
+        console.warn(`[musicQueue] failedIds 已覆盖整个队列（${this.failedIds.size}），清空重试`);
+        this.failedIds.clear();
+      }
       if (this.queue.length > 1) {
         this.queue.splice(index, 1);
         this.queue.push(songmid);
         const nextIdx = index >= this.queue.length ? 0 : index;
         this.cursor = nextIdx;
-        return this.loadAt(this.cursor, depth + 1);
+        return this.loadAt(this.cursor, depth); // 不 +1
       }
       return null;
     }
