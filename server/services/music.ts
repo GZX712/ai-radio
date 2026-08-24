@@ -117,9 +117,10 @@ export const musicService = {
     if (!first?.url) {
       throw new Error(`歌曲 ${ids} 无可用播放链接（可能版权限制）`);
     }
-    // 走同源代理：https 页面加载 http:// 网易云流会被浏览器 Mixed Content 拦截（疯狂跳歌）
-    // 后端代理带 UA/Referer 拉流，浏览器拿到的是同源 https URL
-    return `/api/proxy-audio?url=${encodeURIComponent(first.url)}`;
+    // 音频流转发走 netease 节点（主服务访问网易云流可能被风控超时，netease 节点访问是通的）
+    // https 页面加载 http:// 网易云流会被浏览器 Mixed Content 拦截 → 必须中转成同源 https
+    const active = getActiveNeteaseBase();
+    return `${active}/proxy-audio?url=${encodeURIComponent(first.url)}`;
   },
 
   /**
