@@ -130,6 +130,29 @@ export function useAudioEngine() {
   }, []);
 
   /**
+   * 🔓 解锁音频（必须在 user gesture 的同步代码块内调用！）
+   * 浏览器 autoplay policy：只有在"用户点击"的同步调用栈里 resume()/play() 才算用户主动播放
+   * 一旦 await 网络请求，user gesture 上下文就丢了 → play() 被静默拒绝（这就是"代码正常但浏览器不播"的原因）
+   */
+  const unlockAudio = useCallback((): void => {
+    try {
+      const { ctx } = getNodes(); // 同步创建（在 user gesture 内 → state 直接 running）
+      if (ctx.state === "suspended") {
+        void ctx.resume(); // 同步发起 resume（不 await）
+      }
+      // 播一个"静音占位"音频：告诉浏览器"用户点击了播放"（后续异步 play 不再被拦）
+      const probe = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAABjW3s=");
+      probe.volume = 0.001;
+      void probe.play().then(() => {
+        probe.pause();
+        probe.src = "";
+      }).catch(() => {});
+    } catch {
+      /* 解锁失败不致命 */
+    }
+  }, [getNodes]);
+
+  /**
    * 停止 DJ：暂停 + 清空排队 + 恢复音乐音量
    * （恢复播放/切歌/上一首时丢弃未说完的话术）
    */
@@ -331,6 +354,6 @@ export function useAudioEngine() {
   return {
     handlePlay, handlePause, handleToggle, handleSkip, handlePrev,
     handleSeek, handleSeekTo, setPlaybackRate, setVolume,
-    getAnalyser, playDj, stopDj, loadAndPlay,
+    getAnalyser, playDj, stopDj, loadAndPlay, unlockAudio,
   };
 }

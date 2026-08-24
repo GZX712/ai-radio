@@ -37,12 +37,12 @@ export default function App() {
 
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
+    // 🔓 关键：必须在 user gesture 同步调用栈里解锁音频，否则浏览器 autoplay policy 拒绝 play()
+    engine.unlockAudio();
     setStarted(true);
-    // 用户主动点击开始 → 自动开始播放（iOS 手势解锁音频）
-    // 关键：handlePlay 在 user gesture 内被调用，AudioContext 创建即 running
+    // 用户主动点击开始 → 自动开始播放（解锁后异步 play 不再被拦）
     engine.handlePlay().catch((err) => {
       console.warn("[start] handlePlay failed:", err);
-      // 不弹错误（可能是初次网络慢），让用户点 ▶ 重试
     });
   }, [engine]);
 
@@ -283,7 +283,10 @@ export default function App() {
       <CloudBanner remoteNow={remoteNow} remoteLastSeen={remoteLastSeen} />
 
       <Player
-        onToggle={engine.handleToggle}
+        onToggle={() => {
+          engine.unlockAudio(); // 同步解锁（user gesture 内）
+          return engine.handleToggle();
+        }}
         onSkip={engine.handleSkip}
         onPrev={engine.handlePrev}
         onSeek={engine.handleSeek}
