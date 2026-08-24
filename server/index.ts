@@ -49,7 +49,8 @@ app.use("/audio", express.static(AUDIO_DIR, { maxAge: "1h" }));
 
 // ============== 音乐流代理 ==============
 // 前端页面是 HTTPS，浏览器加载 http:// 网易云流会被 Mixed Content 拦截 → 疯狂跳歌。
-// 这里后端用 http 拉流（带 UA/Referer 防盗链头），流式转发给前端（同源 https）。
+// 这里后端用 http 拉流（带 UA/Referer 防盗链头），完整缓冲后转发给前端（同源 https）。
+// 不用流式转发：Readable.fromWeb 在 Node 20 有兼容问题 + 浏览器 Range 请求 206 缺 Content-Range 会不播。
 app.get("/api/proxy-audio", async (req, res) => {
   const raw = String(req.query.url || "");
   if (!raw) {
@@ -63,27 +64,23 @@ app.get("/api/proxy-audio", async (req, res) => {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
       Referer: "https://music.163.com/",
     };
-    const range = String(req.headers.range || "");
-    if (range) headers.Range = range;
+    // 忽略浏览器 Range 请求（完整缓冲返回 200，audio 标签不需要 seek 也能播）
     const upstream = await fetch(upstreamUrl, {
       headers,
       redirect: "follow",
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(25000),
     });
-    if (!upstream.ok || !upstream.body) {
+    if (!upstream.ok) {
       res.status(502).json({ code: 502, message: `upstream ${upstream.status}` });
       return;
     }
-    res.status(upstream.status);
-    const ct = upstream.headers.get("content-type");
-    if (ct) res.setHeader("Content-Type", ct);
-    const cl = upstream.headers.get("content-length");
-    if (cl) res.setHeader("Content-Length", cl);
-    res.setHeader("Accept-Ranges", "bytes");
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.status(200);
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", buf.length);
     res.setHeader("Cache-Control", "private, max-age=300");
-    const stream = Readable.fromWeb(upstream.body as import("node:stream/web").ReadableStream);
-    stream.on("error", () => res.destroy());
-    stream.pipe(res);
+    res.setHeader("Accept-Ranges", "none");
+    res.send(buf);
   } catch (err) {
     if (!res.headersSent) res.status(502).json({ code: 502, message: err instanceof Error ? err.message : "proxy fail" });
     else res.destroy();
