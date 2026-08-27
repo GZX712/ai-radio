@@ -55,6 +55,8 @@ export class MusicQueue {
       this.initialized = true;
       this.initRetryAt = 0; // 重置，下次可以重新拉
       console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首`);
+      // 立即后台预取第一组 15 首（不依赖用户首次点播放）
+      this.prefetchNext();
       // 后台预筛版权可播歌曲（不阻塞 init；筛完只保留能播的）
       this.screenPlayable();
     } catch (err) {
