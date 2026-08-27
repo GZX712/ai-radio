@@ -98,7 +98,7 @@ function startNeteaseApi() {
   const neteaseDir = path.resolve(__dirname, "../vendor/NeteaseCloudMusicApi");
   console.log(`[AI-Radio] 启动网易云 API 子进程 (port ${NETEASE_PORT})...`);
 
-  neteaseProc = spawn("node", ["app.js"], {
+  neteaseProc = spawn("node", ["app-fixed.js"], {
     cwd: neteaseDir,
     env: { ...process.env, PORT: String(NETEASE_PORT), NODE_ENV: "development" },
     stdio: ["ignore", "pipe", "pipe"],
