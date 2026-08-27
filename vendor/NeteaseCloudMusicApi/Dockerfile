@@ -8,4 +8,4 @@ RUN npm config set registry "https://registry.npmmirror.com/" \
     && npm install --production
 
 EXPOSE 3000
-CMD ["node", "app.js"]
+CMD ["node", "app-fixed.js"]
