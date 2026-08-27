@@ -132,7 +132,17 @@ export function useAudioEngine() {
     try {
       if (ctx.state === "suspended") await ctx.resume();
       music.src = song.url;
-      await music.play();
+      // 播放超时保护：resume()/play() 任一环节卡住（无手势/源站慢/缓冲挂起）
+      // 6 秒内必须完成，否则报错退出（避免 isLoading 卡死、按钮一直 "..." 毫无反馈）
+      await Promise.race([
+        (async () => {
+          if (ctx.state === "suspended") await ctx.resume();
+          await music.play();
+        })(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("播放超时，请重试")), 6000)
+        ),
+      ]);
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
       useRadioStore.getState().setProgress(0);

@@ -139,22 +139,11 @@ export default function App() {
     );
   }, []);
 
-  // 自动开播：页面加载即尝试播放；iOS Safari 需用户手势，点击/触摸任意处重试
+  // 自动开播：页面加载即尝试一次（无手势会被 iOS 拒，用户点"开始电台"时再重试）。
+  // 注意：不再挂 document 全局 click 重试——之前它会和播放按钮的 onToggle 竞态，
+  // 首次播放失败时"点暂停 → document 监听又自动调 handlePlay"导致暂停无效/播放异常。
   useEffect(() => {
-    let autoPlayed = false;
-    const tryStart = () => {
-      if (autoPlayed) return;
-      handlePlayRef.current()
-        .then(() => { autoPlayed = true; })
-        .catch(() => { /* 失败，等下次手势再试 */ });
-    };
-    tryStart();
-    document.addEventListener("click", tryStart);
-    document.addEventListener("touchstart", tryStart);
-    return () => {
-      document.removeEventListener("click", tryStart);
-      document.removeEventListener("touchstart", tryStart);
-    };
+    handlePlayRef.current().catch(() => { /* 失败交给用户手势（开始电台/播放按钮） */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
