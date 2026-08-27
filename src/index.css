@@ -1692,14 +1692,7 @@ body::after {
 }
 
 .digit-rain {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 180px;
-  height: 280px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.45;
+  display: none !important;  /* 已删除 DigitRain 组件，CSS 兜底隐藏避免任何残留显示 */
 }
 
 /* =========================================================
