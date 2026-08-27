@@ -656,6 +656,12 @@ server.listen(PORT, "0.0.0.0", () => {
   setSchedulerBroadcast(broadcast);
   setDjBroadcast(broadcast); // 让 DJ 后台真联想话术能直接 broadcast
   scheduler.start();
+
+  // 启动后主动加载用户歌单（不依赖首次播放）：netease 就绪需数秒，
+  // 失败时 musicQueue.init 内部会自动定时重试直到成功
+  setTimeout(() => {
+    musicQueue.init().catch(() => {});
+  }, IS_DEPLOYED ? 5000 : 4000);
 });
 
 // 优雅退出
