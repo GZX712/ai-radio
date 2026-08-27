@@ -147,18 +147,18 @@ export class MusicQueue {
       this.history.push(this.currentSong.songmid);
     }
 
-    const nextIndex = this.pickRandomIndex();
-
-    // 优先用预取缓存（零等待）
-    if (this.prefetch && this.prefetch.index === nextIndex) {
-      this.currentSong = this.prefetch.song;
+    // 优先用预取缓存（零等待）——只要 prefetch 存在就直接用（它是后台随机选好的可播歌）
+    if (this.prefetch) {
+      const cached = this.prefetch;
       this.prefetch = null;
-      this.cursor = nextIndex;
+      this.currentSong = cached.song;
+      this.cursor = cached.index;
       this.pushRecent(this.currentSong.songmid);
       this.prefetchNext();
       return this.currentSong;
     }
 
+    const nextIndex = this.pickRandomIndex();
     this.cursor = nextIndex;
     const song = await this.loadAt(this.cursor);
     if (song) {

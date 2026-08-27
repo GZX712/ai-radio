@@ -63,7 +63,7 @@ async function fetchJson<T>(path: string): Promise<T> {
     for (let attempt = 0; attempt <= MAX_RETRY_PER_NODE; attempt++) {
       try {
         const res = await fetch(`${base}${path}`, {
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(8000),
         });
         if (!res.ok) {
           throw new Error(`Netease API ${res.status}: ${res.statusText}`);
