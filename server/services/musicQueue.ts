@@ -248,35 +248,46 @@ export class MusicQueue {
     });
   }
 
-  /** 通用填充逻辑：往指定池里塞歌，直到 POOL_SIZE 或队列耗尽 */
+  /** 通用填充逻辑：并发预取，快速填满 POOL_SIZE（一次并行 5 个请求，15 首约 3 轮 ≈ 4 秒） */
   private fillPool(pool: { index: number; song: NeteaseSong }[], done: () => void, depth = 0): void {
-    if (depth > 20 || pool.length >= this.POOL_SIZE) {
+    if (depth > 10 || pool.length >= this.POOL_SIZE) {
       done();
       return;
     }
-    const idx = this.pickRandomIndex();
-    // 避开当前播放 + 两个池子已有的
-    if (
-      idx === this.cursor ||
-      this.prefetchPool.some((p) => p.index === idx) ||
-      this.nextPool.some((p) => p.index === idx)
-    ) {
-      this.fillPool(pool, done, depth + 1);
-      return;
+    // 批量挑歌（避开当前播放 + 两个池子已有的）
+    const picks: number[] = [];
+    let guard = 0;
+    while (picks.length < 5 && guard < 40) {
+      guard++;
+      const idx = this.pickRandomIndex();
+      if (
+        idx === this.cursor ||
+        this.prefetchPool.some((p) => p.index === idx) ||
+        this.nextPool.some((p) => p.index === idx) ||
+        picks.includes(idx)
+      ) continue;
+      picks.push(idx);
     }
-    const songmid = this.queue[idx];
-    if (!songmid) { done(); return; }
-    musicService
-      .getCompleteSong(songmid)
-      .then((song) => {
-        pool.push({ index: idx, song });
-        this.fillPool(pool, done, depth + 1);
+    if (picks.length === 0) { done(); return; }
+
+    // 并发拉取
+    Promise.allSettled(
+      picks.map((idx) => {
+        const songmid = this.queue[idx];
+        if (!songmid) return Promise.reject(new Error("empty"));
+        return musicService.getCompleteSong(songmid).then((song) => ({ idx, song }));
       })
-      .catch(() => {
-        // 版权/网络失败 → 换下一首继续填
-        this.failedIds.add(songmid);
-        this.fillPool(pool, done, depth + 1);
-      });
+    ).then((results) => {
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          pool.push({ index: r.value.idx, song: r.value.song });
+        } else {
+          const failed = this.queue[picks[results.indexOf(r)]];
+          if (failed) this.failedIds.add(failed);
+        }
+      }
+      this.fillPool(pool, done, depth + 1);
+    });
   }
 
   private async loadAt(index: number, depth = 0): Promise<NeteaseSong | null> {
