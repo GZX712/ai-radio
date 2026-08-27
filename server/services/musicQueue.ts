@@ -65,6 +65,11 @@ export class MusicQueue {
       const wait = IS_DEPLOYED ? 8000 : 30000;
       this.initRetryAt = Date.now() + wait;
       console.warn(`[musicQueue] 歌单拉取失败，${wait / 1000} 秒后重试:`, err instanceof Error ? err.message : err);
+      // 主动定时重试（不依赖用户触发播放）：Render 主服务常比 netease 节点先醒，
+      // 冷启动时序会导致首次 init 失败，用户首开只剩内置 12 首；自动重试直到成功
+      setTimeout(() => {
+        void this.init();
+      }, wait + 1000).unref?.();
     }
   }
 
