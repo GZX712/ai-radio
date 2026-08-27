@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "AI 电台",
+    "slug": "ai-radio",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.workbuddy.airadio",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.workbuddy.airadio"
+    },
+    "plugins": []
+  }
+}

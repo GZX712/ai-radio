@@ -41,6 +41,7 @@
     "@types/react-dom": "^18.3.0",
     "@types/ws": "^8.5.12",
     "@vitejs/plugin-react": "^4.3.1",
+    "eas-cli": "^22.6.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.2"
