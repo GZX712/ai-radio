@@ -8,7 +8,6 @@ import { Player } from "@/components/Player";
 import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
-import { DigitRain } from "@/components/DigitRain";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -225,7 +224,7 @@ export default function App() {
       />
       {/* 桌面端装饰：粒子 + 数字雨（移动端 CSS media query 自动隐藏） */}
       <ParticleField count={12} />
-      <DigitRain />
+      {/* 数字雨已删除（用户要求去除右下角青色矩形） */}
       <Toast />
 
       {/* 开始电台引导层（iOS autoplay 解锁） */}
