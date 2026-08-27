@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
+import { playRandomSfx } from "@/lib/sfx";
 import type { NowPlaying } from "@/types";
 
 interface AudioNodes {
@@ -179,6 +180,10 @@ export function useAudioEngine() {
     try {
       // 切歌：丢弃所有未说完的 DJ 话术 + 恢复音量
       stopDj();
+      // 搞笑音效：30% 概率随机一个（用户手动切歌时）
+      if (useRadioStore.getState().sfxEnabled && Math.random() < 0.3) {
+        playRandomSfx();
+      }
       const next = await radioApi.skip();
       if (next) await loadAndPlay(next);
     } catch (err) {

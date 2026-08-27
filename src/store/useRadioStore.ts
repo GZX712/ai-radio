@@ -23,6 +23,10 @@ interface RadioState {
   djMuted: boolean;
   setDjMuted: (muted: boolean) => void;
 
+  // 搞笑音效开关（切歌/段子/聊天时随机播放，localStorage 持久化）
+  sfxEnabled: boolean;
+  toggleSfx: () => void;
+
   setNow: (now: NowPlaying | null) => void;
   setDjText: (text: string) => void;
   setDjBilingual: (en: string, zh: string) => void;
@@ -59,6 +63,21 @@ export const useRadioStore = create<RadioState>((set, get) => ({
   unDuck: noop,
   djMuted: false,
   setDjMuted: (djMuted) => set({ djMuted }),
+  sfxEnabled: (() => {
+    try {
+      return localStorage.getItem("ai-radio-sfx") !== "off";
+    } catch {
+      return true;
+    }
+  })(),
+  toggleSfx: () =>
+    set((s) => {
+      const next = !s.sfxEnabled;
+      try {
+        localStorage.setItem("ai-radio-sfx", next ? "on" : "off");
+      } catch { /* ignore */ }
+      return { sfxEnabled: next };
+    }),
 
   setNow: (now) => set({ now }),
   setDjText: (djText) => set({ djText }),

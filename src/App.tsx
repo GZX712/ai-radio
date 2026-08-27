@@ -3,6 +3,7 @@ import { useRadioStore } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { ReconnectingWS } from "@/lib/ws";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
+import { playEntranceSfx, playRandomSfx } from "@/lib/sfx";
 import type { NowPlaying } from "@/types";
 import { Player } from "@/components/Player";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -13,6 +14,8 @@ export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
   const setDjBilingual = useRadioStore((s) => s.setDjBilingual);
   const setError = useRadioStore((s) => s.setError);
+  const sfxEnabled = useRadioStore((s) => s.sfxEnabled);
+  const toggleSfx = useRadioStore((s) => s.toggleSfx);
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
@@ -36,6 +39,8 @@ export default function App() {
       // 播放失败也继续（可能已解锁但网络慢）
       useRadioStore.getState().setError("播放失败，请重试");
     });
+    // 登场搞笑音效（DJ 亮相）
+    if (useRadioStore.getState().sfxEnabled) playEntranceSfx();
     // 触发 DJ 开场（只一段，不重复）
     window.setTimeout(() => {
       fetch("/api/dj/open", { method: "POST" }).catch(() => {});
@@ -164,6 +169,10 @@ export default function App() {
       const m = msg as { en?: string; zh?: string; audioUrl?: string; type?: string; song?: NowPlaying };
       if (m.type === "dj" || m.type === "chat-reply") {
         useRadioStore.getState().setDjThinking(false);
+        // 搞笑音效：DJ 段子/回复到达时 40% 概率随机反应音效（不打断语音，音量轻）
+        if (useRadioStore.getState().sfxEnabled && Math.random() < 0.4) {
+          playRandomSfx();
+        }
         // dj 类型（切歌/开场/天气/趣闻/整点）→ 自动播放
         // chat-reply 类型 → 不自动播（ChatPanel 显示 ▶ 按钮，用户按了才听）
         if (m.audioUrl && m.type === "dj") {
@@ -199,7 +208,18 @@ export default function App() {
             <div className="header-status">{isPlaying ? "Speaking" : "Online"}</div>
           </div>
         </div>
-        <div className="header-timer" title="本次使用时长">{fmt(appTime)}</div>
+        <div className="header-right">
+          <button
+            type="button"
+            className={`sfx-toggle ${sfxEnabled ? "on" : "off"}`}
+            onClick={toggleSfx}
+            title={sfxEnabled ? "搞笑音效：开（点击关闭）" : "搞笑音效：关（点击开启）"}
+            aria-label="搞笑音效开关"
+          >
+            {sfxEnabled ? "😄 音效开" : "🔇 音效关"}
+          </button>
+          <div className="header-timer" title="本次使用时长">{fmt(appTime)}</div>
+        </div>
       </header>
 
       <Player

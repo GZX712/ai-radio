@@ -172,6 +172,33 @@ body::after {
   color: var(--text);
 }
 
+/* 顶部右侧：搞笑音效开关 + 计时 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sfx-toggle {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.sfx-toggle:hover {
+  border-color: var(--accent, #a78bfa);
+  background: rgba(167,139,250,0.12);
+}
+.sfx-toggle.off {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
 /* ============== 播放器主体（极简封面 + 大字歌名） ============== */
 .player {
   padding: 20px;
