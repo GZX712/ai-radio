@@ -67,12 +67,15 @@ export function useAudioEngine() {
     music.addEventListener("ended", () => {
       useRadioStore.getState().setIsPlaying(false);
       useRadioStore.getState().setProgress(0);
-      // 播完自动切下一首（随机歌单）
-      radioApi.skip().then((next) => {
-        if (next) {
-          music.src = next.url;
+      // 播完自动切下一首（随机歌单）：过渡语先开口（DJ 不缺席），音乐随后无缝起
+      radioApi.skip().then((res) => {
+        if (res.transition) {
+          playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+        }
+        if (res.song) {
+          music.src = res.song.url;
           music.play().catch(() => {});
-          useRadioStore.getState().setNow(next);
+          useRadioStore.getState().setNow(res.song);
         }
       }).catch(() => {});
     });
@@ -150,8 +153,9 @@ export function useAudioEngine() {
     const { now } = useRadioStore.getState();
     if (!now?.url) {
       try {
-        const next = await radioApi.next();
-        if (next) await loadAndPlay(next);
+        const res = await radioApi.next();
+        if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+        if (res.song) await loadAndPlay(res.song);
       } catch (err) {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
       }
@@ -184,8 +188,11 @@ export function useAudioEngine() {
       if (useRadioStore.getState().sfxEnabled && Math.random() < 0.3) {
         playRandomSfx();
       }
-      const next = await radioApi.skip();
-      if (next) await loadAndPlay(next);
+      // 过渡语先开口（预生成音频秒播，DJ 不缺席），音乐随后无缝起；
+      // 详细介绍（LLM+TTS）到了自动排队接上
+      const res = await radioApi.skip();
+      if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+      if (res.song) await loadAndPlay(res.song);
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "切歌失败");
     }
@@ -194,8 +201,9 @@ export function useAudioEngine() {
   const handlePrev = async (): Promise<void> => {
     try {
       stopDj();
-      const prev = await radioApi.prev();
-      if (prev) await loadAndPlay(prev);
+      const res = await radioApi.prev();
+      if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+      if (res.song) await loadAndPlay(res.song);
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "上一首失败");
     }

@@ -22,17 +22,30 @@ function parseResponse(raw: unknown): NowPlaying | null {
   return parsed.data.data;
 }
 
+/** 切歌响应：歌 + 过渡语（DJ 先开口用，随接口同步返回） */
+export interface SkipResult {
+  song: NowPlaying | null;
+  transition?: { url: string; en: string; zh: string };
+}
+
+function parseSkipResponse(raw: unknown): SkipResult {
+  const song = parseResponse(raw);
+  const transition = (raw as { transition?: { url: string; en: string; zh: string } })
+    .transition;
+  return { song, transition };
+}
+
 export const radioApi = {
   async getNow(): Promise<NowPlaying | null> {
     return parseResponse(await request<unknown>("/now"));
   },
-  async next(): Promise<NowPlaying | null> {
-    return parseResponse(await request<unknown>("/next", { method: "POST" }));
+  async next(): Promise<SkipResult> {
+    return parseSkipResponse(await request<unknown>("/next", { method: "POST" }));
   },
-  async skip(): Promise<NowPlaying | null> {
-    return parseResponse(await request<unknown>("/skip", { method: "POST" }));
+  async skip(): Promise<SkipResult> {
+    return parseSkipResponse(await request<unknown>("/skip", { method: "POST" }));
   },
-  async prev(): Promise<NowPlaying | null> {
-    return parseResponse(await request<unknown>("/prev", { method: "POST" }));
+  async prev(): Promise<SkipResult> {
+    return parseSkipResponse(await request<unknown>("/prev", { method: "POST" }));
   },
 };

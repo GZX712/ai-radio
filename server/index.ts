@@ -148,7 +148,7 @@ app.post("/api/next", async (_req, res) => {
   try {
     const previousSong = await musicQueue.current();
     const song = await musicQueue.next();
-    res.json({ code: 0, data: song });
+    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
 
     // 调度器计数 + DJ 串场（异步）
@@ -171,7 +171,7 @@ app.post("/api/next", async (_req, res) => {
 app.post("/api/prev", async (_req, res) => {
   try {
     const song = await musicQueue.prev();
-    res.json({ code: 0, data: song });
+    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
     if (song) {
       triggerDJTransition(null, song).catch((err) =>
@@ -190,7 +190,7 @@ app.post("/api/skip", async (_req, res) => {
   try {
     const previousSong = await musicQueue.current();
     const song = await musicQueue.skip();
-    res.json({ code: 0, data: song });
+    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
 
     scheduler.onTrackChange().catch((err) =>
@@ -210,6 +210,21 @@ app.post("/api/skip", async (_req, res) => {
 });
 
 // ============== DJ 触发 ==============
+
+/**
+ * 切歌过渡语（transition jingle）：预生成的短句音频，随 skip/next/prev 接口**同步**返回。
+ * 前端拿到后先播过渡语（DJ 立即开口，不等 LLM），音乐随后无缝起；
+ * 详细介绍（LLM+TTS，2-5s）到了再排队接上 —— 解决"歌先出 DJ 没说话 / DJ 先说歌卡顿"的竞态。
+ */
+const TRANSITION_AUDIO = [
+  { url: "/audio/transition-1.mp3", en: "Next up, here we go!", zh: "接下来这首歌，走着！" },
+  { url: "/audio/transition-2.mp3", en: "Switching it up!", zh: "换首歌，希望你喜欢！" },
+  { url: "/audio/transition-3.mp3", en: "Coming right up!", zh: "下一首，来咯！" },
+  { url: "/audio/transition-4.mp3", en: "This one is a favorite!", zh: "这首歌我超喜欢！" },
+  { url: "/audio/transition-5.mp3", en: "A change of mood!", zh: "换个心情，听点不一样的！" },
+];
+const pickTransition = (): { url: string; en: string; zh: string } =>
+  TRANSITION_AUDIO[Math.floor(Math.random() * TRANSITION_AUDIO.length)];
 /**
  * 切歌 DJ：不走 DJ 锁——切歌话术来自预生成缓存（<10ms 秒回），
  * 若被天气/趣闻的 LLM 生成（~5s）锁住，切歌话术会晚 5 秒才广播（用户感知"回复慢"）。
