@@ -27,8 +27,9 @@ export class MusicQueue {
   private playlistName = "内置热门歌单";
   private initialized = false;
   private initRetryAt = 0; // 歌单拉取失败后的重试时间戳（5 分钟）
-  // 预取缓存：下一首数据提前拉好，切歌零等待
-  private prefetch: { index: number; song: NeteaseSong } | null = null;
+  // 预取缓存池：维护 3 首已拉好的歌，切歌时 pop 一首零等待；后台持续补充
+  private prefetchPool: { index: number; song: NeteaseSong }[] = [];
+  private readonly PREFETCH_TARGET = 3;
   private prefetching = false;
   // 最近播放集合（随机去重）
   private recent: string[] = [];
@@ -87,7 +88,7 @@ export class MusicQueue {
     this.initialized = false;
     this.initRetryAt = 0;
     this.recent = []; // 清空 recent 让所有歌都能被选
-    this.prefetch = null;
+    this.prefetchPool = [];
     await this.init();
   }
 
@@ -147,10 +148,9 @@ export class MusicQueue {
       this.history.push(this.currentSong.songmid);
     }
 
-    // 优先用预取缓存（零等待）——只要 prefetch 存在就直接用（它是后台随机选好的可播歌）
-    if (this.prefetch) {
-      const cached = this.prefetch;
-      this.prefetch = null;
+    // 优先用预取池（零等待）——只要池里有一首就直接用（都是后台随机选好的可播歌）
+    if (this.prefetchPool.length > 0) {
+      const cached = this.prefetchPool.shift()!;
       this.currentSong = cached.song;
       this.cursor = cached.index;
       this.pushRecent(this.currentSong.songmid);
@@ -158,15 +158,18 @@ export class MusicQueue {
       return this.currentSong;
     }
 
+    // 池子空了（刚启动/全部预取失败）→ 先尝试从池子没有的其他歌 loadAt，若失败再清 failedIds 重试一次
     const nextIndex = this.pickRandomIndex();
     this.cursor = nextIndex;
-    const song = await this.loadAt(this.cursor);
-    if (song) {
-      this.pushRecent(song.songmid);
-    } else {
-      // 连跳失败（loadAt 深度耗尽）→ 清空 failedIds 重试（可能只是瞬时失败）
+    let song = await this.loadAt(this.cursor);
+    if (!song) {
+      // 连跳失败（loadAt 深度耗尽）→ 清空 failedIds 强制重试一次（可能只是瞬时失败）
       console.warn(`[musicQueue] 连续失败，清空 failedIds 重试（当前 ${this.failedIds.size} 个失败）`);
       this.failedIds.clear();
+      song = await this.loadAt(this.pickRandomIndex());
+    }
+    if (song) {
+      this.pushRecent(song.songmid);
     }
     this.prefetchNext();
     return song;
@@ -195,30 +198,38 @@ export class MusicQueue {
   /**
    * 后台随机预取"下一首"（详情 + URL + 歌词），版权失败时再随机换一首
    */
+  /**
+   * 后台预取池：持续填满 PREFETCH_TARGET 首（详情 + URL + 歌词），版权失败自动换下一首
+   * 切歌 pop 池子 → 零等待；池子空了才走 loadAt（兜底）
+   */
   private prefetchNext(): void {
     if (this.prefetching || this.queue.length <= 1) return;
-    const nextIndex = this.pickRandomIndex();
-    if (this.prefetch && this.prefetch.index === nextIndex) return;
-
     this.prefetching = true;
-    const tryIndex = (idx: number, depth = 0): void => {
-      if (depth > 8) { this.prefetching = false; return; }
-      if (idx === this.cursor) idx = (idx + 1) % this.queue.length;
+    const fill = (depth = 0): void => {
+      if (depth > 12 || this.prefetchPool.length >= this.PREFETCH_TARGET) {
+        this.prefetching = false;
+        return;
+      }
+      const idx = this.pickRandomIndex();
+      if (idx === this.cursor || this.prefetchPool.some((p) => p.index === idx)) {
+        fill(depth + 1);
+        return;
+      }
       const songmid = this.queue[idx];
       if (!songmid) { this.prefetching = false; return; }
       musicService
         .getCompleteSong(songmid)
         .then((song) => {
-          this.prefetch = { index: idx, song };
-          this.prefetching = false;
+          this.prefetchPool.push({ index: idx, song });
+          fill(depth + 1);
         })
         .catch(() => {
-          // 版权限制，跳到再下一首
-          const nextIdx = (idx + 1) % this.queue.length;
-          tryIndex(nextIdx, depth + 1);
+          // 版权/网络失败 → 换下一首继续填
+          this.failedIds.add(songmid);
+          fill(depth + 1);
         });
     };
-    tryIndex(nextIndex);
+    fill();
   }
 
   private async loadAt(index: number, depth = 0): Promise<NeteaseSong | null> {
@@ -271,7 +282,7 @@ export class MusicQueue {
     this.history = [];
     this.cursor = 0;
     this.currentSong = null;
-    this.prefetch = null;
+    this.prefetchPool = [];
     this.recent = [];
   }
 
@@ -282,7 +293,7 @@ export class MusicQueue {
       cursor: this.cursor,
       historySize: this.history.length,
       current: this.currentSong?.songmid ?? null,
-      prefetched: this.prefetch?.song.songmid ?? null,
+      prefetched: this.prefetchPool.map((p) => p.song.songmid).join(",") || null,
     };
   }
 }
