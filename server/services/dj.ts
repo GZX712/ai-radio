@@ -384,6 +384,22 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   if (ctx.scene === "transition") {
     const fromBank = pickPhrase("transition", currentPersonality.humorStyle);
     if (fromBank) {
+      // 音色修复：话术库音频预合成用的是默认音色；用户选了其他音色 → 实时用当前音色重新合成，避免声音在 MiMo/Edge 间跳
+      const wantVoice = currentPersonality.voice || undefined;
+      if (wantVoice && fromBank.voice !== wantVoice) {
+        try {
+          const audio = await ttsService.synthesize(
+            currentSpeakText(fromBank.en, fromBank.zh),
+            "dj",
+            wantVoice,
+            currentPersonality.traits,
+          );
+          lastDjEn = fromBank.en;
+          return { en: fromBank.en, zh: fromBank.zh, audioUrl: audio.url, provider: "phraseBank" };
+        } catch {
+          /* 重新合成失败 → 退回预合成音频（至少能播） */
+        }
+      }
       lastDjEn = fromBank.en;
       return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank" };
     }

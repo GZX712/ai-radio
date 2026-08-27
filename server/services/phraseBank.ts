@@ -22,6 +22,8 @@ export interface PhraseItem {
   en: string;
   zh: string;
   audioUrl: string;
+  /** 预合成时用的音色 ID（为空 = 老数据默认音色）；取话术时与当前音色不符需重新合成 */
+  voice?: string;
 }
 
 export const PHRASE_SCENES: PhraseScene[] = ["transition", "open", "chat", "weather", "trivia", "night"];
@@ -101,8 +103,9 @@ async function generateBatch(scene: PhraseScene, style: PhraseStyle, count: numb
             maxTokens: 60,
           });
           const zh = zhRaw.trim().replace(/^["']|["']$/g, "") || clean;
+          // 预合成用默认音色（undefined）；取话术时若用户选了其他音色会实时重新合成
           const audio = await ttsService.synthesize(`${clean} ${zh}`, "dj", undefined, "");
-          out.push({ scene, style, en: clean, zh, audioUrl: audio.url });
+          out.push({ scene, style, en: clean, zh, audioUrl: audio.url, voice: undefined });
         } catch {
           /* 单条失败跳过 */
         }
