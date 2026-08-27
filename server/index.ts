@@ -111,7 +111,11 @@ function startNeteaseApi() {
     console.error(`[netease][err] ${chunk.toString().trim()}`);
   });
   neteaseProc.on("exit", (code) => {
-    console.log(`[netease] 进程退出 code=${code}`);
+    console.log(`[netease] 进程退出 code=${code}，5 秒后自动重启`);
+    // 自动重启：netease 子进程崩了音乐就断，必须拉起
+    setTimeout(() => {
+      if (!IS_DEPLOYED) startNeteaseApi();
+    }, 5000);
   });
 }
 
