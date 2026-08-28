@@ -35,6 +35,9 @@ export default function App() {
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
     setStarted(true);
+    // iOS 必须：同步手势内先解锁 AudioContext + media autoplay（在任何 await 之前！
+    // 否则 resume 手势栈已断 → 音乐"播放中"但 WebAudio 无声）
+    engine.unlock();
     engine.handlePlay().catch(() => {
       // 播放失败也继续（可能已解锁但网络慢）
       useRadioStore.getState().setError("播放失败，请重试");

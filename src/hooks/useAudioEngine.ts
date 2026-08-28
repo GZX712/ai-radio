@@ -126,6 +126,26 @@ export function useAudioEngine() {
     djPlayingRef.current = false;
   };
 
+  /**
+   * iOS 音频解锁（必须在用户手势的同步代码里调用，不能等 await）：
+   * 1. resume AudioContext（iOS 初始 suspended，若等异步后再 resume 手势栈已断
+   *    → 音乐元素"播放中"但 WebAudio 无声——手机端没声音的头号原因）
+   * 2. 播一个静音 wav 解锁 media 元素 autoplay（iOS 要求元素曾被手势触发过 play）
+   */
+  const unlock = (): void => {
+    const { ctx } = getNodes();
+    if (ctx.state === "suspended") void ctx.resume();
+    try {
+      const silent = new Audio();
+      silent.volume = 0;
+      silent.src =
+        "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQBAACAgICA";
+      silent.play().catch(() => {});
+    } catch {
+      /* 解锁失败静默，不影响后续 */
+    }
+  };
+
   const loadAndPlay = async (song: NowPlaying): Promise<void> => {
     const { music, ctx } = getNodes();
     useRadioStore.getState().setIsLoading(true);
@@ -187,7 +207,10 @@ export function useAudioEngine() {
   const handleToggle = async (): Promise<void> => {
     const { isPlaying } = useRadioStore.getState();
     if (isPlaying) handlePause();
-    else await handlePlay();
+    else {
+      unlock(); // iOS：点播放按钮的手势内同步解锁（暂停久了 AudioContext 会再挂起）
+      await handlePlay();
+    }
   };
 
   const handleSkip = async (): Promise<void> => {
@@ -312,6 +335,6 @@ export function useAudioEngine() {
   return {
     handlePlay, handlePause, handleToggle, handleSkip, handlePrev,
     handleSeek, handleSeekTo, setPlaybackRate, setVolume,
-    getAnalyser, playDj, stopDj, loadAndPlay,
+    getAnalyser, playDj, stopDj, loadAndPlay, unlock,
   };
 }
