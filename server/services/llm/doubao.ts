@@ -100,9 +100,11 @@ export class DoubaoProvider implements LLMProvider {
 
 export const doubao = new DoubaoProvider();
 
-// 智能选择：DeepSeek 优先（配置了就用），否则用豆包
+// 智能选择：MiMo 优先（辛老师主力，key 与 TTS 共用）→ DeepSeek → 豆包兜底
 // dj.ts / trivia.ts 里的 `doubao` 引用无需改动
 import { DeepSeekProvider } from "./deepseek";
+import { MiMoProvider } from "./mimo";
 const deepseek = new DeepSeekProvider();
-export const llm = deepseek.isConfigured() ? deepseek : doubao;
-export { deepseek };
+const mimo = new MiMoProvider();
+export const llm = mimo.isConfigured() ? mimo : deepseek.isConfigured() ? deepseek : doubao;
+export { deepseek, mimo };
