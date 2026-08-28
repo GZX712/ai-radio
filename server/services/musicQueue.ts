@@ -42,6 +42,8 @@ export class MusicQueue {
   private failedIds = new Set<string>();
   // 版权预筛进行中标记
   private screening = false;
+  // 本会话累计被版权拦截的歌曲数（聚合日志用，进程重启清零）
+  private sessionBlockedCount = 0;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -283,12 +285,16 @@ export class MusicQueue {
         return musicService.getCompleteSong(songmid).then((song) => ({ idx, song }));
       })
     ).then((results) => {
-      for (const r of results) {
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
         if (r.status === "fulfilled") {
           pool.push({ index: r.value.idx, song: r.value.song });
         } else {
-          const failed = this.queue[picks[results.indexOf(r)]];
-          if (failed) this.failedIds.add(failed);
+          const failed = this.queue[picks[i]];
+          if (failed) {
+            this.failedIds.add(failed);
+            this.sessionBlockedCount++;
+          }
         }
       }
       this.fillPool(pool, done, depth + 1);
@@ -299,7 +305,12 @@ export class MusicQueue {
     const songmid = this.queue[index];
     if (!songmid) return null;
     // 限制递归深度（真实尝试失败 8 次就停）
-    if (depth > 8) return null;
+    if (depth > 8) {
+      if (this.sessionBlockedCount > 0) {
+        console.warn(`[musicQueue] 网易云版权受限，本会话已跳过 ${this.sessionBlockedCount} 首`);
+      }
+      return null;
+    }
     // 本会话已经失败的歌 → 直接移到末尾 + 跳过（**不消耗深度**，一直找到能播的为止）
     if (this.failedIds.has(songmid)) {
       // 防死循环：如果几乎所有歌都被标记失败 → 清空 failedIds 重新试（可能只是瞬时风控）
@@ -320,7 +331,9 @@ export class MusicQueue {
       this.currentSong = await musicService.getCompleteSong(songmid);
       return this.currentSong;
     } catch (err) {
-      console.error(`[musicQueue] 加载 ${songmid} 失败（版权限制，移到末尾）`);
+      // 网易云版权限制是常态（未授权用户大量歌曲无版权）—— 聚合日志，移到末尾即可
+      // 仅在 loadAt 深度耗尽时统一汇报一次总数，避免每首刷一条日志
+      this.sessionBlockedCount++;
       this.failedIds.add(songmid); // 标记本会话失败
       if (this.queue.length > 1) {
         // 移到队列末尾（不再尝试）
