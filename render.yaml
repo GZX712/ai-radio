@@ -29,6 +29,8 @@ services:
         sync: false  # 填 ai-radio-netease 的 URL，例如 https://ai-radio-netease.onrender.com
       - key: DEEPSEEK_API_KEY
         sync: false
+      - key: NETEASE_COOKIE
+        sync: false  # 网易云登录 Cookie（MUSIC_U=xxx;__csrf=yyy），解除版权限制
       - key: TTS_VOICE
         value: en-US-GuyNeural
       - key: PLAYLIST_ID

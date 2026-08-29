@@ -53,16 +53,31 @@ interface NeteaseDetailResponse {
   }[];
 }
 
+/**
+ * 网易云登录 Cookie（环境变量 NETEASE_COOKIE，如 "MUSIC_U=xxxx;__csrf=yyy"）
+ * 配了之后所有 API 请求带登录态 → 解除版权限制（未登录大量歌曲拿不到 URL）
+ * 未配置则保持游客模式（现状，行为不变）
+ */
+const NETEASE_COOKIE = process.env.NETEASE_COOKIE || "";
+
+/** 给网易云 API 路径追加 cookie 参数（透传给 netease 节点 → 网易云） */
+function withCookie(path: string): string {
+  if (!NETEASE_COOKIE) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}cookie=${encodeURIComponent(NETEASE_COOKIE)}`;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   // 多节点故障转移：当前节点失败 → 切换下一个（最多把所有节点试一遍）
   const MAX_RETRY_PER_NODE = 2;
   let lastErr: unknown;
   const attempts = Math.max(NETEASE_BASES.length, 1);
+  const fullPath = withCookie(path);
   for (let nodeTry = 0; nodeTry < attempts; nodeTry++) {
     const base = getActiveNeteaseBase();
     for (let attempt = 0; attempt <= MAX_RETRY_PER_NODE; attempt++) {
       try {
-        const res = await fetch(`${base}${path}`, {
+        const res = await fetch(`${base}${fullPath}`, {
           signal: AbortSignal.timeout(8000),
         });
         if (!res.ok) {
