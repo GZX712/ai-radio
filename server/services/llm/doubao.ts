@@ -1,39 +1,19 @@
 import type { ChatMessage, LLMProvider, LLMRequest } from "./types";
 import { LLMError } from "./types";
-import fs from "node:fs";
-import path from "node:path";
+import { loadEnv } from "../env";
 
 /**
  * 豆包 Doubao（字节火山引擎）
  * 零依赖原生 fetch 调 OpenAI 兼容端点。
- * .env 加载：运行时读项目根目录的 .env 文件，不依赖 dotenv 包。
+ * .env 加载：见 server/services/env.ts（server 入口已统一加载）。
  *
  * 凭证：
  * - ARK_API_KEY: 火山引擎 API key（必填）
  * - ARK_ENDPOINT_ID: 推理接入点 ID，默认 "doubao-lite-4k"
  */
 
-// ES module 顶层 load .env（覆盖 process.env）
+// 独立运行时（非 server/index.ts 入口）也确保 .env 已加载
 loadEnv();
-
-function loadEnv() {
-  try {
-    const root = path.resolve(".");
-    const content = fs.readFileSync(path.join(root, ".env"), "utf-8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq < 0) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
-      if (key && !process.env[key]) process.env[key] = val;
-    }
-    console.log("[doubao] .env loaded");
-  } catch {
-    // .env 不存在或不可读，继续
-  }
-}
 
 const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 

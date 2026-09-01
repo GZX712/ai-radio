@@ -15,6 +15,10 @@ import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
 import { musicService, neteaseNodeStatus, type NeteaseSong } from "./services/music";
 import { regeneratePhraseBank, phraseBankStatus } from "./services/phraseBank";
+import { loadEnv } from "./services/env";
+
+// ============== .env 加载（必须在读取任何 process.env 之前）==============
+loadEnv();
 
 // ============== Netease 服务保活 ==============
 // Render 免费版 15 分钟无请求会自动 spin down；保活定时任务每 5 分钟 ping 一次

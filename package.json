@@ -6,9 +6,9 @@
   "description": "AI 个人电台 - 音乐播放器 + DJ 串场 + 搞笑音效 + 天气/金融/历史趣闻解说",
   "scripts": {
     "dev": "vite",
-    "dev:server": "tsx watch server/index.ts",
+    "dev:server": "tsx watch server/entry.ts",
     "build": "tsc -b && vite build",
-    "start": "tsx server/index.ts",
+    "start": "tsx server/entry.ts",
     "preview": "vite preview",
     "cap:sync": "cap sync",
     "cap:add:ios": "cap add ios",
