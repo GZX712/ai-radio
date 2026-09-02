@@ -144,7 +144,8 @@ body::after {
 .header-status {
   font-size: 11px;
   color: var(--muted);
-  margin-top: 1px;
+  /* AI Radio 与 ONLINE 之间留出呼吸空间（带 box-shadow 时尤其要够） */
+  margin-top: 8px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -198,6 +199,40 @@ body::after {
   opacity: 0.55;
   filter: grayscale(0.6);
 }
+
+/* ===== 壁纸按钮（顶部 sfx-toggle 左侧） ===== */
+.wallpaper-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+}
+.wallpaper-btn:hover {
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-1px);
+}
+.wallpaper-btn:active { transform: translateY(0); }
+.wallpaper-btn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+  display: inline-block;
+  transition: background 0.25s ease;
+}
+.wallpaper-btn-label { line-height: 1; }
 
 /* ============== 播放器主体（极简封面 + 大字歌名） ============== */
 .player {
@@ -586,15 +621,40 @@ body::after {
   flex-direction: row-reverse;
 }
 
+/* 消息气泡容器：上方标签 + 头像 + 气泡（参考示例：标签贴在头像右上） */
+.chat-msg-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.chat-meta-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.chat-msg.dj .chat-meta-row {
+  flex-direction: row-reverse;
+}
+
 .chat-msg-content {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 14px;
   background: rgba(255,255,255,0.04);
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 
 @keyframes msg-in {
@@ -620,6 +680,17 @@ body::after {
 .chat-msg.user .chat-role {
   color: #fcd9a8;                                         /* 暖橙淡色（YOU 角色） */
   text-shadow: 0 0 8px rgba(251, 166, 70, 0.4);
+}
+
+/* DJ 气泡右下角小灯💡（壁纸主题色适配） */
+.chat-bulb {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-size: 14px;
+  filter: drop-shadow(0 0 6px rgba(255, 217, 61, 0.55));
+  pointer-events: none;
+  user-select: none;
 }
 
 /* 圆形头像（DJ + 用户） */
@@ -694,13 +765,13 @@ body::after {
   margin-bottom: 2px;
 }
 
-/* chat-reply 手动播放按钮（▶ 听回复 / ⏸ 暂停） */
+/* chat-reply 手动播放按钮（▶ 听回复 / ⏸ 暂停）— 浮在气泡内右下角，与 💡 并排 */
 .chat-reply-toggle {
   background: rgba(255, 159, 28, 0.12);
   border: 1px solid rgba(255, 159, 28, 0.35);
   color: var(--accent);
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
@@ -710,7 +781,8 @@ body::after {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
-  margin-left: auto;
+  align-self: flex-end;
+  margin-top: 2px;
 }
 
 .chat-reply-toggle:hover { background: rgba(255, 159, 28, 0.2); transform: scale(1.08); }
@@ -852,7 +924,7 @@ body::after {
 
 .chat-settings-btn:hover { background: rgba(255,255,255,0.06); }
 
-/* 头像上传按钮（聊天 header 里的小圆形按钮） */
+/* 用户头像上传按钮（聊天 header 里的小圆形按钮） */
 .chat-avatar-btn {
   background: transparent;
   border: 1px solid var(--border);
@@ -875,6 +947,50 @@ body::after {
 .chat-avatar-btn:hover {
   border-color: rgba(255, 159, 28, 0.45);
   box-shadow: 0 0 8px rgba(244, 82, 13, 0.4);
+}
+
+/* DJ 头像上传按钮（与 chat-avatar-btn 同尺寸，紫色边框+发光区分） */
+.chat-dj-avatar-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  margin: 0;
+  /* 用户头像用橙色；DJ 头像用品牌紫，强调"DJ"语义 */
+  border-color: rgba(157, 0, 255, 0.35);
+}
+
+.chat-dj-avatar-btn:hover {
+  border-color: rgba(157, 0, 255, 0.7);
+  box-shadow: 0 0 10px rgba(157, 0, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+/* DJ 头像里的 img/img-fallback */
+.chat-dj-avatar-mini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.chat-dj-avatar-fallback {
+  font-size: 14px;
+  /* 默认 🎙 麦号稍微大一点，避免和"你"字重叠 */
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 隐藏的 file input：用 position + opacity 而非 display:none（更可靠触发 click） */
@@ -1092,6 +1208,75 @@ body::after {
   gap: 8px;
   justify-content: flex-end;
   margin-top: 4px;
+}
+
+/* DJ 头像管理行（设置面板顶部） */
+.modal-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.modal-avatar-tile {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  transition: all 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.modal-avatar-tile:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.modal-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.modal-avatar-fallback {
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.modal-avatar-edit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+.modal-avatar-tile:hover .modal-avatar-edit { opacity: 1; }
+
+.modal-btn-small {
+  font-size: 11px;
+  padding: 4px 10px;
 }
 
 .modal-btn-primary,
@@ -1769,4 +1954,1916 @@ body::after {
   .player::before {
     animation: none !important;
   }
+}
+
+/* =========================================================
+ * 壁纸系统：6 款配色方案（默认 pulse，其余 5 款覆盖核心变量）
+ * - 全局噪点/扫描线（body::before/after）保留霓虹背景层
+ * - 频谱紫色 LED 设计硬编码，不参与壁纸切换（用户要求"保留"）
+ * ========================================================= */
+
+/* ----- 02 极简黑白 ----- */
+.app[data-wallpaper="mono"] {
+  --bg-deep: #0a0a0a;
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #1a1a1a;
+  --text: #f5f5f5;
+  --text-soft: rgba(245, 245, 245, 0.75);
+  --muted: rgba(245, 245, 245, 0.45);
+  --muted-2: rgba(245, 245, 245, 0.18);
+  --accent: #ffffff;
+  --accent-glow: rgba(255, 255, 255, 0.55);
+  --border: rgba(255, 255, 255, 0.18);
+  --border-strong: rgba(255, 255, 255, 0.5);
+  --neon-cyan: #ffffff;
+  --neon-purple: #cccccc;
+  --glitch-red: #ff4040;
+}
+.app[data-wallpaper="mono"] .player {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 60%), var(--surface);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 0 24px rgba(255,255,255,0.05),
+    inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+.app[data-wallpaper="mono"] .player::before {
+  background: conic-gradient(
+    from var(--nebula-angle),
+    #ffffff 0deg,
+    #888888 90deg,
+    #ffffff 180deg,
+    #444444 270deg,
+    #ffffff 360deg
+  );
+  filter: blur(3px);
+  opacity: 0.7;
+}
+.app[data-wallpaper="mono"] .btn-primary {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 12px rgba(255,255,255,0.4);
+}
+.app[data-wallpaper="mono"] .header-avatar {
+  background: linear-gradient(135deg, #ffffff, #888888);
+}
+.app[data-wallpaper="mono"] .header-timer {
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+.app[data-wallpaper="mono"] .header-status {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* ----- 05 奶油新拟态（对标预览页 05 · Neumorphism） -----
+   灵魂：同色系双向凹凸阴影（右上亮、左下暗），按钮"长在"界面里。 */
+.app[data-wallpaper="cream"] {
+  --bg-deep: #e6e9f2;
+  --bg: #e6e9f2;
+  --surface: #eef1f8;
+  --surface-2: #dde1ec;
+  --text: #4a5068;
+  --text-soft: rgba(74, 80, 104, 0.78);
+  --muted: rgba(74, 80, 104, 0.55);
+  --muted-2: rgba(74, 80, 104, 0.2);
+  --accent: #6c7cff;
+  --accent-2: #9a8cff;
+  --accent-glow: rgba(108, 124, 255, 0.4);
+  --border: rgba(163, 173, 200, 0.35);
+  --border-strong: rgba(108, 124, 255, 0.55);
+  --neon-cyan: #6c7cff;
+  --neon-purple: #9a8cff;
+  --glitch-red: #ffb35c;
+  /* 新拟态双向凹凸阴影变量（按钮/卡片统一用） */
+  --neu-light: rgba(255, 255, 255, 0.9);
+  --neu-dark: rgba(163, 173, 200, 0.7);
+  --neu-out:
+    8px 8px 18px var(--neu-dark),
+    -8px -8px 18px var(--neu-light);
+  --neu-out-sm:
+    5px 5px 12px var(--neu-dark),
+    -5px -5px 12px var(--neu-light);
+  --neu-in:
+    inset 4px 4px 10px var(--neu-dark),
+    inset -4px -4px 10px var(--neu-light);
+  --neu-in-sm:
+    inset 3px 3px 6px var(--neu-dark),
+    inset -3px -3px 6px var(--neu-light);
+}
+/* 容器：给整个 app 加同色系大背景 + 双向微凸阴影 */
+.app[data-wallpaper="cream"] {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,255,255,0.6), transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255,255,255,0.4), transparent 50%),
+    #e6e9f2;
+}
+/* 播放器主体 = 大块奶油卡片（双向凸） */
+.app[data-wallpaper="cream"] .player {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  border: none;
+  box-shadow:
+    12px 12px 26px var(--neu-dark),
+    -12px -12px 26px var(--neu-light);
+}
+.app[data-wallpaper="cream"] .player::before {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.7), transparent 40%),
+    radial-gradient(circle at 70% 70%, rgba(163,173,200,0.18), transparent 50%);
+  filter: blur(0);
+  opacity: 1;
+}
+/* 唱片封面 = 同色系凸起方形（蓝紫渐变），覆盖 Pulse 的黑色窄封面 */
+.app[data-wallpaper="cream"] .cover,
+.app[data-wallpaper="cream"] .player .cover,
+.app[data-wallpaper="cream"] .cover-wrapper {
+  background: linear-gradient(135deg, #6c7cff, #9a8cff) !important;
+  box-shadow:
+    6px 6px 14px rgba(163, 173, 200, 0.55),
+    -6px -6px 14px rgba(255, 255, 255, 0.85) !important;
+  border: none !important;
+  width: 56% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border-radius: 24px !important;
+}
+/* 占位符透明，避免和外层背景双层叠加 */
+.app[data-wallpaper="cream"] .cover-placeholder {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 64px !important;
+  text-shadow: 0 2px 6px rgba(108, 124, 255, 0.4);
+}
+/* 去掉 cream 下 cover-wrapper 的青色扫描线遮罩 */
+.app[data-wallpaper="cream"] .cover-wrapper::after {
+  display: none !important;
+}
+/* 主按钮 = "凹陷"在卡片里（同色系凹） */
+.app[data-wallpaper="cream"] .btn-primary {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  border: none;
+  color: #6c7cff;
+  box-shadow: var(--neu-in);
+}
+.app[data-wallpaper="cream"] .btn-primary:hover {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  color: #5a6ae0;
+}
+/* 次按钮 = "凸起"在卡片里（同色系凸） */
+.app[data-wallpaper="cream"] .btn-secondary {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  border: none;
+  color: #4a5068;
+  box-shadow: var(--neu-out-sm);
+  font-weight: 600;
+}
+/* 头部 DJ 头像：圆形蓝紫渐变 */
+.app[data-wallpaper="cream"] .header-avatar {
+  background: linear-gradient(135deg, #6c7cff, #8fa2ff);
+  color: #ffffff;
+  border: none;
+  box-shadow:
+    4px 4px 10px rgba(163, 173, 200, 0.7),
+    -4px -4px 10px rgba(255, 255, 255, 0.95);
+}
+/* 头部名称：深蓝灰 */
+.app[data-wallpaper="cream"] .header-name {
+  color: #4a5068;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.app[data-wallpaper="cream"] .header-status {
+  color: #6a7a9a;
+  font-weight: 600;
+}
+.app[data-wallpaper="cream"] .header-status::before {
+  background: #6c7cff;
+  box-shadow: 0 0 6px rgba(108, 124, 255, 0.6);
+}
+.app[data-wallpaper="cream"] .header-timer {
+  color: #4a5068;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  padding: 4px 10px;
+  border-radius: 10px;
+  box-shadow: var(--neu-out-sm);
+}
+/* 壁纸/音效按钮：圆形胶囊凸起 */
+.app[data-wallpaper="cream"] .wallpaper-btn,
+.app[data-wallpaper="cream"] .sfx-toggle {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  color: #4a5068;
+  border: none;
+  box-shadow: var(--neu-out-sm);
+  font-weight: 700;
+}
+.app[data-wallpaper="cream"] .wallpaper-btn:hover,
+.app[data-wallpaper="cream"] .sfx-toggle:hover {
+  color: #6c7cff;
+}
+/* 播放器标题/作者 */
+.app[data-wallpaper="cream"] .player .name {
+  color: #4a5068 !important;
+  font-weight: 800;
+  text-shadow: none !important;
+}
+.app[data-wallpaper="cream"] .player .artist,
+.app[data-wallpaper="cream"] .player .meta {
+  color: #6a7a9a !important;
+  font-weight: 600;
+}
+/* 进度条 = 凹陷轨道 */
+.app[data-wallpaper="cream"] .progress-bar,
+.app[data-wallpaper="cream"] .player-progress {
+  background: #dde1ec;
+  border: none;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: var(--neu-in-sm);
+  overflow: hidden;
+}
+.app[data-wallpaper="cream"] .progress-fill,
+.app[data-wallpaper="cream"] .progress-bar-fill {
+  background: linear-gradient(90deg, #6c7cff, #9a8cff);
+  border-radius: 999px;
+}
+/* 时间数字：蓝灰 */
+.app[data-wallpaper="cream"] .progress-time,
+.app[data-wallpaper="cream"] .time-row,
+.app[data-wallpaper="cream"] .player .time {
+  color: #6a7a9a !important;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+}
+/* 音量条：凹陷 */
+.app[data-wallpaper="cream"] .vol-bar,
+.app[data-wallpaper="cream"] .volume-bar {
+  background: #dde1ec;
+  box-shadow: var(--neu-in-sm);
+  border: none;
+  border-radius: 999px;
+}
+/* chat panel：纯底色，不需卡片 */
+.app[data-wallpaper="cream"] .chat-panel {
+  background: transparent;
+}
+.app[data-wallpaper="cream"] .chat-title,
+.app[data-wallpaper="cream"] .chat-role,
+.app[data-wallpaper="cream"] .chat-zh {
+  color: #4a5068 !important;
+  font-weight: 700;
+}
+.app[data-wallpaper="cream"] .chat-empty,
+.app[data-wallpaper="cream"] .chat-text {
+  color: #6a7a9a !important;
+}
+/* DJ 消息气泡：凸起浅蓝紫 */
+.app[data-wallpaper="cream"] .chat-bubble,
+.app[data-wallpaper="cream"] .chat-text-bubble,
+.app[data-wallpaper="cream"] .chat-msg-bubble {
+  background: rgba(108, 124, 255, 0.14);
+  color: #4a5068 !important;
+  border: none;
+  box-shadow: var(--neu-out-sm);
+}
+/* 用户消息气泡：凸起暖橙 */
+.app[data-wallpaper="cream"] .chat-bubble.user,
+.app[data-wallpaper="cream"] .chat-text-bubble.user,
+.app[data-wallpaper="cream"] .chat-msg-bubble.user {
+  background: rgba(255, 179, 92, 0.14);
+  box-shadow: var(--neu-out-sm);
+}
+/* DJ 头像气泡：蓝紫渐变 */
+.app[data-wallpaper="cream"] .chat-avatar.dj,
+.app[data-wallpaper="cream"] .chat-mavatar.dj {
+  background: linear-gradient(135deg, #6c7cff, #9a8cff);
+  color: #ffffff;
+  border: none;
+}
+/* 用户头像气泡：暖橙渐变 */
+.app[data-wallpaper="cream"] .chat-avatar.user,
+.app[data-wallpaper="cream"] .chat-mavatar.user {
+  background: linear-gradient(135deg, #ffb35c, #ff8a5c);
+  color: #ffffff;
+  border: none;
+}
+/* 输入框：凹陷轨道 */
+.app[data-wallpaper="cream"] .chat-input,
+.app[data-wallpaper="cream"] .chat-input-row input,
+.app[data-wallpaper="cream"] .chat-input-row textarea {
+  background: #dde1ec !important;
+  color: #4a5068 !important;
+  border: none !important;
+  box-shadow: var(--neu-in-sm);
+  font-family: inherit !important;
+  font-weight: 600;
+}
+.app[data-wallpaper="cream"] .chat-input::placeholder {
+  color: rgba(74, 80, 104, 0.5);
+}
+.app[data-wallpaper="cream"] .chat-mic {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  color: #4a5068;
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--neu-out-sm);
+}
+.app[data-wallpaper="cream"] .chat-send {
+  background: linear-gradient(145deg, #6c7cff, #8fa2ff);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 4px 4px 10px rgba(108, 124, 255, 0.4);
+  font-weight: 700;
+  text-shadow: none;
+}
+/* 隐藏中文/快捷开关等小按钮 */
+.app[data-wallpaper="cream"] .chat-toggle,
+.app[data-wallpaper="cream"] button[class*="toggle"],
+.app[data-wallpaper="cream"] button[class*="chip"] {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec) !important;
+  color: #4a5068 !important;
+  border: none !important;
+  box-shadow: var(--neu-out-sm);
+  font-weight: 700;
+  text-shadow: none !important;
+}
+.app[data-wallpaper="cream"] button[class*="chip"]:active,
+.app[data-wallpaper="cream"] button[class*="toggle"]:active {
+  box-shadow: var(--neu-in-sm);
+}
+
+/* ----- 06 玻璃拟态（粉紫蓝渐变 · GLASSMORPHISM） -----
+ * 主色粉 #f9a8d4 → 紫 #c4b5fd → 蓝 #93c5fd
+ * 背景 = 大幅径向渐变（暖橙→粉→紫→蓝）
+ * 卡片 = 半透明白底 + 高斯模糊 + 1px 白边高光
+ */
+.app[data-wallpaper="glass"] {
+  --bg-deep: #4c1d95;
+  --bg: linear-gradient(135deg, #fbcfe8 0%, #c4b5fd 45%, #93c5fd 100%);
+  --surface: rgba(255, 255, 255, 0.45);
+  --surface-2: rgba(255, 255, 255, 0.6);
+  --text: #1e1b4b;
+  --text-soft: rgba(30, 27, 75, 0.85);
+  --muted: rgba(30, 27, 75, 0.55);
+  --muted-2: rgba(30, 27, 75, 0.3);
+  --accent: #f472b6;
+  --accent-glow: rgba(244, 114, 182, 0.45);
+  --border: rgba(255, 255, 255, 0.55);
+  --border-strong: rgba(255, 255, 255, 0.85);
+  --neon-cyan: #93c5fd;
+  --neon-purple: #c4b5fd;
+  --glitch-red: #f472b6;
+  background:
+    radial-gradient(at 18% 12%, rgba(251, 146, 60, 0.65) 0px, transparent 45%),
+    radial-gradient(at 85% 18%, rgba(244, 114, 182, 0.65) 0px, transparent 50%),
+    radial-gradient(at 12% 88%, rgba(196, 181, 253, 0.7) 0px, transparent 50%),
+    radial-gradient(at 90% 92%, rgba(147, 197, 253, 0.65) 0px, transparent 50%),
+    linear-gradient(135deg, #fbcfe8 0%, #c4b5fd 45%, #93c5fd 100%);
+  background-attachment: fixed;
+}
+.app[data-wallpaper="glass"] .player {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  box-shadow:
+    0 8px 32px rgba(76, 29, 149, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.app[data-wallpaper="glass"] .player::before {
+  background: conic-gradient(
+    from var(--nebula-angle),
+    #fb923c 0deg,
+    #f472b6 90deg,
+    #c4b5fd 180deg,
+    #93c5fd 270deg,
+    #fb923c 360deg
+  );
+  filter: blur(20px);
+  opacity: 0.6;
+}
+.app[data-wallpaper="glass"] .player::after {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+/* 封面走橙黄渐变（参考 06·玻璃拟态 预览图） */
+.app[data-wallpaper="glass"] .cover,
+.app[data-wallpaper="glass"] .cover-wrapper,
+.app[data-wallpaper="glass"] .cover-placeholder {
+  background: linear-gradient(135deg, #fb923c 0%, #f472b6 60%, #c084fc 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 12px 28px rgba(244, 114, 182, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.app[data-wallpaper="glass"] .cover-glyph {
+  color: rgba(255, 255, 255, 0.9) !important;
+  filter: drop-shadow(0 4px 12px rgba(244, 114, 182, 0.5));
+}
+.app[data-wallpaper="glass"] .btn-primary {
+  background: linear-gradient(135deg, #fb923c, #f472b6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+  box-shadow:
+    0 8px 24px rgba(244, 114, 182, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.app[data-wallpaper="glass"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: #1e1b4b;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 16px rgba(76, 29, 149, 0.1);
+}
+.app[data-wallpaper="glass"] .header-avatar {
+  background: linear-gradient(135deg, #fb923c, #c084fc);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 4px 12px rgba(244, 114, 182, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.app[data-wallpaper="glass"] .header-name {
+  color: #1e1b4b;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 16px;
+  display: inline-block;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(76, 29, 149, 0.1);
+}
+.app[data-wallpaper="glass"] .header-timer {
+  color: #1e1b4b;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  font-weight: 700;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="glass"] .header-status {
+  color: #1e1b4b;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 3px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  display: inline-flex;
+  margin-top: 10px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="glass"] .header-status::before {
+  background: linear-gradient(135deg, #fb923c, #f472b6);
+  box-shadow: 0 0 6px rgba(244, 114, 182, 0.6);
+}
+.app[data-wallpaper="glass"] .wallpaper-btn,
+.app[data-wallpaper="glass"] .sfx-toggle {
+  background: rgba(255, 255, 255, 0.4);
+  color: #1e1b4b;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 2px 8px rgba(76, 29, 149, 0.1);
+  font-weight: 700;
+}
+.app[data-wallpaper="glass"] .player .name {
+  color: #1e1b4b;
+  font-weight: 800;
+  text-shadow: none;
+}
+.app[data-wallpaper="glass"] .player .meta,
+.app[data-wallpaper="glass"] .player .status,
+.app[data-wallpaper="glass"] .player .artist {
+  color: #1e1b4b !important;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.app[data-wallpaper="glass"] .progress-time,
+.app[data-wallpaper="glass"] .time-row,
+.app[data-wallpaper="glass"] .player .time {
+  color: #1e1b4b !important;
+  font-weight: 700;
+  opacity: 0.85;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="glass"] .progress-bar,
+.app[data-wallpaper="glass"] .player-progress {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  height: 8px;
+  border-radius: 999px;
+}
+.app[data-wallpaper="glass"] .progress-fill,
+.app[data-wallpaper="glass"] .progress-bar-fill {
+  background: linear-gradient(90deg, #fb923c, #f472b6, #c084fc);
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(244, 114, 182, 0.5);
+}
+.app[data-wallpaper="glass"] .chat-title,
+.app[data-wallpaper="glass"] .chat-role,
+.app[data-wallpaper="glass"] .chat-empty,
+.app[data-wallpaper="glass"] .chat-zh,
+.app[data-wallpaper="glass"] .chat-text {
+  color: #1e1b4b !important;
+  font-weight: 700;
+}
+.app[data-wallpaper="glass"] .chat-time {
+  color: #1e1b4b !important;
+  opacity: 0.65;
+}
+.app[data-wallpaper="glass"] .chat-msg.dj .chat-msg-content {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  color: #1e1b4b;
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 12px rgba(76, 29, 149, 0.1);
+}
+.app[data-wallpaper="glass"] .chat-msg.dj.thinking .chat-msg-content {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px dashed rgba(196, 181, 253, 0.85);
+  color: #1e1b4b;
+}
+.app[data-wallpaper="glass"] .chat-msg.user .chat-msg-content {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.45), rgba(244, 114, 182, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  color: #1e1b4b;
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 12px rgba(244, 114, 182, 0.25);
+}
+.app[data-wallpaper="glass"] .chat-avatar.dj {
+  background: linear-gradient(135deg, #fb923c, #c084fc);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(244, 114, 182, 0.35);
+}
+.app[data-wallpaper="glass"] .chat-avatar.user {
+  background: linear-gradient(135deg, #fb923c, #f472b6);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(244, 114, 182, 0.35);
+}
+.app[data-wallpaper="glass"] .chat-bulb {
+  filter: drop-shadow(0 0 8px rgba(255, 217, 61, 0.7));
+  font-size: 16px;
+}
+.app[data-wallpaper="glass"] .chat-input,
+.app[data-wallpaper="glass"] .chat-input-row input,
+.app[data-wallpaper="glass"] .chat-input-row textarea {
+  background: rgba(255, 255, 255, 0.5) !important;
+  color: #1e1b4b !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 999px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(76, 29, 149, 0.1);
+}
+
+/* ----- 16 波普艺术（Memphis 撞色拼贴 · 与 23 复古漫画完全区分） -----
+ * 主色粉红 #ff66b3 / 强调蓝绿 #00d4d4 / 点缀柠檬黄 #ffd93d / 紫黑文字 #1a0533
+ * 背景 = 粉底 + 四角大色点 + 白色波点
+ */
+.app[data-wallpaper="pop"] {
+  --bg-deep: #ff66b3;
+  --bg: #ff66b3;
+  --surface: #ffffff;
+  --surface-2: #ffe4f0;
+  --text: #1a0533;
+  --text-soft: #1a0533;
+  --muted: rgba(26, 5, 51, 0.7);
+  --muted-2: rgba(26, 5, 51, 0.3);
+  --accent: #00d4d4;
+  --accent-glow: rgba(0, 212, 212, 0.55);
+  --border: rgba(26, 5, 51, 0.85);
+  --border-strong: #1a0533;
+  --neon-cyan: #00d4d4;
+  --neon-purple: #ff66b3;
+  --glitch-red: #ff3366;
+}
+.app[data-wallpaper="pop"] .player {
+  background:
+    radial-gradient(circle at 12% 16%, #ffd93d 9px, transparent 10px),
+    radial-gradient(circle at 86% 22%, #00d4d4 8px, transparent 9px),
+    radial-gradient(circle at 18% 82%, #00d4d4 7px, transparent 8px),
+    radial-gradient(circle at 88% 78%, #ffd93d 10px, transparent 11px),
+    radial-gradient(rgba(255,255,255,0.45) 1.5px, transparent 1.5px),
+    #ff66b3;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 9px 9px, 100% 100%;
+  border: 3px solid #1a0533;
+  border-radius: 22px;
+  box-shadow:
+    5px 5px 0 #00d4d4,
+    9px 9px 0 #1a0533;
+}
+.app[data-wallpaper="pop"] .player::before {
+  background: conic-gradient(
+    from var(--nebula-angle),
+    #ff66b3 0deg,
+    #ffd93d 90deg,
+    #00d4d4 180deg,
+    #ff66b3 270deg,
+    #ffd93d 360deg
+  );
+  filter: blur(0);
+  opacity: 0;
+}
+.app[data-wallpaper="pop"] .player::after {
+  box-shadow: none;
+}
+.app[data-wallpaper="pop"] .header-name {
+  color: #ffffff;
+  background: #1a0533;
+  padding: 5px 12px;
+  border: 3px solid #1a0533;
+  box-shadow: 3px 3px 0 #00d4d4;
+  border-radius: 24px;
+  display: inline-block;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  letter-spacing: 0.06em;
+  text-shadow: none !important;
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1.2;
+}
+.app[data-wallpaper="pop"] .header-status {
+  color: #1a0533;
+  font-weight: 800;
+  background: #ffd93d;
+  padding: 3px 8px;
+  border: 2px solid #1a0533;
+  border-radius: 999px;
+  display: inline-flex;
+  /* 与 header-name（带 box-shadow）拉开呼吸空间 */
+  margin-top: 10px;
+  box-shadow: 2px 2px 0 #ff3366;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="pop"] .header-status::before {
+  background: #ff3366;
+  box-shadow: 0 0 0 2px #1a0533;
+}
+.app[data-wallpaper="pop"] .header-timer {
+  color: #1a0533;
+  background: #ffffff;
+  padding: 4px 10px;
+  border: 3px solid #1a0533;
+  border-radius: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 #1a0533;
+}
+.app[data-wallpaper="pop"] .header-avatar {
+  background: #ffd93d;
+  color: #1a0533;
+  border: 3px solid #1a0533;
+  box-shadow: 3px 3px 0 #1a0533;
+  font-family: "Impact", monospace;
+  font-weight: 900;
+}
+.app[data-wallpaper="pop"] .wallpaper-btn {
+  background: #ffffff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #00d4d4;
+  font-family: "Impact", monospace;
+  font-weight: 800;
+}
+.app[data-wallpaper="pop"] .sfx-toggle {
+  background: #ffffff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #1a0533;
+  font-family: "Impact", monospace;
+  font-weight: 800;
+}
+.app[data-wallpaper="pop"] .player .name {
+  color: #1a0533;
+  background: #ffffff;
+  padding: 4px 10px;
+  border: 3px solid #1a0533;
+  border-radius: 6px;
+  display: inline-block;
+  text-shadow: none !important;
+  font-weight: 900;
+  font-family: "Impact", "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="pop"] .player .meta,
+.app[data-wallpaper="pop"] .player .status,
+.app[data-wallpaper="pop"] .player .artist {
+  color: #1a0533 !important;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="pop"] .progress-time,
+.app[data-wallpaper="pop"] .time-row,
+.app[data-wallpaper="pop"] .player .time {
+  color: #1a0533 !important;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="pop"] .progress-bar,
+.app[data-wallpaper="pop"] .player-progress {
+  background: #ffffff;
+  border: 2px solid #1a0533;
+  height: 10px;
+  border-radius: 6px;
+}
+.app[data-wallpaper="pop"] .progress-fill,
+.app[data-wallpaper="pop"] .progress-bar-fill {
+  background: #00d4d4;
+  border-radius: 4px;
+}
+.app[data-wallpaper="pop"] .btn-primary {
+  background: #ff3366;
+  border: 3px solid #1a0533;
+  color: #ffffff;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 #1a0533;
+}
+.app[data-wallpaper="pop"] .btn-secondary {
+  border: 2px solid #1a0533;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1a0533;
+  box-shadow: 2px 2px 0 #1a0533;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ----- 23 复古漫画（白底波普艺术 · BOOM CULTURE） -----
+ * 主色白 #ffffff / 强调红 #ff3030 / 信号黄 #ffd93d / 蓝 #2962ff / 粗黑边 #0a0a0a
+ * 背景：白底 + Memphis 风散点（红/蓝/黄/黑小色点）
+ */
+.app[data-wallpaper="comic"] {
+  --bg-deep: #fdf8ec;
+  --bg: #fff8e7;
+  --surface: #ffffff;
+  --surface-2: #fff3d4;
+  --text: #0a0a0a;
+  --text-soft: #1a1a1a;
+  --muted: rgba(10, 10, 10, 0.7);
+  --muted-2: rgba(10, 10, 10, 0.4);
+  --accent: #ff3030;
+  --accent-glow: rgba(255, 48, 48, 0.45);
+  --border: #0a0a0a;
+  --border-strong: #0a0a0a;
+  --neon-cyan: #2962ff;
+  --neon-purple: #ff3030;
+  --glitch-red: #ff3030;
+  /* Memphis 散点背景：白底 + 红蓝黄小色点 */
+  background-color: #fff8e7;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255, 48, 48, 0.85) 0 6px, transparent 7px),
+    radial-gradient(circle at 88% 8%, rgba(41, 98, 255, 0.7) 0 5px, transparent 6px),
+    radial-gradient(circle at 6% 92%, rgba(255, 217, 61, 0.9) 0 7px, transparent 8px),
+    radial-gradient(circle at 92% 88%, rgba(255, 48, 48, 0.6) 0 4px, transparent 5px),
+    radial-gradient(circle at 50% 50%, rgba(41, 98, 255, 0.4) 0 3px, transparent 4px),
+    radial-gradient(circle at 28% 76%, rgba(255, 217, 61, 0.7) 0 5px, transparent 6px),
+    radial-gradient(circle at 70% 24%, rgba(10, 10, 10, 0.65) 0 4px, transparent 5px);
+  background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed;
+}
+/* 播放器卡片：白底 + 粗黑边 + 黑色偏移阴影（POP 硬边） */
+.app[data-wallpaper="comic"] .player {
+  background: #ffffff;
+  border: 4px solid #0a0a0a;
+  border-radius: 4px;
+  box-shadow:
+    6px 6px 0 #ff3030,
+    10px 10px 0 #0a0a0a;
+  position: relative;
+}
+.app[data-wallpaper="comic"] .player::before {
+  background: none;
+  opacity: 0;
+}
+.app[data-wallpaper="comic"] .player::after {
+  /* 玩家名字旁边：BANG! / WOW! 装饰角标（comic 主题专属） */
+  content: "POP!";
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  /* 关键：覆盖默认 .player::after 的 inset: 1px，避免角标被拉伸成大矩形挡住聊天 */
+  left: auto;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  background: #ffd93d;
+  color: #0a0a0a;
+  border: 3px solid #0a0a0a;
+  padding: 4px 10px;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  transform: rotate(8deg);
+  box-shadow: 2px 2px 0 #ff3030;
+  pointer-events: none;
+  z-index: 4;
+}
+.app[data-wallpaper="comic"] .header-name {
+  color: #0a0a0a;
+  background: #ffd93d;
+  padding: 5px 12px;
+  border: 3px solid #0a0a0a;
+  box-shadow: 3px 3px 0 #0a0a0a;
+  border-radius: 4px;
+  display: inline-block;
+  text-shadow: none !important;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+.app[data-wallpaper="comic"] .header-status {
+  color: #0a0a0a;
+  font-weight: 800;
+  background: #ffffff;
+  padding: 3px 9px;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  display: inline-flex;
+  margin-top: 10px;
+  box-shadow: 2px 2px 0 #ff3030;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="comic"] .header-status::before {
+  background: #ff3030;
+  box-shadow: 0 0 0 2px #0a0a0a;
+}
+.app[data-wallpaper="comic"] .header-timer {
+  color: #0a0a0a;
+  background: #ffffff;
+  padding: 4px 10px;
+  border: 3px solid #0a0a0a;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 #2962ff;
+}
+.app[data-wallpaper="comic"] .header-avatar {
+  background: #ff3030;
+  color: #ffffff;
+  border: 3px solid #0a0a0a;
+  box-shadow: 3px 3px 0 #0a0a0a;
+  font-family: "Impact", monospace;
+  font-weight: 900;
+}
+.app[data-wallpaper="comic"] .wallpaper-btn {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #0a0a0a;
+  font-family: "Impact", monospace;
+  font-weight: 800;
+}
+.app[data-wallpaper="comic"] .sfx-toggle {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #2962ff;
+  font-family: "Impact", monospace;
+  font-weight: 800;
+}
+.app[data-wallpaper="comic"] .player .name {
+  color: #ffffff;
+  background: #0a0a0a;
+  padding: 4px 10px;
+  border: 3px solid #0a0a0a;
+  border-radius: 4px;
+  display: inline-block;
+  text-shadow: none !important;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 3px 3px 0 #ffd93d;
+}
+.app[data-wallpaper="comic"] .player .meta,
+.app[data-wallpaper="comic"] .player .status,
+.app[data-wallpaper="comic"] .player .artist {
+  color: #0a0a0a !important;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="comic"] .progress-time,
+.app[data-wallpaper="comic"] .time-row,
+.app[data-wallpaper="comic"] .player .time {
+  color: #0a0a0a !important;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="comic"] .progress-bar,
+.app[data-wallpaper="comic"] .player-progress {
+  background: #ffffff;
+  border: 3px solid #0a0a0a;
+  height: 14px;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #ffd93d;
+}
+.app[data-wallpaper="comic"] .progress-fill,
+.app[data-wallpaper="comic"] .progress-bar-fill {
+  background: #ff3030;
+  border-radius: 0;
+}
+.app[data-wallpaper="comic"] .btn-primary {
+  background: #ff3030;
+  border: 3px solid #0a0a0a;
+  color: #ffffff;
+  font-family: "Impact", "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 #0a0a0a;
+}
+.app[data-wallpaper="comic"] .btn-secondary {
+  border: 2px solid #0a0a0a;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0a0a0a;
+  box-shadow: 2px 2px 0 #0a0a0a;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+.app[data-wallpaper="comic"] .btn-secondary:hover {
+  background: #ffd93d;
+}
+/* Comic 模式 chat panel（白底 + 粗黑边 + 撞色） */
+.app[data-wallpaper="comic"] .chat-title,
+.app[data-wallpaper="comic"] .chat-role,
+.app[data-wallpaper="comic"] .chat-empty,
+.app[data-wallpaper="comic"] .chat-zh,
+.app[data-wallpaper="comic"] .chat-text {
+  color: #0a0a0a !important;
+  font-weight: 700;
+}
+.app[data-wallpaper="comic"] .chat-time {
+  color: #0a0a0a !important;
+  opacity: 0.7;
+}
+.app[data-wallpaper="comic"] .chat-msg.dj .chat-msg-content {
+  background: #ffffff;
+  border: 3px solid #0a0a0a;
+  color: #0a0a0a;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 #ffd93d;
+}
+.app[data-wallpaper="comic"] .chat-msg.dj.thinking .chat-msg-content {
+  background: #fff3d4;
+  border: 3px dashed #0a0a0a;
+  color: #0a0a0a;
+  box-shadow: 3px 3px 0 #ff3030;
+}
+.app[data-wallpaper="comic"] .chat-msg.user .chat-msg-content {
+  background: #ffd93d;
+  border: 3px solid #0a0a0a;
+  color: #0a0a0a;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 #0a0a0a;
+}
+.app[data-wallpaper="comic"] .chat-avatar.dj {
+  background: #ff3030;
+  color: #ffffff;
+  border: 3px solid #0a0a0a;
+  box-shadow: 2px 2px 0 #0a0a0a;
+}
+.app[data-wallpaper="comic"] .chat-avatar.user {
+  background: #2962ff;
+  color: #ffffff;
+  border: 3px solid #0a0a0a;
+  box-shadow: 2px 2px 0 #0a0a0a;
+}
+.app[data-wallpaper="comic"] .chat-bulb {
+  filter: drop-shadow(0 0 6px rgba(255, 217, 61, 0.9)) drop-shadow(1px 1px 0 #0a0a0a);
+  font-size: 16px;
+}
+.app[data-wallpaper="comic"] .chat-input,
+.app[data-wallpaper="comic"] .chat-input-row input,
+.app[data-wallpaper="comic"] .chat-input-row textarea {
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+  border: 3px solid #0a0a0a !important;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 #0a0a0a;
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 700;
+}
+
+/* Pop 模式 chat panel 文字加强（粉底紫黑文字 Memphis） */
+.app[data-wallpaper="pop"] .chat-title,
+.app[data-wallpaper="pop"] .chat-role,
+.app[data-wallpaper="pop"] .chat-empty,
+.app[data-wallpaper="pop"] .chat-zh,
+.app[data-wallpaper="pop"] .chat-text {
+  color: #1a0533 !important;
+  font-weight: 700;
+}
+.app[data-wallpaper="pop"] .chat-time {
+  color: #1a0533 !important;
+  font-weight: 700;
+  opacity: 0.85;
+}
+/* DJ 气泡：粉底 + 白色虚线边框 + 大圆角 */
+.app[data-wallpaper="pop"] .chat-msg.dj .chat-msg-content {
+  background: rgba(255, 102, 179, 0.32);
+  border: 2px dashed #ffffff;
+  border-radius: 18px;
+  box-shadow: 3px 3px 0 #1a0533;
+  padding-right: 28px;
+  padding-bottom: 18px;
+  color: #1a0533;
+}
+.app[data-wallpaper="pop"] .chat-msg.dj.thinking .chat-msg-content {
+  background: rgba(255, 102, 179, 0.42);
+  border-style: dashed;
+  box-shadow: 3px 3px 0 #1a0533;
+}
+/* 用户气泡：紧凑型 — 大圆角橙底硬边 */
+.app[data-wallpaper="pop"] .chat-msg.user .chat-msg-content {
+  background: #ffd93d;
+  border: 2px solid #1a0533;
+  border-radius: 14px;
+  color: #1a0533;
+  box-shadow: 2px 2px 0 #1a0533;
+}
+/* pop 头像：紫色圆圈 + 黄边（DJ）/ 橙色 + 黑边（用户） */
+.app[data-wallpaper="pop"] .chat-avatar.dj {
+  background: #9d00ff;
+  color: #fff;
+  border: 2px solid #1a0533;
+  box-shadow: 2px 2px 0 #1a0533;
+}
+.app[data-wallpaper="pop"] .chat-avatar.user {
+  background: #ff7f24;
+  color: #fff;
+  border: 2px solid #1a0533;
+  box-shadow: 2px 2px 0 #1a0533;
+}
+.app[data-wallpaper="pop"] .chat-bulb {
+  filter: drop-shadow(0 0 8px rgba(255, 217, 61, 0.9)) drop-shadow(1px 1px 0 #1a0533);
+  font-size: 16px;
+}
+.app[data-wallpaper="pop"] .chat-input,
+.app[data-wallpaper="pop"] .chat-input-row input,
+.app[data-wallpaper="pop"] .chat-input-row textarea {
+  background: #ffffff !important;
+  color: #1a0533 !important;
+  border: 2px solid #1a0533 !important;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 #1a0533;
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 700;
+}
+
+/* Cream 模式加强 */
+.app[data-wallpaper="cream"] .chat-empty,
+.app[data-wallpaper="cream"] .chat-zh,
+.app[data-wallpaper="cream"] .chat-title {
+  color: #4a3826 !important;
+  font-weight: 700;
+}
+
+/* Glass 模式加强 */
+.app[data-wallpaper="glass"] .chat-empty,
+.app[data-wallpaper="glass"] .chat-zh,
+.app[data-wallpaper="glass"] .chat-title {
+  color: #f0eaff !important;
+  font-weight: 700;
+}
+
+/* Pop 模式 chat 输入控件加强（粉底紫黑文字 Memphis） */
+.app[data-wallpaper="pop"] .chat-mic {
+  background: #ffd93d;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #1a0533;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 900;
+}
+.app[data-wallpaper="pop"] .chat-send {
+  background: #00d4d4;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 #1a0533;
+  font-family: "Impact", monospace;
+  font-weight: 900;
+  text-shadow: none;
+}
+
+/* Comic 模式 chat 输入控件加强（黑底黄字超英风） */
+.app[data-wallpaper="comic"] .chat-mic {
+  background: #ffd93d;
+  color: #0a0a0a;
+  border: 2px solid #ffd93d;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #ff3030;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 900;
+}
+.app[data-wallpaper="comic"] .chat-send {
+  background: #ff3030;
+  color: #ffd93d;
+  border: 2px solid #ffd93d;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #ffd93d;
+  font-family: "Impact", monospace;
+  font-weight: 900;
+  text-shadow: none;
+}
+
+/* Pop 模式 chat-toggle 等（粉底紫黑 Memphis） */
+.app[data-wallpaper="pop"] .chat-toggle,
+.app[data-wallpaper="pop"] button[class*="toggle"],
+.app[data-wallpaper="pop"] button[class*="chip"] {
+  background: #ffffff !important;
+  color: #1a0533 !important;
+  border: 2px solid #1a0533 !important;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 #00d4d4;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 800;
+  text-shadow: none !important;
+}
+/* Comic 模式 chat-toggle 等（黑底黄字超英） */
+.app[data-wallpaper="comic"] .chat-toggle,
+.app[data-wallpaper="comic"] button[class*="toggle"],
+.app[data-wallpaper="comic"] button[class*="chip"] {
+  background: #0a0a0a !important;
+  color: #ffd93d !important;
+  border: 2px solid #ffd93d !important;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #ff3030;
+  font-family: "Impact", monospace;
+  font-weight: 800;
+  text-shadow: none !important;
+}
+
+/* =========================================================
+ * 🎨 自定义壁纸（7 token 设计器 · 每个 token 独立色轮调节）
+ * App.tsx 会注入 7×3=21 个 CSS 变量：
+ *   --c-bg-h / --c-bg-s / --c-bg-l
+ *   --c-surface-h / -s / -l
+ *   --c-surfaceAlt-h / -s / -l
+ *   --c-text-h / -s / -l
+ *   --c-textSoft-h / -s / -l
+ *   --c-accent-h / -s / -l
+ *   --c-border-h / -s / -l
+ * 下面把所有 UI 变量（--bg/--surface/--text/--accent/...）从 7 token 派生。
+ * 频谱紫色 LED 不在此切换。
+ * ========================================================= */
+.app[data-wallpaper="custom"] {
+  --bg:          hsl(var(--c-bg-h)         var(--c-bg-s)         var(--c-bg-l));
+  --bg-deep:     hsl(var(--c-bg-h)         var(--c-bg-s)         calc(var(--c-bg-l) * 0.45));
+  --surface:     hsl(var(--c-surface-h)    var(--c-surface-s)    var(--c-surface-l));
+  --surface-2:   hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
+  --text:        hsl(var(--c-text-h)       var(--c-text-s)       var(--c-text-l));
+  --text-soft:   hsl(var(--c-textSoft-h)   var(--c-textSoft-s)   var(--c-textSoft-l));
+  --muted:       hsla(var(--c-textSoft-h)  var(--c-textSoft-s)   var(--c-textSoft-l) / 0.6);
+  --muted-2:     hsla(var(--c-textSoft-h)  var(--c-textSoft-s)   var(--c-textSoft-l) / 0.3);
+  --accent:      hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
+  --accent-glow: hsla(var(--c-accent-h)    var(--c-accent-s)     var(--c-accent-l) / 0.55);
+  --border:      hsl(var(--c-border-h)     var(--c-border-s)     var(--c-border-l));
+  --border-strong: hsl(var(--c-border-h)   var(--c-border-s)     calc(var(--c-border-l) + 12%));
+  --neon-cyan:   hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
+  --neon-purple: hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
+  --glitch-red:  hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
+}
+
+/* =========================================================
+ * WallpaperPicker 模态框（已 Portal 到 body，强制硬编码深色面板）
+ * ——不依赖 .app 的 CSS 变量，在任何壁纸主题下文字/边框都清晰一致
+ * ========================================================= */
+.wallpaper-portal-isolated {
+  /* 强制深色覆盖层，避免 Pop/Comic 等主题透过来 */
+  background: rgba(4, 6, 14, 0.78) !important;
+  backdrop-filter: blur(8px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(160%) !important;
+}
+.wallpaper-picker {
+  max-width: 420px;
+  padding: 20px 18px 16px;
+  /* 硬编码深色卡片（不再 var(--border) → 任意主题都一致） */
+  background: linear-gradient(180deg, #14141d 0%, #0c0c12 100%) !important;
+  border: 1px solid rgba(157, 0, 255, 0.32) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+  color: #e8ebf2;
+}
+.wallpaper-picker .modal-header { padding: 0 4px; }
+.wallpaper-picker .modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #ffffff !important;
+}
+.wallpaper-picker .modal-close {
+  color: rgba(232, 235, 242, 0.7) !important;
+  font-size: 20px;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+.wallpaper-picker .modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff !important;
+}
+.wallpaper-picker .modal-hint {
+  color: rgba(232, 235, 242, 0.6) !important;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.wallpaper-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.wallpaper-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: inherit;
+  color: #e8ebf2 !important;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+.wallpaper-card:hover {
+  border-color: rgba(157, 0, 255, 0.55) !important;
+  background: rgba(157, 0, 255, 0.08);
+  transform: translateY(-1px);
+}
+.wallpaper-card.active {
+  border-color: #9d00ff !important;
+  background: rgba(157, 0, 255, 0.15) !important;
+  box-shadow:
+    0 0 0 2px rgba(157, 0, 255, 0.45),
+    0 0 16px rgba(157, 0, 255, 0.25) !important;
+}
+.wallpaper-preview {
+  height: 56px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.4);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6px 8px;
+  gap: 3px;
+}
+/* 卡片预览：3 根色条（配色取自对应壁纸的 palette） */
+.wp-bar {
+  position: absolute;
+  top: 6px;
+  width: 6px;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0.9;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.wp-bar:nth-child(1) { left: 8px; }
+.wp-bar:nth-child(2) { left: 20px; height: 14px; top: 10px; }
+.wp-bar:nth-child(3) { right: 8px; left: auto; height: 22px; top: 4px; }
+/* 卡片预览底部：紫色 LED 频谱示意（永远不动，提示"该设计保留"） */
+.wp-led {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100%;
+  flex: 1;
+  justify-content: center;
+}
+.wp-led-cell {
+  width: 4px;
+  background: #9d00ff;
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(157, 0, 255, 0.7);
+  animation: wp-led-bounce 1.4s ease-in-out infinite;
+}
+.wp-led-cell:nth-child(odd)  { background: #ffffff; box-shadow: 0 0 4px rgba(255,255,255,0.6); }
+.wp-led-cell:nth-child(3n)   { background: #c4b5fd; }
+.wp-led-cell:nth-child(2)    { animation-delay: 0.1s; }
+.wp-led-cell:nth-child(4)    { animation-delay: 0.2s; }
+.wp-led-cell:nth-child(6)    { animation-delay: 0.3s; }
+.wp-led-cell:nth-child(8)    { animation-delay: 0.15s; }
+.wp-led-cell:nth-child(10)   { animation-delay: 0.25s; }
+
+@keyframes wp-led-bounce {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.55; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+.wallpaper-meta {
+  padding: 2px 4px 4px;
+}
+.wallpaper-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff !important;
+}
+.wallpaper-desc {
+  font-size: 10px;
+  color: rgba(232, 235, 242, 0.6) !important;
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 380px) {
+  .wallpaper-grid { grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+ * 🎨 自定义颜色面板（HSL 三滑块 + 预设调色块）
+ * ——Portal 版本硬编码样式，不跟随 .app 主题
+ * ========================================================= */
+.wallpaper-card-custom {
+  position: relative;
+}
+.wallpaper-preview-live {
+  background: rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.wp-live-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  background: rgba(0,0,0,0.35);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.custom-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.4) !important;
+  border: 1px solid rgba(157, 0, 255, 0.28) !important;
+}
+.custom-panel-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff !important;
+  margin-bottom: 10px;
+}
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.custom-label {
+  width: 48px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(232, 235, 242, 0.85) !important;
+}
+.custom-slider {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 10px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  background: rgba(255,255,255,0.1);
+}
+.custom-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: grab;
+}
+.custom-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: grab;
+}
+.custom-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.custom-presets-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(232, 235, 242, 0.7) !important;
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+.custom-swatch {
+  width: 56px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.custom-swatch:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* =========================================================
+ * 🎨 自定义壁纸 · 设计器（7 token × 色轮）
+ * 每个 UI 部分单独调色：背景 / 卡片 / 次级 / 主文字 / 次文字 / 强调 / 边框
+ * ========================================================= */
+.designer {
+  margin-top: 14px;
+  padding: 14px 12px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.designer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.designer-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.designer-title-icon {
+  font-size: 15px;
+  filter: drop-shadow(0 0 6px rgba(157,0,255,0.5));
+}
+.designer-reset {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(232,235,242,0.85) !important;
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.designer-reset:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.3);
+}
+.designer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 单个 token 行：左边标签+预览色块 / 中间色轮 / 右边数值 */
+.token-row {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.18s ease;
+}
+.token-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+.token-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.token-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff !important;
+  letter-spacing: 0.02em;
+}
+.token-hint {
+  font-size: 10px;
+  color: rgba(232,235,242,0.55) !important;
+  line-height: 1.3;
+}
+.token-swatch-inline {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+.token-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(232,235,242,0.9) !important;
+  white-space: nowrap;
+}
+.token-values > span {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* 色轮：左侧圆环 hue + 右侧矩形 SL */
+.cw-pair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  touch-action: none;
+  user-select: none;
+}
+.cw-hue {
+  position: relative;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 0 38%, #000 38% 50%, transparent 50% 100%),
+    conic-gradient(
+      from 0deg,
+      hsl(0 100% 50%),
+      hsl(60 100% 50%),
+      hsl(120 100% 50%),
+      hsl(180 100% 50%),
+      hsl(240 100% 50%),
+      hsl(300 100% 50%),
+      hsl(360 100% 50%)
+    );
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,0.35),
+    0 2px 6px rgba(0,0,0,0.45);
+  flex-shrink: 0;
+  cursor: crosshair;
+}
+.cw-hue-indicator {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.cw-sl {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #808080;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,0.35),
+    0 2px 6px rgba(0,0,0,0.45);
+  cursor: crosshair;
+}
+.cw-sl-indicator {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.55), inset 0 0 0 1px #1a1a1a;
+  pointer-events: none;
+}
+
+.designer-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(232,235,242,0.55) !important;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.designer-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.designer-presets-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(232,235,242,0.7) !important;
+  align-self: center;
+  margin-right: 4px;
+}
+.designer-swatch {
+  width: 36px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.18);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  transition: all 0.15s ease;
+}
+.designer-swatch:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+
+/* 模态框扩宽以容纳设计器 */
+.wallpaper-picker.is-designer-open {
+  max-width: 460px;
+}
+@media (max-width: 480px) {
+  .wallpaper-picker.is-designer-open { max-width: 95vw; }
+  .token-row { grid-template-columns: 56px 1fr auto; gap: 8px; }
+}
+@media (max-width: 360px) {
+  .token-row { grid-template-columns: 50px 1fr; }
+  .token-values { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; margin-top: 4px; }
+}
+
+/* =========================================================
+ * 🪟 DJ 性格设置弹窗：跟随当前壁纸底色
+ * —— Portal 到 body 外，data-wallpaper 属性就是切换开关
+ * —— 默认保持深色兜底（pulse/mono/glass/comic 都是暗系）
+ * ========================================================= */
+.settings-card {
+  /* 基础：深色（pulse / mono / comic 默认） */
+  background: linear-gradient(180deg, #14141d 0%, #0c0c12 100%);
+  color: #e8ebf2;
+}
+
+/* 派生：把 7 token 注入到 settings-card，让 var(--bg)/--surface/--text 全部生效 */
+.settings-card[data-wallpaper="custom"] {
+  background:
+    linear-gradient(180deg,
+      hsl(var(--c-bg-h) var(--c-bg-s) calc(var(--c-bg-l) + 4%)) 0%,
+      hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l)) 100%);
+  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
+}
+.settings-card[data-wallpaper="custom"] .modal-title {
+  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
+}
+.settings-card[data-wallpaper="custom"] .modal-label {
+  color: hsl(var(--c-text-soft-h, var(--c-textSoft-h)) var(--c-text-soft-s, var(--c-textSoft-s)) var(--c-text-soft-l, var(--c-textSoft-l)));
+}
+.settings-card[data-wallpaper="custom"] .modal-hint {
+  color: hsl(var(--c-textSoft-h) var(--c-textSoft-s) var(--c-textSoft-l) / 0.75);
+}
+.settings-card[data-wallpaper="custom"] .modal-textarea {
+  background: hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
+  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
+}
+.settings-card[data-wallpaper="custom"] .gender-chip,
+.settings-card[data-wallpaper="custom"] .humor-chip {
+  background: hsl(var(--c-surface-h) var(--c-surface-s) var(--c-surface-l));
+  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
+  border-color: hsl(var(--c-border-h) var(--c-border-s) var(--c-border-l));
+}
+.settings-card[data-wallpaper="custom"] .gender-chip.active,
+.settings-card[data-wallpaper="custom"] .humor-chip.active {
+  background: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
+  color: hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l));
+}
+.settings-card[data-wallpaper="custom"] .voice-item {
+  background: hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
+  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
+}
+.settings-card[data-wallpaper="custom"] .voice-item.active {
+  border-color: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
+}
+.settings-card[data-wallpaper="custom"] .modal-avatar-tile {
+  background: hsl(var(--c-surface-h) var(--c-surface-s) var(--c-surface-l));
+}
+.settings-card[data-wallpaper="custom"] .modal-btn-primary {
+  background: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
+  color: hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l));
+  border: none;
+}
+.settings-card[data-wallpaper="custom"] .modal-btn-secondary {
+  color: hsl(var(--c-text-soft-h, var(--c-textSoft-h)) var(--c-text-soft-s, var(--c-textSoft-s)) var(--c-text-soft-l, var(--c-textSoft-l)));
+  border-color: hsl(var(--c-border-h) var(--c-border-s) var(--c-border-l));
+  background: transparent;
+}
+
+/* cream：奶油新拟态亮色 */
+.settings-card[data-wallpaper="cream"] {
+  background: linear-gradient(180deg, #f3f6fc, #dde1ec);
+  color: #4a5068;
+}
+.settings-card[data-wallpaper="cream"] .modal-title { color: #2a304a; }
+.settings-card[data-wallpaper="cream"] .modal-label { color: rgba(74,80,104,0.8); }
+.settings-card[data-wallpaper="cream"] .modal-hint { color: rgba(74,80,104,0.65); }
+.settings-card[data-wallpaper="cream"] .modal-close { color: rgba(74,80,104,0.65); }
+.settings-card[data-wallpaper="cream"] .modal-textarea {
+  background: #e6e9f2;
+  color: #4a5068;
+  border: 1px solid rgba(163,173,200,0.5);
+  box-shadow: var(--neu-in-sm, inset 2px 2px 5px rgba(163,173,200,0.6), inset -2px -2px 5px rgba(255,255,255,0.9));
+}
+.settings-card[data-wallpaper="cream"] .gender-chip,
+.settings-card[data-wallpaper="cream"] .humor-chip {
+  background: #eef1f8;
+  color: #4a5068;
+  border-color: rgba(163,173,200,0.45);
+}
+.settings-card[data-wallpaper="cream"] .gender-chip.active,
+.settings-card[data-wallpaper="cream"] .humor-chip.active {
+  background: #6c7cff;
+  color: #fff;
+  border-color: #6c7cff;
+}
+.settings-card[data-wallpaper="cream"] .voice-item {
+  background: rgba(108,124,255,0.06);
+  color: #2a304a;
+  border-color: rgba(163,173,200,0.35);
+}
+.settings-card[data-wallpaper="cream"] .voice-item.active {
+  background: rgba(108,124,255,0.15);
+  border-color: #6c7cff;
+}
+.settings-card[data-wallpaper="cream"] .modal-avatar-tile {
+  background: linear-gradient(145deg, #eef1f8, #dde1ec);
+  color: #4a5068;
+  box-shadow:
+    5px 5px 12px rgba(163,173,200,0.55),
+    -5px -5px 12px rgba(255,255,255,0.9);
+  border-color: rgba(163,173,200,0.5);
+}
+.settings-card[data-wallpaper="cream"] .modal-btn-primary {
+  background: #6c7cff;
+  color: #fff;
+  border: none;
+}
+.settings-card[data-wallpaper="cream"] .modal-btn-secondary {
+  background: #eef1f8;
+  color: #4a5068;
+  border: 1px solid rgba(163,173,200,0.45);
+}
+
+/* pop：波普粉底 + 深紫文字 */
+.settings-card[data-wallpaper="pop"] {
+  background: linear-gradient(180deg, #ff8ac6, #ff66b3);
+  color: #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .modal-title { color: #1a0533; font-family: "JetBrains Mono", monospace; }
+.settings-card[data-wallpaper="pop"] .modal-label { color: rgba(26,5,51,0.85); }
+.settings-card[data-wallpaper="pop"] .modal-hint { color: rgba(26,5,51,0.7); }
+.settings-card[data-wallpaper="pop"] .modal-close { color: #1a0533; }
+.settings-card[data-wallpaper="pop"] .modal-textarea {
+  background: #fff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .gender-chip,
+.settings-card[data-wallpaper="pop"] .humor-chip {
+  background: #fff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+}
+.settings-card[data-wallpaper="pop"] .gender-chip.active,
+.settings-card[data-wallpaper="pop"] .humor-chip.active {
+  background: #ffd93d;
+  color: #1a0533;
+  box-shadow: 4px 4px 0 #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .voice-item {
+  background: #fff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 4px;
+}
+.settings-card[data-wallpaper="pop"] .voice-item.active {
+  background: #00d4d4;
+  color: #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .modal-avatar-tile {
+  background: #ffd93d;
+  color: #1a0533;
+  border: 3px solid #1a0533;
+  box-shadow: 4px 4px 0 #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .modal-btn-primary {
+  background: #1a0533;
+  color: #ffd93d;
+  border: 2px solid #1a0533;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+}
+.settings-card[data-wallpaper="pop"] .modal-btn-secondary {
+  background: #fff;
+  color: #1a0533;
+  border: 2px solid #1a0533;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* =========================================================
+ * 📜 选择壁纸弹窗：纵向滚动条
+ * —— grid 6+1 卡片在窄屏/开启自定义设计器后超出 90vh
+ * —— .wallpaper-picker-body 单独滚动；保留可见滚动条 + 浅色 thumb
+ * ========================================================= */
+.wallpaper-picker-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* 自定义滚动条：亮紫色 LED 风格 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(157,0,255,0.55) rgba(255,255,255,0.04);
+  padding-right: 4px;
+  /* 给左右各留一点内边距，避免卡片贴边 */
+  margin-right: -4px;
+}
+.wallpaper-picker-body::-webkit-scrollbar {
+  width: 6px;
+}
+.wallpaper-picker-body::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+}
+.wallpaper-picker-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(157,0,255,0.7), rgba(0,243,255,0.55));
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(157,0,255,0.45);
+}
+.wallpaper-picker-body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(157,0,255,0.9), rgba(0,243,255,0.8));
+}
+
+/* picker 自身的可视滚动提示：固定右内边距避免覆盖滚动条 */
+.wallpaper-picker {
+  /* 让内容不要贴右滚动条 */
+  padding-right: 22px !important;
+}
+/* 始终为 picker-body 预留滚动条通道（视觉提示"这里可滚动"） */
+.wallpaper-picker-body {
+  scrollbar-gutter: stable;
 }

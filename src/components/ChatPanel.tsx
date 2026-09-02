@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { ReconnectingWS } from "@/lib/ws";
-import { useRadioStore } from "@/store/useRadioStore";
+import { useRadioStore, type CustomColors, type WallpaperId } from "@/store/useRadioStore";
 
 interface ChatMessage {
   id: number;
@@ -19,6 +19,9 @@ interface ChatPanelProps {
   /** 播放/停止 DJ 语音（用于 chat-reply 手动 ▶ 播放） */
   playDj: (url: string, en?: string, zh?: string, force?: boolean) => Promise<void>;
   stopDj: () => void;
+  /** 让 DJ 设置弹窗跟随当前壁纸（custom 模式带入 7 token 颜色） */
+  wallpaperId: WallpaperId;
+  customColors: CustomColors;
 }
 
 // Web Speech API 类型（iOS Safari 用 webkit 前缀）
@@ -106,20 +109,44 @@ function loadPersonality(): Personality {
  * - ⚙️ 按钮可修改 DJ 性别 + 性格特征（持久化于 localStorage）
  * - 语音播放由 App 统一处理，这里只负责显示
  */
-export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId, customColors }: ChatPanelProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // 截图脚本专用：从 localStorage 读测试消息（?testMsgs=1 触发）
+    if (typeof window === "undefined") return [];
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("testMsgs") === "1") {
+        const raw = localStorage.getItem("ai-radio-test-messages");
+        if (raw) return JSON.parse(raw) as ChatMessage[];
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [input, setInput] = useState("");
   const [hideZh, setHideZh] = useState(false);
   const [isOpen, setIsOpen] = useState(true); // 默认展开对话窗口
   const [isListening, setIsListening] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [personality, setPersonality] = useState<Personality>(() => loadPersonality());
+  // 测试模式：自动打开 thinking
+  const [testThinking, setTestThinking] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return new URL(window.location.href).searchParams.get("testThinking") === "1";
+    } catch { return false; }
+  });
   // 用户头像（dataURL，存 localStorage；null 时显示 fallback 字母）
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
     if (typeof localStorage === "undefined") return null;
     return localStorage.getItem("ai-radio-user-avatar");
   });
+  // DJ 头像（上传后覆盖默认 🎙，影响所有 DJ 消息气泡左边的圆形头像）
+  const [djAvatar, setDjAvatar] = useState<string | null>(() => {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem("ai-radio-dj-avatar");
+  });
   const avatarFileRef = useRef<HTMLInputElement>(null);
+  const djAvatarFileRef = useRef<HTMLInputElement>(null);
   const syncTimerRef = useRef<number | null>(null);
   // 立即同步 personality 到后端（debounce 200ms 避免 traits 每次按键都请求）
   // 解决"选音色后 DJ 还是 Edge 音"——之前必须发消息才会同步
@@ -215,6 +242,33 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
     setUserAvatar(null);
     try {
       localStorage.removeItem("ai-radio-user-avatar");
+    } catch { /* ignore */ }
+  };
+
+  // DJ 头像上传处理：与用户头像共用同样模式（FileReader → dataURL → localStorage）
+  const handleDjAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setDjAvatar(dataUrl);
+      try {
+        localStorage.setItem("ai-radio-dj-avatar", dataUrl);
+      } catch {
+        /* localStorage 可能因 dataURL 过大失败，忽略 */
+      }
+    };
+    reader.readAsDataURL(file);
+    // 重置 input value 允许重复选同一文件
+    e.target.value = "";
+  };
+
+  // 清除 DJ 头像（恢复 🎙 fallback）
+  const clearDjAvatar = () => {
+    setDjAvatar(null);
+    try {
+      localStorage.removeItem("ai-radio-dj-avatar");
     } catch { /* ignore */ }
   };
 
@@ -361,6 +415,20 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
       <div className="chat-header">
         <span className="chat-title">DJ Chat</span>
         <div className="chat-header-actions">
+          {/* DJ 头像按钮：点击直接打开 DJ 性格设置窗口（上传/清除在窗口内） */}
+          <button
+            type="button"
+            className="chat-dj-avatar-btn"
+            aria-label="DJ 性格设置"
+            title="点击打开 DJ 性格设置（可在此上传/更换头像、选音色、调性格）"
+            onClick={() => setShowSettings(true)}
+          >
+            {djAvatar ? (
+              <img src={djAvatar} alt="DJ" className="chat-dj-avatar-mini" />
+            ) : (
+              <span className="chat-dj-avatar-fallback">🎙</span>
+            )}
+          </button>
           {/* 用户头像按钮：用 label htmlFor 关联 input（iOS Safari/移动端最可靠触发方式） */}
           <input
             id="avatar-file"
@@ -386,14 +454,6 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
           </label>
           <button
             type="button"
-            className="chat-settings-btn"
-            aria-label="DJ 性格设置"
-            onClick={() => setShowSettings(true)}
-          >
-            ⚙️
-          </button>
-          <button
-            type="button"
             className="caption-toggle"
             onClick={() => setHideZh((v) => !v)}
             aria-label={hideZh ? "显示中文" : "隐藏中文"}
@@ -404,39 +464,32 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
         </div>
       </div>
       <div className="chat-list" ref={listRef}>
-        {messages.length === 0 && !djThinking && (
+        {messages.length === 0 && !djThinking && !testThinking && (
           <div className="chat-empty">跟 DJ 聊聊，或按 🎤 语音说话</div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={`chat-msg ${m.role}`}>
-            {/* 圆形头像：DJ 左侧固定 🎙️ / 用户左侧可上传图片 */}
-            <div className={`chat-avatar ${m.role}`}>
-              {m.role === "user" ? (
-                userAvatar ? (
-                  <img src={userAvatar} alt="我" />
+            {/* 头像上方贴 YOU / DJ 标签 + 时间戳（紧凑模式：紧贴右上角） */}
+            <div className="chat-msg-side">
+              <div className={`chat-avatar ${m.role}`}>
+                {m.role === "user" ? (
+                  userAvatar ? (
+                    <img src={userAvatar} alt="我" />
+                  ) : (
+                    <span>你</span>
+                  )
+                ) : djAvatar ? (
+                  <img src={djAvatar} alt="DJ" />
                 ) : (
-                  <span>你</span>
-                )
-              ) : (
-                <span>🎙</span>
-              )}
-            </div>
-            <div className="chat-msg-content">
-              <div className="chat-msg-head">
-                <span className="chat-role">{m.role === "user" ? "You" : "DJ"}</span>
-                <span className="chat-time">{m.time}</span>
-                {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
-                  <button
-                    type="button"
-                    className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""}`}
-                    onClick={() => toggleReplyPlay(m)}
-                    aria-label={playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
-                    title={playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
-                  >
-                    {playingReplyId === m.id ? "⏸" : "▶"}
-                  </button>
+                  <span>🎙</span>
                 )}
               </div>
+              <div className="chat-meta-row">
+                <span className="chat-role">{m.role === "user" ? "YOU" : "DJ"}</span>
+                <span className="chat-time">{m.time}</span>
+              </div>
+            </div>
+            <div className="chat-msg-content">
               <span className="chat-text">{m.en}</span>
               {m.role === "dj" && m.zh && m.zh !== m.en && !hideZh && (
                 <span className="chat-zh">{m.zh}</span>
@@ -446,17 +499,39 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
                   {playingReplyId === m.id ? "🔊 正在播放…" : "🎧 点 ▶ 听 DJ 的回复"}
                 </span>
               )}
+              {/* DJ 气泡右下角💡小灯（壁纸主题适配） */}
+              {m.role === "dj" && <span className="chat-bulb" aria-hidden="true">💡</span>}
+              {/* DJ 消息回复手动 ▶/⏸ 按钮 */}
+              {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
+                <button
+                  type="button"
+                  className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""}`}
+                  onClick={() => toggleReplyPlay(m)}
+                  aria-label={playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
+                  title={playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
+                >
+                  {playingReplyId === m.id ? "⏸" : "▶"}
+                </button>
+              )}
             </div>
           </div>
         ))}
-        {djThinking && (
+        {(djThinking || testThinking) && (
           <div className="chat-msg dj thinking">
-            <div className="chat-avatar dj"><span>🎙</span></div>
+            <div className="chat-msg-side">
+              <div className="chat-avatar dj">
+                {djAvatar ? <img src={djAvatar} alt="DJ" /> : <span>🎙</span>}
+              </div>
+              <div className="chat-meta-row">
+                <span className="chat-role">DJ</span>
+                <span className="chat-time">{now()}</span>
+              </div>
+            </div>
             <div className="chat-msg-content">
-              <span className="chat-role">DJ</span>
               <span className="chat-text">
-                🎙 正在酝酿回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
+                💡 正在敲碗回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
               </span>
+              <span className="chat-bulb" aria-hidden="true">💡</span>
             </div>
           </div>
         )}
@@ -474,15 +549,61 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
         <button type="button" className="chat-send" onClick={handleSend} aria-label="Send">Send</button>
       </div>
 
-      {/* DJ 性格设置模态框 */}
-      {showSettings && (
+      {/* DJ 性格设置模态框：跟随当前壁纸主题（data-wallpaper + custom 注入 CSS 变量） */}
+      {showSettings && (() => {
+        // custom 模式：注入 7 token 21 个变量到 modal，让 7 token 派生 modal-card 颜色
+        const customVars: Record<string, string> = {};
+        if (wallpaperId === "custom") {
+          for (const k of ["bg","surface","surfaceAlt","text","textSoft","accent","border"] as const) {
+            const v = customColors[k];
+            customVars[`--c-${k}-h`] = `${v.h}`;
+            customVars[`--c-${k}-s`] = `${v.s}%`;
+            customVars[`--c-${k}-l`] = `${v.l}%`;
+          }
+        }
+        return (
         <div className="modal-overlay" onClick={() => setShowSettings(false)} role="dialog" aria-modal="true">
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-card settings-card"
+            data-wallpaper={wallpaperId}
+            style={customVars as React.CSSProperties}
+            onClick={(e) => e.stopPropagation()}
+          >
             <header className="modal-header">
               <h3 className="modal-title">🎙 DJ 性格设置</h3>
               <button type="button" className="modal-close" onClick={() => setShowSettings(false)} aria-label="Close">✕</button>
             </header>
             <div className="modal-body">
+              <label className="modal-label">DJ 头像（点击更换，影响所有 DJ 气泡左侧）</label>
+              <div className="modal-avatar-row">
+                <label htmlFor="dj-avatar-file-modal" className="modal-avatar-tile" role="button" title="点击上传 DJ 头像">
+                  {djAvatar ? (
+                    <img src={djAvatar} alt="DJ" className="modal-avatar-img" />
+                  ) : (
+                    <span className="modal-avatar-fallback">🎙</span>
+                  )}
+                  <span className="modal-avatar-edit">📷</span>
+                </label>
+                {djAvatar && (
+                  <button
+                    type="button"
+                    className="modal-btn-secondary modal-btn-small"
+                    onClick={clearDjAvatar}
+                  >
+                    清除 DJ 头像
+                  </button>
+                )}
+                <input
+                  id="dj-avatar-file-modal"
+                  ref={djAvatarFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleDjAvatarChange}
+                  className="avatar-file-input"
+                  aria-hidden="true"
+                />
+              </div>
+
               <label className="modal-label">性别</label>
               <div className="modal-genders">
                 {GENDERS.map((g) => (
@@ -578,7 +699,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj }: ChatPanelProps) {
             </footer>
           </div>
         </div>
-      )}
+        );
+      })()}
     </section>
   );
 }

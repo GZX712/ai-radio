@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRadioStore } from "@/store/useRadioStore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRadioStore, WALLPAPERS, CUSTOM_TOKEN_LIST, type WallpaperId } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { ReconnectingWS } from "@/lib/ws";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
@@ -9,6 +9,7 @@ import { Player } from "@/components/Player";
 import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
+import { WallpaperPicker } from "@/components/WallpaperPicker";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -16,6 +17,11 @@ export default function App() {
   const setError = useRadioStore((s) => s.setError);
   const sfxEnabled = useRadioStore((s) => s.sfxEnabled);
   const toggleSfx = useRadioStore((s) => s.toggleSfx);
+  const wallpaperId = useRadioStore((s) => s.wallpaperId);
+  const setWallpaper = useRadioStore((s) => s.setWallpaper);
+  const customColors = useRadioStore((s) => s.customColors);
+  const setCustomColors = useRadioStore((s) => s.setCustomColors);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
@@ -190,8 +196,22 @@ export default function App() {
 
   // 开场白只在"开始电台"按钮点击时触发一次（移除自动触发，避免重复说话）
 
+  // 自定义壁纸：把 7 个 token 的 H/S/L 注入为 21 个 CSS 变量。
+  // CSS .app[data-wallpaper="custom"] 会用这些变量派生 --bg / --surface / --text 等。
+  const customStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (wallpaperId !== "custom") return undefined;
+    const style: Record<string, string> = {};
+    for (const { key } of CUSTOM_TOKEN_LIST) {
+      const v = customColors[key];
+      style[`--c-${key}-h`] = `${v.h}`;
+      style[`--c-${key}-s`] = `${v.s}%`;
+      style[`--c-${key}-l`] = `${v.l}%`;
+    }
+    return style as React.CSSProperties;
+  }, [wallpaperId, customColors]);
+
   return (
-    <div className="app">
+    <div className="app" data-wallpaper={wallpaperId} style={customStyle}>
       <header className="header">
         <div className="header-brand">
           <div className="header-avatar" aria-label="DJ">DJ</div>
@@ -201,6 +221,18 @@ export default function App() {
           </div>
         </div>
         <div className="header-right">
+          <button
+            type="button"
+            className="wallpaper-btn"
+            onClick={() => setPickerOpen(true)}
+            title={`当前壁纸：${WALLPAPERS.find(w => w.id === wallpaperId)?.name ?? wallpaperId}`}
+            aria-label="切换壁纸"
+          >
+            <span className="wallpaper-btn-dot" style={{
+              background: WALLPAPERS.find(w => w.id === wallpaperId)?.palette[0] ?? "#9d00ff",
+            }} />
+            <span className="wallpaper-btn-label">壁纸</span>
+          </button>
           <button
             type="button"
             className={`sfx-toggle ${sfxEnabled ? "on" : "off"}`}
@@ -230,6 +262,8 @@ export default function App() {
               onAction={handleAction}
               playDj={engine.playDj}
               stopDj={engine.stopDj}
+              wallpaperId={wallpaperId}
+              customColors={customColors}
             />
           ) : null
         }
@@ -238,6 +272,17 @@ export default function App() {
       <ParticleField count={12} />
       {/* 数字雨已删除（用户要求去除右下角青色矩形） */}
       <Toast />
+
+      {/* 壁纸选择面板（fixed 定位，独立于 DOM 层级） */}
+      {pickerOpen && (
+        <WallpaperPicker
+          current={wallpaperId}
+          custom={customColors}
+          onPick={(id: WallpaperId) => { setWallpaper(id); }}
+          onCustom={(patch) => setCustomColors(patch)}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {/* 开始电台引导层（iOS autoplay 解锁） */}
       {!started && (
