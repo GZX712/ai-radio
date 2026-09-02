@@ -57,5 +57,13 @@ pnpm-debug.log*
 # TTS 生成音频（运行时产物）
 public/audio/
 
-# TTS 生成音频（运行时产物）
-public/audio/
+# Build/dev caches
+*.tsbuildinfo
+vite.config.js.timestamp-*.mjs
+vite.config.ts.timestamp-*.mjs
+
+# Sensitive / local
+.env.bak
+.cookie-extract/
+.tmp-cookie-grab/
+docs/_shot/
