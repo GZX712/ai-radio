@@ -594,6 +594,18 @@ body::after {
 @media (max-width: 480px) {
   .chat-list { max-height: 38vh; min-height: 160px; }
   .chat-panel { padding: 12px; }
+  /* 窄屏输入行收紧：小 padding + 小 gap，保证 mic/send 留在容器内 */
+  .chat-input-row { gap: 6px; }
+  .chat-input { padding: 10px 12px; }
+  .chat-mic { padding: 9px 10px; }
+  .chat-send { padding: 10px 12px; }
+}
+
+/* 超窄屏（<=360）：Send/输入框进一步收窄，避免挤压溢出 */
+@media (max-width: 360px) {
+  .chat-input-row { gap: 5px; }
+  .chat-input { padding: 10px 10px; }
+  .chat-send { padding: 10px 13px; font-size: 12px; }
 }
 
 .chat-list::-webkit-scrollbar { width: 4px; }
@@ -834,20 +846,33 @@ body::after {
   display: flex;
   gap: 8px;
   align-items: center;
+  /* 锁宽：行本身不许撑破容器，子元素超宽时向内收缩而非溢出页面 */
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .chat-input {
-  flex: 1;
+  /* flex:1 + min-width:0 = 输入框可自由收缩，避免把 mic/send 顶出容器 */
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(0, 243, 255, 0.22);
   border-radius: 999px;
-  padding: 11px 18px;
+  padding: 11px 16px;
   color: var(--text);
   font-size: 13px;
   font-family: "JetBrains Mono", monospace;
   letter-spacing: 0.02em;
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+/* mic / send 不参与压缩：保持固定尺寸，把弹性全部让给输入框 */
+.chat-mic,
+.chat-send {
+  flex: 0 0 auto;
 }
 
 .chat-input:focus {
