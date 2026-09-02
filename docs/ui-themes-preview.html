@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 电台 · 24 款 UI 风格参考</title>
+<style>
+  :root { --page-bg: #0b0b10; --page-text: #e8e8ef; --page-muted: #8a8a9a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(120,80,255,0.12), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(0,200,255,0.10), transparent 60%),
+      var(--page-bg);
+    color: var(--page-text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px 80px;
+  }
+  .page-head { max-width: 1280px; margin: 0 auto 36px; }
+  .page-head h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+  .page-head p { margin-top: 8px; color: var(--page-muted); font-size: 14px; line-height: 1.7; }
+  .page-head .tag { display: inline-block; background: rgba(120,80,255,0.18); border: 1px solid rgba(120,80,255,0.4); color: #c4b5fd; border-radius: 999px; padding: 3px 12px; font-size: 12px; margin-top: 12px; }
+
+  .gallery { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 28px; }
+
+  .theme {
+    background: #13131a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+  }
+  .theme:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.18); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
+  .theme-info h2 { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+  .theme-info .en { font-size: 11px; color: var(--page-muted); text-transform: uppercase; letter-spacing: 0.12em; margin: 2px 0 8px; }
+  .theme-info .desc { font-size: 12.5px; color: #b8b8c8; line-height: 1.6; min-height: 40px; }
+  .swatches { display: flex; gap: 6px; margin-top: 10px; }
+  .swatches i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
+  .theme .badge { font-size: 10px; color: #9a9aaa; margin-top: 6px; }
+
+  /* ============ 手机模拟框骨架（各主题只换 CSS 变量 + 专属规则） ============ */
+  .phone {
+    width: 100%; max-width: 330px; margin: 0 auto;
+    border-radius: var(--p-radius, 28px);
+    background: var(--p-bg);
+    color: var(--p-text);
+    font-family: var(--p-font);
+    overflow: hidden;
+    box-shadow: var(--p-shadow, 0 20px 50px rgba(0,0,0,0.5));
+    border: var(--p-border, 1px solid rgba(255,255,255,0.1));
+    position: relative;
+  }
+  .ph-inner { padding: var(--p-pad, 18px 16px 16px); display: flex; flex-direction: column; gap: 12px; }
+  .ph-header { display: flex; align-items: center; justify-content: space-between; }
+  .ph-brand { display: flex; align-items: center; gap: 8px; }
+  .ph-avatar {
+    width: 30px; height: 30px; border-radius: var(--p-avatar-r, 50%);
+    background: var(--p-avatar, linear-gradient(135deg,#f97316,#fbbf24));
+    display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #000;
+  }
+  .ph-name { font-size: 13px; font-weight: 800; }
+  .ph-status { font-size: 9.5px; opacity: 0.6; display: flex; align-items: center; gap: 4px; margin-top: 1px; }
+  .ph-status::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #10b981; }
+  .ph-hr { display: flex; align-items: center; gap: 8px; }
+  .ph-sfx { font-size: 10px; border: 1px solid var(--p-border-c); border-radius: 999px; padding: 3px 8px; opacity: 0.8; }
+  .ph-timer { font-size: 15px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+  .ph-cover {
+    width: var(--p-cover-w, 62%); aspect-ratio: 1; margin: 0 auto;
+    border-radius: var(--p-cover-r, 16px);
+    background: var(--p-cover, linear-gradient(135deg,#ff9f43,#ff6b35));
+    display: grid; place-items: center; font-size: 34px; color: rgba(255,255,255,0.85);
+    box-shadow: var(--p-cover-shadow, none);
+    position: relative; overflow: hidden;
+  }
+  .ph-meta { text-align: var(--p-meta-align, left); }
+  .ph-song { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ph-artist { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+  .ph-progress { height: 4px; background: var(--p-track, rgba(255,255,255,0.12)); border-radius: 2px; position: relative; }
+  .ph-progress i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; border-radius: 2px; background: var(--p-fill, #fff); }
+  .ph-times { display: flex; justify-content: space-between; font-size: 9.5px; opacity: 0.55; margin-top: -9px; font-variant-numeric: tabular-nums; }
+  .ph-controls { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .ph-cbtn {
+    flex: 1; padding: 9px 0; border-radius: var(--p-btn-r, 12px);
+    border: 1px solid var(--p-border-c); background: var(--p-btn-bg, rgba(255,255,255,0.04));
+    color: var(--p-text); font-size: 13px; cursor: pointer; display: grid; place-items: center;
+    font-family: inherit;
+  }
+  .ph-cbtn.main { flex: 1.4; background: var(--p-btn-main, #fff); color: var(--p-btn-main-c, #000); border: none; font-weight: 700; }
+  .ph-aux { display: flex; align-items: center; gap: 10px; }
+  .ph-rate { font-size: 10px; border: 1px solid var(--p-border-c); padding: 5px 9px; border-radius: 8px; font-weight: 700; }
+  .ph-vol { flex: 1; height: 4px; background: var(--p-track, rgba(255,255,255,0.12)); border-radius: 2px; position: relative; }
+  .ph-vol i { position: absolute; left: 0; top: 0; bottom: 0; width: 62%; background: var(--p-fill, #fff); border-radius: 2px; }
+  .ph-vol i::after { content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--p-fill, #fff); }
+
+  .ph-caption {
+    border-radius: var(--p-cap-r, 14px);
+    background: var(--p-cap-bg, rgba(255,255,255,0.03));
+    border: 1px solid var(--p-border-c);
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .ph-cap-role { font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+  .ph-cap-en { font-size: 12px; line-height: 1.45; font-weight: 600; }
+  .ph-cap-zh { font-size: 10.5px; opacity: 0.65; line-height: 1.5; }
+
+  .ph-chat { display: flex; flex-direction: column; gap: 6px; }
+  .ph-msg { display: flex; gap: 7px; align-items: flex-start; max-width: 92%; }
+  .ph-msg .ph-mavatar { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+  .ph-msg .ph-mbubble { font-size: 10.5px; line-height: 1.5; padding: 7px 10px; border-radius: 11px; }
+  .ph-msg.dj .ph-mavatar { background: var(--p-dj-av, linear-gradient(135deg,rgba(157,0,255,.5),rgba(0,243,255,.4))); color: #fff; }
+  .ph-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .ph-msg.user .ph-mavatar { background: var(--p-user-av, linear-gradient(135deg,rgba(255,159,28,.5),rgba(244,82,13,.4))); color: #fff; }
+  .ph-msg.dj .ph-mbubble { background: var(--p-dj-bub, rgba(115,89,192,0.16)); }
+  .ph-msg.user .ph-mbubble { background: var(--p-user-bub, rgba(251,166,70,0.16)); }
+  .ph-input { display: flex; gap: 7px; align-items: center; }
+  .ph-input .ph-field { flex: 1; border: 1px solid var(--p-border-c); border-radius: 999px; padding: 9px 14px; font-size: 11px; background: var(--p-input-bg, rgba(255,255,255,0.04)); color: var(--p-text); }
+  .ph-input .ph-mic { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--p-border-c); display: grid; place-items: center; font-size: 13px; background: var(--p-input-bg, rgba(255,255,255,0.04)); }
+  .ph-input .ph-send { border: none; border-radius: 999px; padding: 9px 15px; font-size: 11px; font-weight: 800; background: var(--p-send-bg, #fff); color: var(--p-send-c, #000); }
+
+  /* ================================================================
+     主题 01 · 暖阳橙调 Sunset Glow
+  ================================================================ */
+  .t-sunset {
+    --p-bg: linear-gradient(180deg, #231510 0%, #1a0e0a 100%);
+    --p-text: #f7e8dc; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 26px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(255,150,80,0.16);
+    --p-shadow: 0 22px 50px rgba(255,120,50,0.18);
+    --p-avatar: linear-gradient(135deg,#ffb347,#ff6b35); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,160,90,0.22);
+    --p-cover: linear-gradient(135deg,#ff9f43 0%,#ff5e62 100%); --p-cover-r: 18px;
+    --p-cover-w: 60%; --p-cover-shadow: 0 16px 36px rgba(255,110,60,0.4);
+    --p-track: rgba(255,200,160,0.14); --p-fill: linear-gradient(90deg,#ffb347,#ff5e62);
+    --p-btn-bg: rgba(255,160,90,0.08); --p-btn-main: linear-gradient(135deg,#ffb347,#ff6b35); --p-btn-main-c: #2a1008;
+    --p-btn-r: 14px;
+    --p-cap-bg: rgba(255,160,90,0.06); --p-cap-r: 14px;
+    --p-dj-av: linear-gradient(135deg,#ffb347,#ff6b35); --p-dj-bub: rgba(255,150,80,0.14);
+    --p-user-av: linear-gradient(135deg,#5fd4ff,#3a7bd5); --p-user-bub: rgba(90,180,255,0.12);
+    --p-input-bg: rgba(255,200,160,0.06); --p-send-bg: linear-gradient(135deg,#ffb347,#ff6b35); --p-send-c: #2a1008;
+  }
+
+  /* ================================================================
+     主题 02 · 极简黑白 Mono Minimal
+  ================================================================ */
+  .t-mono {
+    --p-bg: #f6f6f4; --p-text: #111; --p-font: "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+    --p-radius: 8px; --p-pad: 20px 18px 18px; --p-border: 1px solid #e4e4e0;
+    --p-shadow: 0 16px 40px rgba(0,0,0,0.08);
+    --p-avatar: #111; --p-avatar-r: 4px;
+    --p-border-c: #d8d8d4;
+    --p-cover: linear-gradient(135deg,#111,#444); --p-cover-r: 4px;
+    --p-cover-w: 100%; --p-cover-shadow: none;
+    --p-track: #e6e6e2; --p-fill: #111;
+    --p-btn-bg: transparent; --p-btn-main: #111; --p-btn-main-c: #f6f6f4;
+    --p-btn-r: 4px;
+    --p-cap-bg: #f0f0ec; --p-cap-r: 4px;
+    --p-dj-av: #111; --p-dj-bub: #ececea;
+    --p-user-av: #bbb; --p-user-bub: #e3e3df;
+    --p-input-bg: #fff; --p-send-bg: #111; --p-send-c: #f6f6f4;
+  }
+
+  /* ================================================================
+     主题 03 · 复古磁带 Retro Cassette
+  ================================================================ */
+  .t-retro {
+    --p-bg: linear-gradient(180deg,#efe3cd 0%,#e4d3b6 100%);
+    --p-text: #4a3620; --p-font: Georgia, "Songti SC", "SimSun", serif;
+    --p-radius: 10px; --p-pad: 16px 14px 14px; --p-border: 1px solid #c9b38c;
+    --p-shadow: 0 18px 40px rgba(120,90,50,0.25);
+    --p-avatar: linear-gradient(135deg,#8b5a2b,#c98d4b); --p-avatar-r: 2px;
+    --p-border-c: #b99e6f;
+    --p-cover: linear-gradient(135deg,#8b5a2b,#5a3a1e); --p-cover-r: 4px;
+    --p-cover-w: 100%; --p-cover-shadow: inset 0 0 0 4px rgba(255,255,255,0.25), 0 10px 20px rgba(120,90,50,0.3);
+    --p-track: rgba(120,90,50,0.25); --p-fill: #8b5a2b;
+    --p-btn-bg: rgba(139,90,43,0.10); --p-btn-main: #8b5a2b; --p-btn-main-c: #f6ecd9;
+    --p-btn-r: 4px;
+    --p-cap-bg: rgba(139,90,43,0.08); --p-cap-r: 4px;
+    --p-dj-av: linear-gradient(135deg,#8b5a2b,#c98d4b); --p-dj-bub: rgba(139,90,43,0.12);
+    --p-user-av: linear-gradient(135deg,#5a6b3a,#8aa35a); --p-user-bub: rgba(100,130,60,0.12);
+    --p-input-bg: rgba(255,255,255,0.35); --p-send-bg: #8b5a2b; --p-send-c: #f6ecd9;
+  }
+
+  /* ================================================================
+     主题 04 · 霓虹脉冲 Neon Pulse
+  ================================================================ */
+  .t-neon {
+    --p-bg: linear-gradient(180deg,#0a0a14 0%,#0d0d1a 100%);
+    --p-text: #e8f6ff; --p-font: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --p-radius: 14px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(0,243,255,0.25);
+    --p-shadow: 0 0 30px rgba(0,243,255,0.15), 0 18px 50px rgba(0,0,0,0.6);
+    --p-avatar: linear-gradient(135deg,#00f3ff,#9d00ff); --p-avatar-r: 50%;
+    --p-border-c: rgba(0,243,255,0.3);
+    --p-cover: linear-gradient(135deg,#9d00ff 0%,#00f3ff 100%); --p-cover-r: 2px;
+    --p-cover-w: 58%; --p-cover-shadow: 0 0 24px rgba(157,0,255,0.5);
+    --p-track: rgba(0,243,255,0.15); --p-fill: linear-gradient(90deg,#00f3ff,#9d00ff);
+    --p-btn-bg: rgba(0,243,255,0.06); --p-btn-main: rgba(0,243,255,0.15); --p-btn-main-c: #00f3ff;
+    --p-btn-main: #00f3ff; --p-btn-main-c: #000;
+    --p-btn-r: 10px;
+    --p-cap-bg: rgba(0,243,255,0.05); --p-cap-r: 10px;
+    --p-dj-av: linear-gradient(135deg,#9d00ff,#00f3ff); --p-dj-bub: rgba(115,89,192,0.22);
+    --p-user-av: linear-gradient(135deg,#ff2ec4,#9d00ff); --p-user-bub: rgba(255,46,196,0.14);
+    --p-input-bg: rgba(0,0,0,0.4); --p-send-bg: #00f3ff; --p-send-c: #000;
+  }
+
+  /* ================================================================
+     主题 05 · 奶油新拟态 Neumorphism
+  ================================================================ */
+  .t-neumo {
+    --p-bg: #e6e9f2; --p-text: #4a5068; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 28px; --p-pad: 20px 18px 18px; --p-border: none;
+    --p-shadow: 12px 12px 26px rgba(163,173,200,0.7), -12px -12px 26px rgba(255,255,255,0.9);
+    --p-avatar: linear-gradient(135deg,#6c7cff,#8fa2ff); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,255,255,0.5);
+    --p-cover: linear-gradient(135deg,#6c7cff,#9a8cff); --p-cover-r: 24px;
+    --p-cover-w: 64%; --p-cover-shadow: 8px 8px 18px rgba(163,173,200,0.8), -8px -8px 18px rgba(255,255,255,0.95);
+    --p-track: rgba(74,80,104,0.14); --p-fill: linear-gradient(90deg,#6c7cff,#9a8cff);
+    --p-btn-bg: transparent; --p-btn-main: linear-gradient(145deg,#eef1f8,#dde1ec); --p-btn-main-c: #6c7cff;
+    --p-btn-r: 16px;
+    --p-cap-bg: linear-gradient(145deg,#eef1f8,#dfe3ee); --p-cap-r: 18px;
+    --p-dj-av: linear-gradient(135deg,#6c7cff,#9a8cff); --p-dj-bub: rgba(108,124,255,0.14);
+    --p-user-av: linear-gradient(135deg,#ffb35c,#ff8a5c); --p-user-bub: rgba(255,160,90,0.14);
+    --p-input-bg: #eceff7; --p-send-bg: linear-gradient(145deg,#6c7cff,#8fa2ff); --p-send-c: #fff;
+  }
+
+  /* ================================================================
+     主题 06 · 玻璃拟态 Glassmorphism
+  ================================================================ */
+  .t-glass {
+    --p-bg: linear-gradient(160deg, #2b1055 0%, #7597de 55%, #e2a9c8 100%);
+    --p-text: #fff; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 26px; --p-pad: 16px 14px 14px; --p-border: 1px solid rgba(255,255,255,0.35);
+    --p-shadow: 0 24px 50px rgba(20,10,60,0.5);
+    --p-avatar: linear-gradient(135deg,#ff9a9e,#fad0c4); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,255,255,0.4);
+    --p-cover: linear-gradient(135deg,#fda085,#f6d365); --p-cover-r: 20px;
+    --p-cover-w: 56%; --p-cover-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    --p-track: rgba(255,255,255,0.35); --p-fill: #fff;
+    --p-btn-bg: rgba(255,255,255,0.18); --p-btn-main: rgba(255,255,255,0.85); --p-btn-main-c: #3a2a6a;
+    --p-btn-r: 16px;
+    --p-cap-bg: rgba(255,255,255,0.16); --p-cap-r: 16px;
+    --p-dj-av: linear-gradient(135deg,#a18cd1,#fbc2eb); --p-dj-bub: rgba(255,255,255,0.18);
+    --p-user-av: linear-gradient(135deg,#fbc2eb,#a6c1ee); --p-user-bub: rgba(255,255,255,0.14);
+    --p-input-bg: rgba(255,255,255,0.2); --p-send-bg: rgba(255,255,255,0.9); --p-send-c: #3a2a6a;
+  }
+
+  /* ================================================================
+     主题 07 · 日系奶油 Japandi Cream
+  ================================================================ */
+  .t-japandi {
+    --p-bg: linear-gradient(180deg,#faf6ef 0%,#f3ecdf 100%);
+    --p-text: #3f3a32; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 30px; --p-pad: 20px 18px 18px; --p-border: 1px solid rgba(180,160,130,0.3);
+    --p-shadow: 0 18px 40px rgba(140,120,90,0.18);
+    --p-avatar: linear-gradient(135deg,#c9a87c,#a98b5f); --p-avatar-r: 50%;
+    --p-border-c: rgba(169,139,95,0.35);
+    --p-cover: linear-gradient(135deg,#e8d5b0,#d4bc94); --p-cover-r: 22px;
+    --p-cover-w: 62%; --p-cover-shadow: 0 10px 24px rgba(140,120,90,0.25);
+    --p-track: rgba(140,120,90,0.18); --p-fill: linear-gradient(90deg,#a98b5f,#c9a87c);
+    --p-btn-bg: rgba(169,139,95,0.08); --p-btn-main: #a98b5f; --p-btn-main-c: #faf6ef;
+    --p-btn-r: 999px;
+    --p-cap-bg: rgba(169,139,95,0.08); --p-cap-r: 18px;
+    --p-dj-av: linear-gradient(135deg,#a98b5f,#c9a87c); --p-dj-bub: rgba(169,139,95,0.12);
+    --p-user-av: linear-gradient(135deg,#7f9d7a,#a3bf9e); --p-user-bub: rgba(127,157,122,0.14);
+    --p-input-bg: rgba(255,255,255,0.6); --p-send-bg: #a98b5f; --p-send-c: #faf6ef;
+  }
+
+  /* ================================================================
+     主题 08 · 暗夜鎏金 Dark Luxe
+  ================================================================ */
+  .t-luxe {
+    --p-bg: radial-gradient(120% 80% at 50% 0%, #1c1a16 0%, #0c0b09 100%);
+    --p-text: #efe6d5; --p-font: Georgia, "Songti SC", "SimSun", serif;
+    --p-radius: 20px; --p-pad: 20px 18px 18px; --p-border: 1px solid rgba(212,175,55,0.3);
+    --p-shadow: 0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(212,175,55,0.06);
+    --p-avatar: linear-gradient(135deg,#d4af37,#8a6d1f); --p-avatar-r: 50%;
+    --p-border-c: rgba(212,175,55,0.35);
+    --p-cover: linear-gradient(135deg,#2a2418,#4a3d20); --p-cover-r: 16px;
+    --p-cover-w: 58%; --p-cover-shadow: 0 0 0 1px rgba(212,175,55,0.4), 0 16px 34px rgba(0,0,0,0.6);
+    --p-track: rgba(212,175,55,0.16); --p-fill: linear-gradient(90deg,#d4af37,#f0d77b);
+    --p-btn-bg: rgba(212,175,55,0.06); --p-btn-main: linear-gradient(135deg,#d4af37,#f0d77b); --p-btn-main-c: #1a1505;
+    --p-btn-r: 12px;
+    --p-cap-bg: rgba(212,175,55,0.05); --p-cap-r: 14px;
+    --p-dj-av: linear-gradient(135deg,#d4af37,#8a6d1f); --p-dj-bub: rgba(212,175,55,0.10);
+    --p-user-av: linear-gradient(135deg,#8a7f6d,#5c5548); --p-user-bub: rgba(200,190,170,0.08);
+    --p-input-bg: rgba(255,255,255,0.03); --p-send-bg: linear-gradient(135deg,#d4af37,#f0d77b); --p-send-c: #1a1505;
+  }
+
+  /* ================================================================
+     主题 09 · 像素游戏 8-Bit Game
+  ================================================================ */
+  .t-pixel {
+    --p-bg: #1a1c2c; --p-text: #e5f7ff; --p-font: "JetBrains Mono", Consolas, monospace;
+    --p-radius: 0; --p-pad: 16px 14px 14px; --p-border: 3px solid #2f3350;
+    --p-shadow: 8px 8px 0 rgba(0,0,0,0.5);
+    --p-avatar: linear-gradient(135deg,#f3ef5c,#f7a531); --p-avatar-r: 0;
+    --p-border-c: #3a3f66;
+    --p-cover: linear-gradient(135deg,#5e7a29,#94b13c); --p-cover-r: 0;
+    --p-cover-w: 70%; --p-cover-shadow: 4px 4px 0 #0d0e18;
+    --p-track: #2f3350; --p-fill: linear-gradient(90deg,#4cf,#f3ef5c);
+    --p-btn-bg: #252942; --p-btn-main: #4cf; --p-btn-main-c: #0d0e18;
+    --p-btn-r: 0;
+    --p-cap-bg: #14162a; --p-cap-r: 0;
+    --p-dj-av: linear-gradient(135deg,#4cf,#7ee787); --p-dj-bub: rgba(68,204,255,0.16);
+    --p-user-av: linear-gradient(135deg,#f3ef5c,#f7a531); --p-user-bub: rgba(243,239,92,0.12);
+    --p-input-bg: #14162a; --p-send-bg: #4cf; --p-send-c: #0d0e18;
+  }
+
+  /* ================================================================
+     主题 10 · 极光幻境 Aurora
+  ================================================================ */
+  .t-aurora {
+    --p-bg: linear-gradient(180deg, #070b1e 0%, #0d1b3a 100%);
+    --p-text: #eef4ff; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 24px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(122,220,255,0.2);
+    --p-shadow: 0 22px 55px rgba(0,10,50,0.6);
+    --p-avatar: linear-gradient(135deg,#7cf5c4,#5ab0ff); --p-avatar-r: 50%;
+    --p-border-c: rgba(122,220,255,0.3);
+    --p-cover: linear-gradient(135deg,#5ab0ff 0%,#7cf5c4 55%,#c084fc 100%); --p-cover-r: 20px;
+    --p-cover-w: 60%; --p-cover-shadow: 0 0 30px rgba(90,176,255,0.4);
+    --p-track: rgba(122,220,255,0.14); --p-fill: linear-gradient(90deg,#5ab0ff,#7cf5c4);
+    --p-btn-bg: rgba(122,220,255,0.06); --p-btn-main: linear-gradient(135deg,#5ab0ff,#7cf5c4); --p-btn-main-c: #04122e;
+    --p-btn-r: 14px;
+    --p-cap-bg: rgba(122,220,255,0.05); --p-cap-r: 14px;
+    --p-dj-av: linear-gradient(135deg,#7cf5c4,#5ab0ff); --p-dj-bub: rgba(90,176,255,0.16);
+    --p-user-av: linear-gradient(135deg,#c084fc,#f0a0d8); --p-user-bub: rgba(192,132,252,0.12);
+    --p-input-bg: rgba(255,255,255,0.04); --p-send-bg: linear-gradient(135deg,#5ab0ff,#7cf5c4); --p-send-c: #04122e;
+  }
+
+  /* ================================================================
+     主题 11 · 播客编辑风 Editorial Podcast
+  ================================================================ */
+  .t-editorial {
+    --p-bg: #ffffff; --p-text: #16161a; --p-font: Georgia, "Times New Roman", "Songti SC", serif;
+    --p-radius: 4px; --p-pad: 22px 20px 18px; --p-border: 1px solid #e2e2e6;
+    --p-shadow: 0 16px 40px rgba(0,0,0,0.06);
+    --p-avatar: #16161a; --p-avatar-r: 50%;
+    --p-border-c: #d8d8de;
+    --p-cover: linear-gradient(135deg,#f0f0f2,#d6d6dc); --p-cover-r: 2px;
+    --p-cover-w: 100%; --p-cover-shadow: none;
+    --p-track: #ececef; --p-fill: #16161a;
+    --p-btn-bg: #fafafa; --p-btn-main: #16161a; --p-btn-main-c: #fff;
+    --p-btn-r: 999px;
+    --p-cap-bg: #f7f7f8; --p-cap-r: 2px;
+    --p-dj-av: #16161a; --p-dj-bub: #f2f2f4;
+    --p-user-av: #8f8f9a; --p-user-bub: #eaeaf0;
+    --p-input-bg: #fff; --p-send-bg: #16161a; --p-send-c: #fff;
+  }
+
+  /* ================================================================
+     主题 12 · 音乐节海报 Festival Poster
+  ================================================================ */
+  .t-festival {
+    --p-bg: #4c1d95; --p-text: #fdf6e3; --p-font: Impact, Haettenschweiler, "Arial Narrow Bold", "PingFang SC", sans-serif;
+    --p-radius: 0; --p-pad: 18px 16px 16px; --p-border: 4px solid #fde047;
+    --p-shadow: 10px 10px 0 rgba(30,5,60,0.9);
+    --p-avatar: linear-gradient(135deg,#fde047,#f97316); --p-avatar-r: 50%;
+    --p-border-c: rgba(253,224,71,0.5);
+    --p-cover: linear-gradient(135deg,#fde047 0%,#f97316 50%,#ef4444 100%); --p-cover-r: 0;
+    --p-cover-w: 74%; --p-cover-shadow: 6px 6px 0 #fde047;
+    --p-track: rgba(253,224,71,0.25); --p-fill: linear-gradient(90deg,#fde047,#f97316);
+    --p-btn-bg: rgba(253,224,71,0.10); --p-btn-main: #fde047; --p-btn-main-c: #4c1d95;
+    --p-btn-r: 0;
+    --p-cap-bg: rgba(253,224,71,0.08); --p-cap-r: 0;
+    --p-dj-av: linear-gradient(135deg,#fde047,#f97316); --p-dj-bub: rgba(253,224,71,0.16);
+    --p-user-av: linear-gradient(135deg,#22d3ee,#a78bfa); --p-user-bub: rgba(34,211,238,0.14);
+    --p-input-bg: rgba(253,224,71,0.08); --p-send-bg: #fde047; --p-send-c: #4c1d95;
+  }
+
+        /* ================================================================
+     主题 13 · 夏威夷度假 Hawaiian Resort（血红夕阳 × 冲浪版）
+  ================================================================ */
+  .t-hawaii {
+    --p-bg: linear-gradient(180deg, #ffd9b8 0%, #ff9e78 55%, #e85a75 100%);
+    --p-text: #3a1526; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 26px; --p-pad: 18px 16px 16px; --p-border: 2px solid rgba(217,44,85,0.55);
+    --p-shadow: 0 24px 54px rgba(190,50,70,0.4);
+    --p-avatar: linear-gradient(135deg,#ff5e3a,#d92c55); --p-avatar-r: 50%;
+    --p-border-c: rgba(217,44,85,0.5);
+    --p-cover: linear-gradient(180deg,#ffb25e 0%,#ff5e3a 55%,#8e1e4e 100%); --p-cover-r: 18px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 16px 34px rgba(200,60,70,0.5), 0 0 0 3px rgba(255,220,180,0.4);
+    --p-track: rgba(58,21,38,0.18); --p-fill: linear-gradient(90deg,#ff5e3a,#ffd27d);
+    --p-btn-bg: rgba(58,21,38,0.07); --p-btn-main: linear-gradient(135deg,#ff5e3a,#ff9d5c); --p-btn-main-c: #fff7ec;
+    --p-btn-r: 16px;
+    --p-cap-bg: rgba(217,44,85,0.10); --p-cap-r: 16px;
+    --p-dj-av: linear-gradient(135deg,#2f8fa3,#123c63); --p-dj-bub: rgba(47,143,163,0.18);
+    --p-user-av: linear-gradient(135deg,#ff5e3a,#d92c55); --p-user-bub: rgba(255,94,58,0.12);
+    --p-input-bg: rgba(255,255,255,0.55); --p-send-bg: linear-gradient(135deg,#ff5e3a,#ff9d5c); --p-send-c: #fff7ec;
+  }
+
+  /* 夏威夷专属：封面 = 血红落日冲浪大片（巨型血红落日+呼吸光晕、落日倒影金波、
+     四层卷浪滚动前进、冲浪者贴浪尖颠簸、椰树剪影摇摆、海鸥飞动、沙岸剪影）；卡片竹编纹理 */
+  .t-hawaii .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='sky' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23ffd9a0'/><stop offset='0.3' stop-color='%23ff9d5c'/><stop offset='0.58' stop-color='%23ff5e3a'/><stop offset='0.8' stop-color='%23d92c55'/><stop offset='1' stop-color='%238e1e4e'/></linearGradient><linearGradient id='sea' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%233a6f9e'/><stop offset='1' stop-color='%230d2c4d'/></linearGradient><radialGradient id='glow' cx='0.5' cy='0.5' r='0.5'><stop offset='0' stop-color='rgba(255,150,80,0.95)'/><stop offset='1' stop-color='rgba(255,150,80,0)'/></radialGradient></defs><rect width='100' height='100' fill='url(%23sky)'/><rect x='0' y='58' width='100' height='42' fill='url(%23sea)'/><g opacity='0.5'><rect x='44' y='58' width='12' height='36' fill='%23ff8a4a'><animate attributeName='opacity' values='0.3;0.75;0.3' dur='3.2s' repeatCount='indefinite'/></rect></g><circle cx='50' cy='56' r='23' fill='url(%23glow)'><animate attributeName='opacity' values='0.4;0.95;0.4' dur='4s' repeatCount='indefinite'/></circle><circle cx='50' cy='56' r='13.5' fill='%23ffc07a'/><circle cx='50' cy='56' r='11' fill='%23ffa14e'/><circle cx='50' cy='56' r='8' fill='%23ff7a3e'/><g stroke='%23fff2e0' stroke-width='1' fill='none' opacity='0.9'><g><animateTransform attributeName='transform' type='translate' values='28 24; 42 21; 56 24' dur='9s' repeatCount='indefinite'/><path d='M0 0 Q2.5 -2.4 5 0 Q7.5 -2.4 10 0'/></g><g><animateTransform attributeName='transform' type='translate' values='64 30; 78 26; 90 30' dur='11s' repeatCount='indefinite'/><path d='M0 0 Q2 -1.8 4 0 Q6 -1.8 8 0'/></g></g><g fill='none' stroke-linecap='round'><g stroke='rgba(255,235,210,0.5)' stroke-width='0.8'><animateTransform attributeName='transform' type='translate' values='0 0; -16 0; -16 0; 0 0' keyTimes='0;0.49;0.51;1' dur='5.5s' repeatCount='indefinite'/><path d='M-4 63 Q6 61 16 63 T36 63 T56 63 T76 63 T96 63'/><path d='M-4 63 Q6 61 16 63 T36 63 T56 63 T76 63 T96 63' transform='translate(28 0)'/></g><g stroke='rgba(255,225,195,0.62)' stroke-width='1'><animateTransform attributeName='transform' type='translate' values='0 0; -19 0; -19 0; 0 0' keyTimes='0;0.49;0.51;1' dur='4.4s' repeatCount='indefinite'/><path d='M-4 70 Q7 68 18 70 T40 70 T62 70 T84 70 T104 70'/><path d='M-4 70 Q7 68 18 70 T40 70 T62 70 T84 70 T104 70' transform='translate(32 0)'/></g><g stroke='%23ffe9d0' stroke-width='1.4'><animateTransform attributeName='transform' type='translate' values='0 0; -22 0; -22 0; 0 0' keyTimes='0;0.49;0.51;1' dur='3.6s' repeatCount='indefinite'/><path d='M-4 77 Q9 74.5 22 77 T48 77 T74 77 T100 77'/><path d='M-4 77 Q9 74.5 22 77 T48 77 T74 77 T100 77' transform='translate(36 0)'/></g><g stroke='rgba(255,245,230,0.8)' stroke-width='1.1'><animateTransform attributeName='transform' type='translate' values='0 0; -25 0; -25 0; 0 0' keyTimes='0;0.49;0.51;1' dur='3s' repeatCount='indefinite'/><path d='M-4 84 Q10 82 24 84 T52 84 T80 84 T106 84'/><path d='M-4 84 Q10 82 24 84 T52 84 T80 84 T106 84' transform='translate(40 0)'/></g></g><g><animateTransform attributeName='transform' type='translate' values='0 0; -2.5 1.2; 0 0' dur='2.6s' repeatCount='indefinite'/><g transform='translate(24 72)'><path d='M0 0 C 7 -4.5 14 -4.5 18 0 C 14 4.5 7 4.5 0 0 Z' fill='%23f5e9d8'/><path d='M0 0 C 7 -3 14 -3 18 0 C 14 2.5 7 2.5 0 0 Z' fill='%23d9c8ae'/><path d='M11 -1.5 L17 -3.2 L16.5 2.5 L11 1.2 Z' fill='%237d6a52'/></g><g transform='translate(20 62)'><circle cx='1.6' cy='-4.6' r='1.7' fill='%23210f18'/><path d='M0 0 L1.2 -3.4 L-0.8 -6.5 L2.4 -6.2 L3.2 -2.8 L4.4 0 Z' fill='%23210f18'/><path d='M4.4 0 L6.4 -3 L9 -2.4 L6.8 0.4 Z' fill='%23210f18'/><path d='M3.6 -0.6 L4.2 -5 L6.6 -6.4 L6.4 -2.8 Z' fill='%23210f18'/><path d='M2 -0.4 L0 -4 L-2.6 -3.4 L-0.8 -0.2 Z' fill='%23210f18'/></g></g><g fill='%23210f18'><g><animateTransform attributeName='transform' type='rotate' values='-2 18 96; 2 18 96; -2 18 96' dur='6s' repeatCount='indefinite'/><path d='M18 96 C17 80 20 70 17 58' stroke='%23210f18' stroke-width='2.2' fill='none'/><path d='M17 58 C10 50 3 49 0 52 M17 58 C24 50 31 49 34 52 M17 56 C11 47 9 41 12 34 M17 56 C23 47 25 41 22 34 M17 57 C14 48 14 41 16 36' stroke='%23210f18' stroke-width='1.4' fill='none'/><circle cx='16.5' cy='61' r='1.4' fill='%23210f18'/></g><g><animateTransform attributeName='transform' type='rotate' values='2 84 96; -2 84 96; 2 84 96' dur='6.8s' repeatCount='indefinite'/><path d='M84 96 C85 82 82 72 85 60' stroke='%23210f18' stroke-width='2.2' fill='none'/><path d='M85 60 C92 52 99 51 102 54 M85 60 C78 52 71 51 68 54 M85 58 C91 49 93 43 90 36 M85 58 C79 49 77 43 80 36 M85 59 C88 50 88 43 86 38' stroke='%23210f18' stroke-width='1.4' fill='none'/><circle cx='85.5' cy='63' r='1.4' fill='%23210f18'/></g></g><path d='M0 92 L14 92 L14 86 L30 86 L30 92 L44 92 L44 100 L0 100 Z' fill='%231a0a1e'/><path d='M100 90 L88 90 L88 84 L74 84 L74 90 L60 90 L60 100 L100 100 Z' fill='%231a0a1e'/></svg>"),
+      linear-gradient(180deg,#ffb25e 0%,#ff5e3a 55%,#8e1e4e 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-hawaii .ph-cover::after {
+    content: "🌺";
+    position: absolute; top: 8px; right: 10px;
+    font-size: 16px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    opacity: 0.95;
+    animation: hawaii-float 3.4s ease-in-out infinite;
+  }
+  @keyframes hawaii-float { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-4px) rotate(6deg); } }
+  .t-hawaii .ph-inner {
+    background-image:
+      repeating-linear-gradient(0deg, rgba(200,70,90,0.07) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(90deg, rgba(200,70,90,0.07) 0 1px, transparent 1px 5px);
+  }
+  .t-hawaii .ph-name::after { content: " 🌺"; font-size: 11px; }
+  .t-hawaii .ph-cap-role::before { content: "🏄 "; }
+  .t-hawaii .ph-song { font-weight: 800; letter-spacing: 0.01em; }
+  .t-hawaii .ph-mbubble { border-radius: 14px 14px 14px 4px; }
+  .t-hawaii .ph-msg.user .ph-mbubble { border-radius: 14px 14px 4px 14px; }
+
+    /* ================================================================
+     主题 14 · 银翼杀手 2049 暗黑未来 Blade Runner 2049
+  ================================================================ */
+  .t-decoart {
+    --p-bg: linear-gradient(180deg, #13161c 0%, #060709 100%);
+    --p-text: #cfd6da; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 2px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(255,140,58,0.55);
+    --p-shadow: 0 0 0 1px rgba(255,140,58,0.18), 0 0 22px rgba(255,140,58,0.12), 0 26px 60px rgba(0,0,0,0.85);
+    --p-avatar: linear-gradient(135deg,#49c4d6,#1d6f7e); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,140,58,0.4);
+    --p-cover: linear-gradient(160deg,#0b0d11 0%,#040507 100%); --p-cover-r: 2px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 34px rgba(255,140,58,0.22), 0 14px 30px rgba(0,0,0,0.7);
+    --p-track: rgba(207,214,218,0.14); --p-fill: linear-gradient(90deg,#ff8c3a,#49c4d6);
+    --p-btn-bg: rgba(73,196,214,0.08); --p-btn-main: linear-gradient(135deg,#ff8c3a,#ff5e2e); --p-btn-main-c: #0a0c10;
+    --p-btn-r: 2px;
+    --p-cap-bg: rgba(73,196,214,0.08); --p-cap-r: 2px;
+    --p-dj-av: linear-gradient(135deg,#49c4d6,#1d6f7e); --p-dj-bub: rgba(73,196,214,0.14);
+    --p-user-av: linear-gradient(135deg,#ff8c3a,#c2481a); --p-user-bub: rgba(255,140,58,0.12);
+    --p-input-bg: rgba(8,10,14,0.6); --p-send-bg: linear-gradient(135deg,#ff8c3a,#ff5e2e); --p-send-c: #0a0c10;
+  }
+
+  /* 2049 专属：封面 = 霓虹雾城（全息 Joi 女声广告 + 巨型塔楼剪影 + 昏黄巨日 + 斜雨 +
+     底部橙雾 + 霓虹地面光带 + 尘埃粒子）；背景细雨纹理 + 底部橙色辉光 */
+  .t-decoart .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='bg2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%230a0c10'/><stop offset='0.5' stop-color='%2307090c'/><stop offset='1' stop-color='%23040507'/></linearGradient><linearGradient id='fog' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgba(255,140,58,0)'/><stop offset='0.55' stop-color='rgba(255,140,58,0.14)'/><stop offset='1' stop-color='rgba(255,140,58,0.38)'/></linearGradient><radialGradient id='holoGlow' cx='0.5' cy='0.45' r='0.5'><stop offset='0' stop-color='rgba(73,196,214,0.42)'/><stop offset='1' stop-color='rgba(73,196,214,0)'/></radialGradient></defs><rect width='100' height='100' fill='url(%23bg2)'/><circle cx='80' cy='18' r='13' fill='%23ff9d4d' opacity='0.16'/><circle cx='80' cy='18' r='9' fill='%23ff9d4d' opacity='0.42'/><g fill='%230a0c10'><path d='M0 100 L0 44 L9 44 L9 38 L21 38 L21 31 L33 31 L33 50 L44 50 L44 42 L57 42 L57 56 L0 56 Z'/><path d='M72 100 L72 28 L81 28 L81 22 L93 22 L93 50 L100 50 L100 100 Z'/><path d='M60 100 L60 72 L69 72 L69 62 L72 62 L72 100 Z'/></g><g fill='%23ff8c3a'><rect x='4' y='50' width='2.2' height='3.2' opacity='0.85'/><rect x='10' y='44' width='2.2' height='3.2' opacity='0.6'/><rect x='24' y='37' width='2.2' height='3.2' opacity='0.85'/><rect x='35' y='47' width='2.2' height='3.2' opacity='0.6'/><rect x='47' y='43' width='2.2' height='3.2' opacity='0.5'/><rect x='75' y='34' width='2.2' height='3.2' opacity='0.85'/><rect x='87' y='28' width='2.2' height='3.2' opacity='0.6'/><rect x='97' y='46' width='2.2' height='3.2' opacity='0.85'/><rect x='78' y='56' width='2.2' height='3.2' opacity='0.5'/><rect x='63' y='76' width='2.2' height='3.2' opacity='0.7'/></g><g><circle cx='64' cy='42' r='27' fill='url(%23holoGlow)'/><g opacity='0.95'><animate attributeName='opacity' values='0.75;1;0.75' dur='5s' repeatCount='indefinite'/><g fill='%2349c4d6'><ellipse cx='64' cy='29' rx='4.6' ry='5.8'/><path d='M64 34.5 L62.5 39 L49 61 L79 61 L65.5 39 Z'/></g><g stroke='%2378e0ec' stroke-width='0.35' fill='none' opacity='0.65'><path d='M45 47 L83 47'/><path d='M47 52 L81 52'/><path d='M50 57 L78 57'/></g><g stroke='%2349c4d6' stroke-width='0.55' fill='none' opacity='0.5'><ellipse cx='64' cy='29' rx='7' ry='8.4'/><path d='M64 35 L62.5 39 L49 61 L79 61 L65.5 39 Z'/></g></g></g><g stroke='rgba(160,200,220,0.2)' stroke-width='0.5'><path d='M6 0 L9 7'/><path d='M18 6 L21 13'/><path d='M30 2 L33 9'/><path d='M42 10 L45 17'/><path d='M54 4 L57 11'/><path d='M66 8 L69 15'/><path d='M78 1 L81 8'/><path d='M90 7 L93 14'/><path d='M12 30 L15 37'/><path d='M50 28 L53 35'/><path d='M84 26 L87 33'/><path d='M26 40 L29 47'/><path d='M60 44 L63 51'/><path d='M94 42 L97 49'/></g><rect x='0' y='60' width='100' height='40' fill='url(%23fog)'/><rect x='0' y='95.5' width='100' height='4.5' fill='%23ff8c3a' opacity='0.4'><animate attributeName='opacity' values='0.22;0.5;0.22' dur='5s' repeatCount='indefinite'/></rect><g fill='%23ffb27a'><circle cx='14' cy='78' r='0.55' opacity='0.7'><animate attributeName='opacity' values='0.2;0.8;0.2' dur='3.4s' repeatCount='indefinite'/></circle><circle cx='42' cy='84' r='0.45' opacity='0.5'><animate attributeName='opacity' values='0.15;0.7;0.15' dur='4.2s' repeatCount='indefinite'/></circle><circle cx='70' cy='72' r='0.5' opacity='0.6'><animate attributeName='opacity' values='0.2;0.75;0.2' dur='3.8s' repeatCount='indefinite'/></circle><circle cx='90' cy='82' r='0.4' opacity='0.5'><animate attributeName='opacity' values='0.15;0.65;0.15' dur='4.6s' repeatCount='indefinite'/></circle></g></svg>"),
+      linear-gradient(160deg,#0b0d11 0%,#040507 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-decoart .ph-cover::before {
+    content: "▸ NEXUS RADIO · LOS ANGELES 2049";
+    position: absolute; top: 6px; left: 8px;
+    font-family: "Courier New", monospace; font-size: 6.5px; font-weight: 700;
+    letter-spacing: 1.6px; color: #49c4d6; opacity: 0.85;
+    text-shadow: 0 0 6px rgba(73,196,214,0.75);
+  }
+  .t-decoart .ph-cover::after {
+    content: "";
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 95% at 50% 42%, transparent 44%, rgba(0,0,0,0.82) 100%);
+  }
+  .t-decoart .ph-inner {
+    background-image:
+      repeating-linear-gradient(8deg, rgba(120,160,190,0.028) 0 1.5px, transparent 1.5px 9px),
+      radial-gradient(120% 55% at 50% 112%, rgba(255,140,58,0.10), transparent 62%);
+  }
+  .t-decoart .ph-name::after { content: " ▸"; font-size: 10px; color: #49c4d6; }
+  .t-decoart .ph-cap-role::before { content: "▸ "; }
+  .t-decoart .ph-song { font-weight: 900; letter-spacing: 0.1em; text-shadow: 0 0 10px rgba(255,140,58,0.45); }
+  .t-decoart .ph-cap-en { font-family: "Courier New", monospace; letter-spacing: 0.04em; color: #7adbe8; }
+  .t-decoart .ph-cap-en::after { content: "▌"; color: #ff8c3a; animation: deco-blink 1.1s steps(2) infinite; }
+  @keyframes deco-blink { 50% { opacity: 0; } }
+  .t-decoart .ph-cbtn { border-radius: 2px; }
+  .t-decoart .ph-cbtn.main { border: 1px solid #ff8c3a; box-shadow: 0 0 14px rgba(255,140,58,0.45), inset 0 0 8px rgba(255,140,58,0.25); }
+
+  /* ================================================================
+     主题 15 · 赛博东京雨夜 Cyberpunk Tokyo
+  ================================================================ */
+  .t-cyberpunk {
+    --p-bg: linear-gradient(180deg, #0d0818 0%, #20081a 100%);
+    --p-text: #f3e8ff; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 4px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(255,43,214,0.35);
+    --p-shadow: 0 0 0 1px rgba(0,229,255,0.10), 0 0 24px rgba(255,43,214,0.14), 0 26px 60px rgba(0,0,0,0.85);
+    --p-avatar: linear-gradient(135deg,#ff2bd6,#7b2bff); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,43,214,0.35);
+    --p-cover: linear-gradient(160deg,#0d0818 0%,#20081a 100%); --p-cover-r: 4px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 30px rgba(0,229,255,0.16), 0 14px 30px rgba(0,0,0,0.7);
+    --p-track: rgba(243,232,255,0.14); --p-fill: linear-gradient(90deg,#ff2bd6,#00e5ff);
+    --p-btn-bg: rgba(123,43,255,0.10); --p-btn-main: linear-gradient(135deg,#ff2bd6,#7b2bff); --p-btn-main-c: #fff;
+    --p-btn-r: 4px;
+    --p-cap-bg: rgba(0,229,255,0.07); --p-cap-r: 4px;
+    --p-dj-av: linear-gradient(135deg,#00e5ff,#0077b6); --p-dj-bub: rgba(0,229,255,0.13);
+    --p-user-av: linear-gradient(135deg,#ff2bd6,#c2185b); --p-user-bub: rgba(255,43,214,0.13);
+    --p-input-bg: rgba(13,8,24,0.7); --p-send-bg: linear-gradient(135deg,#ff2bd6,#7b2bff); --p-send-c: #fff;
+  }
+  .t-cyberpunk .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='cbg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%230d0818'/><stop offset='1' stop-color='%2320081a'/></linearGradient><linearGradient id='ref' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgba(255,43,214,0.28)'/><stop offset='1' stop-color='rgba(0,229,255,0.06)'/></linearGradient></defs><rect width='100' height='100' fill='url(%23cbg)'/><circle cx='80' cy='17' r='9.5' fill='%23ff2bd6' opacity='0.5'><animate attributeName='opacity' values='0.28;0.85;0.28' dur='3.4s' repeatCount='indefinite'/></circle><circle cx='80' cy='17' r='4.5' fill='%23ffd9f2'/><g fill='%230a0712'><path d='M0 56 L12 56 L12 44 L20 44 L20 28 L30 28 L30 46 L42 46 L42 56 L54 56 L54 36 L64 36 L64 50 L76 50 L76 56 L88 56 L88 38 L100 38 L100 100 L0 100 Z'/></g><g fill='%23ff2bd6'><rect x='13' y='46' width='5' height='2.2'/><rect x='21' y='31' width='7' height='2.2'/><rect x='43' y='47' width='5' height='2.2'/><rect x='77' y='40' width='7' height='2.2'/><rect x='90' y='41' width='6' height='2.2'/></g><g fill='%2300e5ff'><rect x='32' y='48' width='7' height='2.2'/><rect x='55' y='38' width='5' height='2.2'/><rect x='65' y='52' width='6' height='2.2'/></g><rect x='0' y='58' width='100' height='42' fill='url(%23ref)'/><g stroke='%23ff2bd6' stroke-width='1.4' opacity='0.55'><path d='M2 62 L98 62'/><path d='M0 66 L100 66' opacity='0.4'/></g><g stroke='rgba(255,255,255,0.3)' stroke-width='0.7'><line x1='12' y1='0' x2='4' y2='24'><animateTransform attributeName='transform' type='translate' values='0 0; -7 16' dur='0.85s' repeatCount='indefinite'/></line><line x1='34' y1='0' x2='26' y2='24'><animateTransform attributeName='transform' type='translate' values='0 0; -7 16' dur='0.7s' repeatCount='indefinite'/></line><line x1='58' y1='0' x2='50' y2='24'><animateTransform attributeName='transform' type='translate' values='0 0; -7 16' dur='1s' repeatCount='indefinite'/></line><line x1='82' y1='0' x2='74' y2='24'><animateTransform attributeName='transform' type='translate' values='0 0; -7 16' dur='0.8s' repeatCount='indefinite'/></line></g><g fill='%23fff' font-family='monospace' font-size='5.5' opacity='0.85'><text x='6' y='12'>ネオン</text><text x='62' y='30' fill='%2300e5ff'>東京</text></g></svg>"),
+      linear-gradient(160deg,#0d0818 0%,#20081a 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-cyberpunk .ph-cover::before {
+    content: "TOKYO // NIGHT CITY";
+    position: absolute; top: 6px; left: 8px;
+    font-family: "Courier New", monospace; font-size: 6.5px; font-weight: 700;
+    letter-spacing: 1.6px; color: #00e5ff; opacity: 0.9;
+    text-shadow: 0 0 6px rgba(0,229,255,0.8);
+  }
+  .t-cyberpunk .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(180deg, transparent 55%, rgba(10,6,20,0.6) 100%);
+  }
+  .t-cyberpunk .ph-inner {
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,43,214,0.03) 0 1px, transparent 1px 6px),
+      radial-gradient(120% 55% at 50% 112%, rgba(123,43,255,0.12), transparent 62%);
+  }
+  .t-cyberpunk .ph-name::after { content: " 東京"; font-size: 10px; color: #00e5ff; }
+  .t-cyberpunk .ph-cap-role::before { content: "⌁ "; }
+  .t-cyberpunk .ph-cap-en { font-family: "Courier New", monospace; letter-spacing: 0.05em; color: #9ad9ff; }
+  .t-cyberpunk .ph-cap-en::after { content: "▌"; color: #ff2bd6; animation: deco-blink 1.1s steps(2) infinite; }
+  .t-cyberpunk .ph-song { text-shadow: 0 0 12px rgba(255,43,214,0.5); }
+
+  /* ================================================================
+     主题 16 · 波普艺术 Pop Art
+  ================================================================ */
+  .t-popart {
+    --p-bg: linear-gradient(180deg, #fff3c4 0%, #ffe066 100%);
+    --p-text: #111; --p-font: "Arial Black", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --p-radius: 6px; --p-pad: 18px 16px 16px; --p-border: 3px solid #111;
+    --p-shadow: 0 0 0 4px #ff2b2b, 0 0 0 7px #111, 0 24px 50px rgba(0,0,0,0.35);
+    --p-avatar: #ff2b2b; --p-avatar-r: 0;
+    --p-border-c: #111;
+    --p-cover: #ffd500; --p-cover-r: 0; --p-cover-w: 100%;
+    --p-cover-shadow: 4px 4px 0 #111;
+    --p-track: rgba(17,17,17,0.25); --p-fill: #ff2b2b;
+    --p-btn-bg: #fff; --p-btn-main: #ff2b2b; --p-btn-main-c: #fff;
+    --p-btn-r: 0;
+    --p-cap-bg: #fff; --p-cap-r: 0; --p-cap-bg: #fff; --p-cap-r: 0;
+    --p-dj-av: #0062ff; --p-dj-bub: #fff;
+    --p-user-av: #ff2b2b; --p-user-bub: #fff;
+    --p-input-bg: #fff; --p-send-bg: #111; --p-send-c: #fff;
+  }
+  .t-popart .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='dots' width='6' height='6' patternUnits='userSpaceOnUse'><circle cx='1.5' cy='1.5' r='1.3' fill='rgba(0,0,0,0.16)'/></pattern></defs><rect width='100' height='100' fill='%23ffd500'/><rect width='100' height='100' fill='url(%23dots)'/><g fill='%23ff2b2b'><g><animateTransform attributeName='transform' type='rotate' values='0 50 50; 12 50 50; 0 50 50' dur='6s' repeatCount='indefinite'/><path d='M50 12 L56 44 L50 40 L44 44 Z'/></g><path d='M50 22 L54 44 L50 41 L46 44 Z'/></g><g fill='%230062ff'><g><animateTransform attributeName='transform' type='rotate' values='0 50 50; -14 50 50; 0 50 50' dur='7s' repeatCount='indefinite'/><path d='M14 66 L42 70 L38 76 L14 72 Z'/><path d='M86 64 L58 68 L62 74 L86 70 Z'/></g></g><circle cx='50' cy='52' r='17' fill='%23111'/><circle cx='50' cy='52' r='13' fill='%23ff2b2b'/><circle cx='50' cy='52' r='8' fill='%23fff'/><circle cx='50' cy='52' r='4' fill='%230062ff'/><text x='16' y='92' font-family='Arial Black' font-size='16' font-weight='900' fill='%23111' stroke='%23fff' stroke-width='1.6'>POP!</text><g fill='%23111'><circle cx='10' cy='18' r='4'/><circle cx='90' cy='16' r='5'/><circle cx='8' cy='84' r='3'/></g></svg>"),
+      #ffd500;
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-popart .ph-cover::before {
+    content: "BANG ★ WOW ★";
+    position: absolute; top: 6px; left: 8px;
+    font-size: 8px; font-weight: 900; letter-spacing: 1px; color: #111;
+    background: #fff; border: 2px solid #111; padding: 1px 5px;
+  }
+  .t-popart .ph-inner { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.035) 0 2px, transparent 2px 10px); }
+  .t-popart .ph-name::after { content: " ★"; color: #ff2b2b; }
+  .t-popart .ph-cap-role::before { content: "★ "; }
+  .t-popart .ph-caption, .t-popart .ph-msg .ph-mbubble, .t-popart .ph-cbtn, .t-popart .ph-input .ph-field, .t-popart .ph-input .ph-mic { border: 2px solid #111; box-shadow: 2px 2px 0 #111; }
+  .t-popart .ph-song { font-weight: 900; -webkit-text-stroke: 0.6px #111; }
+
+  /* ================================================================
+     主题 17 · 北欧木屋 Nordic Cabin
+  ================================================================ */
+  .t-nordic {
+    --p-bg: linear-gradient(180deg, #10261c 0%, #0a1712 100%);
+    --p-text: #e8f1ec; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 20px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(232,241,236,0.16);
+    --p-shadow: 0 22px 50px rgba(0,0,0,0.6);
+    --p-avatar: linear-gradient(135deg,#ffb84d,#e07b39); --p-avatar-r: 8px;
+    --p-border-c: rgba(232,241,236,0.22);
+    --p-cover: linear-gradient(160deg,#16352a 0%,#0b1c15 100%); --p-cover-r: 14px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 0 1px rgba(232,241,236,0.12), 0 16px 34px rgba(0,0,0,0.6);
+    --p-track: rgba(232,241,236,0.16); --p-fill: linear-gradient(90deg,#ffb84d,#e07b39);
+    --p-btn-bg: rgba(232,241,236,0.06); --p-btn-main: linear-gradient(135deg,#ffb84d,#e07b39); --p-btn-main-c: #10261c;
+    --p-btn-r: 10px;
+    --p-cap-bg: rgba(255,184,77,0.08); --p-cap-r: 12px;
+    --p-dj-av: linear-gradient(135deg,#ffb84d,#d96b2b); --p-dj-bub: rgba(255,184,77,0.13);
+    --p-user-av: linear-gradient(135deg,#7fb48a,#3d6b4f); --p-user-bub: rgba(127,180,138,0.14);
+    --p-input-bg: rgba(10,23,18,0.7); --p-send-bg: linear-gradient(135deg,#ffb84d,#e07b39); --p-send-c: #10261c;
+  }
+  .t-nordic .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='ng' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%2317353f'/><stop offset='1' stop-color='%230f222b'/></linearGradient></defs><rect width='100' height='100' fill='url(%23ng)'/><g fill='%23fff7e6'><circle cx='16' cy='12' r='1.4' opacity='0.8'><animate attributeName='opacity' values='0.2;1;0.2' dur='2.6s' repeatCount='indefinite'/></circle><circle cx='42' cy='7' r='1' opacity='0.7'><animate attributeName='opacity' values='0.3;1;0.3' dur='3.4s' repeatCount='indefinite'/></circle><circle cx='70' cy='14' r='1.3' opacity='0.8'><animate attributeName='opacity' values='0.2;1;0.2' dur='2s' repeatCount='indefinite'/></circle><circle cx='88' cy='24' r='1.1' opacity='0.7'><animate attributeName='opacity' values='0.3;1;0.3' dur='4s' repeatCount='indefinite'/></circle></g><circle cx='84' cy='15' r='7' fill='%23fdf1d7' opacity='0.9'/><circle cx='87' cy='13' r='7' fill='url(%23ng)'/><path d='M0 62 L22 44 L34 58 L52 40 L66 56 L82 44 L100 58 L100 100 L0 100 Z' fill='%23dce8e2'/><path d='M0 72 L20 56 L36 68 L54 52 L72 68 L88 56 L100 68 L100 100 L0 100 Z' fill='%23a8c0b4'/><path d='M0 82 L24 66 L44 78 L64 64 L82 78 L100 68 L100 100 L0 100 Z' fill='%23799b8d'/><g fill='%230e1f16'><path d='M24 100 L24 64 L32 64 L32 100 Z'/><path d='M16 72 L28 58 L40 72 Z'/><path d='M16 84 L28 70 L40 84 Z'/><path d='M16 96 L28 82 L40 96 Z'/></g><g fill='%230b1810'><path d='M60 100 L60 74 L66 74 L66 100 Z'/><path d='M55 84 L63 74 L71 84 Z'/><path d='M55 93 L63 83 L71 93 Z'/></g><g><rect x='20' y='56' width='16' height='16' fill='%236b4a2f'/><rect x='24' y='60' width='8' height='8' fill='%23ffb84d'><animate attributeName='opacity' values='0.55;1;0.55' dur='2.8s' repeatCount='indefinite'/></rect><path d='M16 56 L28 46 L40 56 Z' fill='%23502f1d'/><path d='M22 54 L28 47 L34 54 Z' fill='%236b4a2f'/></g></svg>"),
+      linear-gradient(160deg,#16352a 0%,#0b1c15 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-nordic .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 30%, transparent 55%, rgba(5,12,9,0.5) 100%);
+  }
+  .t-nordic .ph-inner { background-image: repeating-linear-gradient(0deg, rgba(255,184,77,0.03) 0 1px, transparent 1px 7px); }
+  .t-nordic .ph-name::after { content: " 🏔"; font-size: 10px; }
+  .t-nordic .ph-cap-role::before { content: "⛰ "; }
+  .t-nordic .ph-song { font-weight: 800; }
+  .t-nordic .ph-status::before { background: #ffb84d; }
+
+  /* ================================================================
+     主题 18 · 蒸汽波未来 Vaporwave
+  ================================================================ */
+  .t-vapor {
+    --p-bg: linear-gradient(180deg, #261a4a 0%, #14102e 100%);
+    --p-text: #f2e6ff; --p-font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --p-radius: 6px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(255,106,213,0.35);
+    --p-shadow: 0 0 0 1px rgba(255,106,213,0.12), 0 0 26px rgba(255,106,213,0.15), 0 26px 60px rgba(0,0,0,0.8);
+    --p-avatar: linear-gradient(135deg,#ff6ad5,#5658d6); --p-avatar-r: 6px;
+    --p-border-c: rgba(255,106,213,0.35);
+    --p-cover: linear-gradient(160deg,#ff6ad5 0%,#c774e8 45%,#5658d6 100%); --p-cover-r: 6px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 30px rgba(255,106,213,0.28), 0 16px 34px rgba(0,0,0,0.6);
+    --p-track: rgba(242,230,255,0.16); --p-fill: linear-gradient(90deg,#ff6ad5,#49c4d6);
+    --p-btn-bg: rgba(86,88,214,0.22); --p-btn-main: linear-gradient(135deg,#ff6ad5,#ff2b6e); --p-btn-main-c: #fff;
+    --p-btn-r: 6px;
+    --p-cap-bg: rgba(86,88,214,0.28); --p-cap-r: 6px;
+    --p-dj-av: linear-gradient(135deg,#ff6ad5,#c774e8); --p-dj-bub: rgba(255,106,213,0.18);
+    --p-user-av: linear-gradient(135deg,#49c4d6,#2b6bb0); --p-user-bub: rgba(73,196,214,0.16);
+    --p-input-bg: rgba(20,16,46,0.8); --p-send-bg: linear-gradient(135deg,#ff6ad5,#ff2b6e); --p-send-c: #fff;
+  }
+  .t-vapor .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='vg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23ff9ad5'/><stop offset='0.5' stop-color='%23c774e8'/><stop offset='1' stop-color='%235658d6'/></linearGradient><pattern id='grid' width='10' height='10' patternUnits='userSpaceOnUse'><path d='M10 0 L0 0 0 10' fill='none' stroke='rgba(255,43,110,0.5)' stroke-width='0.6'/></pattern></defs><rect width='100' height='100' fill='url(%23vg)'/><g clip-path='url(%23sun)'><rect x='30' y='18' width='40' height='34' fill='%23ff2b6e'/><g stroke='rgba(255,255,255,0.5)' stroke-width='1.4'><line x1='30' y1='26' x2='70' y2='26'/><line x1='30' y1='32' x2='70' y2='32'/><line x1='30' y1='38' x2='70' y2='38'/><line x1='30' y1='44' x2='70' y2='44'/></g></g><defs><clipPath id='sun'><rect x='0' y='18' width='100' height='34'/></clipPath></defs><circle cx='50' cy='34' r='22' fill='%23ffd166' opacity='0.9'/><path d='M0 52 L14 52 L14 58 L0 58 Z M18 52 L32 52 L32 58 L18 58 Z M36 52 L50 52 L50 58 L36 58 Z M54 52 L68 52 L68 58 L54 58 Z M72 52 L86 52 L86 58 L72 58 Z M90 52 L100 52 L100 58 L90 58 Z' fill='%235658d6'/><rect y='52' width='100' height='48' fill='url(%23grid)'/><g fill='%23221a44'><path d='M14 52 L22 38 L30 52 Z'/><path d='M58 52 L66 36 L74 52 Z'/><path d='M84 52 L90 42 L96 52 Z'/></g><g stroke='%23fff' stroke-width='1' opacity='0.85'><path d='M18 14 Q22 10 26 14' fill='none'/><path d='M20 16 Q24 12 28 16' fill='none'/><path d='M24 18 Q28 14 32 18' fill='none'/></g><g><rect x='8' y='84' width='18' height='12' fill='%23221a44'/><circle cx='13' cy='90' r='4.2' fill='none' stroke='%23ff6ad5' stroke-width='1'/><circle cx='13' cy='90' r='1.4' fill='%23ff6ad5'/><rect x='19' y='87' width='4' height='3' fill='%23ff2b6e'/></g></svg>"),
+      linear-gradient(160deg,#ff6ad5 0%,#c774e8 45%,#5658d6 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-vapor .ph-cover::before {
+    content: "A E S T H E T I C";
+    position: absolute; top: 6px; left: 8px;
+    font-size: 7px; font-weight: 700; letter-spacing: 3px; color: #fff; opacity: 0.85;
+    text-shadow: 0 0 6px rgba(255,106,213,0.9);
+  }
+  .t-vapor .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px);
+  }
+  .t-vapor .ph-inner { background-image: repeating-linear-gradient(0deg, rgba(255,106,213,0.04) 0 1px, transparent 1px 5px); }
+  .t-vapor .ph-name::after { content: " ◇"; font-size: 10px; color: #ff6ad5; }
+  .t-vapor .ph-cap-role::before { content: "◇ "; }
+  .t-vapor .ph-cap-en { font-family: "Courier New", monospace; letter-spacing: 0.12em; }
+  .t-vapor .ph-song { text-shadow: 0 0 10px rgba(255,106,213,0.55); }
+
+  /* ================================================================
+     主题 19 · 中国水墨 Ink Wash
+  ================================================================ */
+  .t-ink {
+    --p-bg: linear-gradient(180deg, #f6f0e2 0%, #efe6d0 100%);
+    --p-text: #2b2b33; --p-font: "STKaiti", "KaiTi", "PingFang SC", "Microsoft YaHei", serif;
+    --p-radius: 6px; --p-pad: 18px 16px 16px; --p-border: 2px solid #2b2b33;
+    --p-shadow: 0 0 0 6px #f6f0e2, 0 0 0 7px #c9b78f, 0 24px 50px rgba(80,60,20,0.25);
+    --p-avatar: #2b2b33; --p-avatar-r: 50%; --p-avatar: #2b2b33; --p-avatar-r: 0;
+    --p-border-c: rgba(43,43,51,0.35);
+    --p-cover: linear-gradient(160deg,#fbf7ec 0%,#efe6d0 100%); --p-cover-r: 2px;
+    --p-cover-w: 100%; --p-cover-shadow: inset 0 0 0 1px rgba(43,43,51,0.25), 0 14px 30px rgba(80,60,20,0.18);
+    --p-track: rgba(43,43,51,0.18); --p-fill: #c22b2b;
+    --p-btn-bg: rgba(43,43,51,0.05); --p-btn-main: #2b2b33; --p-btn-main-c: #f6f0e2;
+    --p-btn-r: 2px;
+    --p-cap-bg: rgba(43,43,51,0.05); --p-cap-r: 2px;
+    --p-dj-av: #2b2b33; --p-dj-bub: rgba(43,43,51,0.08);
+    --p-user-av: #c22b2b; --p-user-bub: rgba(194,43,43,0.09);
+    --p-input-bg: #fffdf5; --p-send-bg: #2b2b33; --p-send-c: #f6f0e2;
+  }
+  .t-ink .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fbf7ec'/><g fill='%236d6d78'><path d='M0 74 Q20 60 42 72 Q64 84 80 72 Q90 66 100 70 L100 100 L0 100 Z' opacity='0.55'/><path d='M0 80 Q18 68 40 79 Q62 90 84 77 Q94 72 100 75 L100 100 L0 100 Z' opacity='0.4'/></g><g fill='%232b2b33'><path d='M0 66 Q24 46 50 62 Q74 78 88 64 Q95 58 100 62 L100 100 L0 100 Z'/><path d='M0 74 Q20 62 44 74 Q66 85 86 73 Q94 69 100 72 L100 100 L0 100 Z' opacity='0.75'/></g><g><g><animateTransform attributeName='transform' type='translate' values='0 0; 8 0; 0 0' dur='9s' repeatCount='indefinite'/><ellipse cx='30' cy='58' rx='14' ry='4' fill='rgba(43,43,51,0.12)'/></g><g><animateTransform attributeName='transform' type='translate' values='0 0; -10 0; 0 0' dur='11s' repeatCount='indefinite'/><ellipse cx='72' cy='52' rx='12' ry='3.4' fill='rgba(43,43,51,0.10)'/></g></g><circle cx='84' cy='30' r='6' fill='%23c22b2b'/><g stroke='%232b2b33' stroke-width='1.6' fill='none' stroke-linecap='round'><path d='M30 30 Q33 27 36 30 Q39 33 42 30'/><path d='M52 22 Q55 19 58 22 Q61 25 64 22'/><path d='M64 30 Q67 27 70 30'/></g><g fill='%232b2b33'><rect x='12' y='86' width='14' height='14'/><rect x='13' y='87' width='5.4' height='5.4' fill='%23fbf7ec'/><rect x='19.6' y='87' width='5.4' height='5.4' fill='%23fbf7ec'/><rect x='13' y='93.6' width='5.4' height='5.4' fill='%23fbf7ec'/><rect x='19.6' y='93.6' width='5.4' height='5.4' fill='%23fbf7ec'/></g><rect x='76' y='84' width='14' height='14' fill='%23c22b2b'/><text x='79' y='94' font-family='KaiTi, serif' font-size='10' fill='%23f6f0e2'>樂</text></svg>"),
+      linear-gradient(160deg,#fbf7ec 0%,#efe6d0 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-ink .ph-cover::before {
+    content: "山水之间 · 听一首好曲";
+    position: absolute; top: 8px; left: 10px;
+    font-size: 8px; font-weight: 600; letter-spacing: 0.15em; color: #2b2b33; opacity: 0.75;
+  }
+  .t-ink .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(43,43,51,0.025) 0 1px, transparent 1px 6px);
+  }
+  .t-ink .ph-inner { background-image: radial-gradient(120% 60% at 50% 0%, rgba(194,43,43,0.04), transparent 60%); }
+  .t-ink .ph-name::after { content: " ·电台"; font-size: 10px; opacity: 0.6; }
+  .t-ink .ph-cap-role::before { content: "⌖ "; }
+  .t-ink .ph-song { font-family: "STKaiti", "KaiTi", serif; font-weight: 700; }
+  .t-ink .ph-status::before { background: #c22b2b; }
+  .t-ink .ph-caption, .t-ink .ph-msg .ph-mbubble, .t-ink .ph-cbtn { border-radius: 2px; }
+
+  /* ================================================================
+     主题 20 · 太空漫游 Deep Space
+  ================================================================ */
+  .t-space {
+    --p-bg: linear-gradient(180deg, #05060f 0%, #0a0a18 100%);
+    --p-text: #e8ecf8; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 24px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(232,236,248,0.14);
+    --p-shadow: 0 0 0 1px rgba(123,77,216,0.18), 0 0 30px rgba(123,77,216,0.14), 0 26px 60px rgba(0,0,0,0.85);
+    --p-avatar: linear-gradient(135deg,#7b4dd8,#3fc8ff); --p-avatar-r: 50%;
+    --p-border-c: rgba(232,236,248,0.2);
+    --p-cover: linear-gradient(160deg,#07081a 0%,#05060f 100%); --p-cover-r: 18px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 36px rgba(63,200,255,0.15), 0 16px 34px rgba(0,0,0,0.75);
+    --p-track: rgba(232,236,248,0.14); --p-fill: linear-gradient(90deg,#7b4dd8,#3fc8ff);
+    --p-btn-bg: rgba(123,77,216,0.14); --p-btn-main: linear-gradient(135deg,#7b4dd8,#3fc8ff); --p-btn-main-c: #fff;
+    --p-btn-r: 14px;
+    --p-cap-bg: rgba(63,200,255,0.07); --p-cap-r: 14px;
+    --p-dj-av: linear-gradient(135deg,#3fc8ff,#1b6fd8); --p-dj-bub: rgba(63,200,255,0.12);
+    --p-user-av: linear-gradient(135deg,#e8b85a,#c06a2b); --p-user-bub: rgba(232,184,90,0.12);
+    --p-input-bg: rgba(5,6,15,0.75); --p-send-bg: linear-gradient(135deg,#7b4dd8,#3fc8ff); --p-send-c: #fff;
+  }
+  .t-space .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='neb' cx='0.32' cy='0.4' r='0.6'><stop offset='0' stop-color='rgba(123,77,216,0.5)'/><stop offset='1' stop-color='rgba(123,77,216,0)'/></radialGradient><radialGradient id='neb2' cx='0.75' cy='0.6' r='0.5'><stop offset='0' stop-color='rgba(63,200,255,0.35)'/><stop offset='1' stop-color='rgba(63,200,255,0)'/></radialGradient></defs><rect width='100' height='100' fill='%2305060f'/><rect width='100' height='100' fill='url(%23neb)'/><rect width='100' height='100' fill='url(%23neb2)'/><g fill='%23fff'><circle cx='10' cy='12' r='1' opacity='0.8'><animate attributeName='opacity' values='0.2;1;0.2' dur='2.2s' repeatCount='indefinite'/></circle><circle cx='30' cy='24' r='0.8' opacity='0.7'><animate attributeName='opacity' values='0.3;1;0.3' dur='3s' repeatCount='indefinite'/></circle><circle cx='55' cy='8' r='1.1' opacity='0.9'><animate attributeName='opacity' values='0.2;1;0.2' dur='1.8s' repeatCount='indefinite'/></circle><circle cx='90' cy='18' r='0.9' opacity='0.8'><animate attributeName='opacity' values='0.3;1;0.3' dur='2.6s' repeatCount='indefinite'/></circle><circle cx='70' cy='86' r='1' opacity='0.7'><animate attributeName='opacity' values='0.2;1;0.2' dur='3.2s' repeatCount='indefinite'/></circle><circle cx='18' cy='70' r='0.8' opacity='0.7'><animate attributeName='opacity' values='0.3;1;0.3' dur='2.4s' repeatCount='indefinite'/></circle></g><g stroke='rgba(255,255,255,0.75)' stroke-width='1' fill='none'><g><animateTransform attributeName='transform' type='translate' values='0 0; 14 6; 28 12' dur='6s' repeatCount='indefinite'/><circle cx='8' cy='30' r='2.6'/></g><path d='M8 30 L16 26'/><path d='M12 34 L20 38'/></g><g transform='rotate(-18 72 56)'><circle cx='72' cy='56' r='13' fill='%23e8b85a'/><ellipse cx='72' cy='56' rx='22' ry='5.5' fill='none' stroke='%23c9a24a' stroke-width='1.8' transform='rotate(-16 72 56)'/><ellipse cx='72' cy='56' rx='22' ry='5.5' fill='none' stroke='%23c9a24a' stroke-width='1.8' transform='rotate(14 72 56)'/></g><circle cx='28' cy='52' r='8' fill='%233fc8ff'/><circle cx='28' cy='52' r='8' fill='none' stroke='%23fff' stroke-width='0.6' opacity='0.5'/><path d='M24 50 Q28 44 32 50' fill='none' stroke='%23fff' stroke-width='1' opacity='0.7'/></svg>"),
+      linear-gradient(160deg,#07081a 0%,#05060f 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-space .ph-cover::before {
+    content: "◆ DEEP SPACE";
+    position: absolute; top: 7px; left: 9px;
+    font-family: "Courier New", monospace; font-size: 6.5px; font-weight: 700;
+    letter-spacing: 2px; color: #3fc8ff; opacity: 0.85;
+    text-shadow: 0 0 6px rgba(63,200,255,0.8);
+  }
+  .t-space .ph-inner { background-image: radial-gradient(120% 60% at 50% 115%, rgba(123,77,216,0.14), transparent 60%); }
+  .t-space .ph-name::after { content: " ◈"; font-size: 10px; color: #3fc8ff; }
+  .t-space .ph-cap-role::before { content: "◆ "; }
+  .t-space .ph-cap-en { font-family: "Courier New", monospace; letter-spacing: 0.06em; color: #9ad9ff; }
+  .t-space .ph-song { letter-spacing: 0.02em; }
+
+  /* ================================================================
+     主题 21 · 孟菲斯几何 Memphis
+  ================================================================ */
+  .t-memphis {
+    --p-bg: linear-gradient(180deg, #f4efe6 0%, #eae2d2 100%);
+    --p-text: #1a1a1a; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 10px; --p-pad: 18px 16px 16px; --p-border: 1px solid #1a1a1a;
+    --p-shadow: 0 0 0 3px #1a1a1a, 0 18px 44px rgba(0,0,0,0.28);
+    --p-avatar: linear-gradient(135deg,#e63946,#fbbf24); --p-avatar-r: 6px;
+    --p-border-c: rgba(26,26,26,0.4);
+    --p-cover: linear-gradient(160deg,#f4efe6 0%,#eae2d2 100%); --p-cover-r: 6px;
+    --p-cover-w: 100%; --p-cover-shadow: 3px 3px 0 rgba(26,26,26,0.9);
+    --p-track: rgba(26,26,26,0.18); --p-fill: linear-gradient(90deg,#e63946,#2563eb);
+    --p-btn-bg: #fff; --p-btn-main: #e63946; --p-btn-main-c: #fff;
+    --p-btn-r: 6px;
+    --p-cap-bg: #fff; --p-cap-r: 6px;
+    --p-dj-av: #2563eb; --p-dj-bub: rgba(37,99,235,0.12);
+    --p-user-av: #34d399; --p-user-bub: rgba(52,211,153,0.18);
+    --p-input-bg: #fff; --p-send-bg: #1a1a1a; --p-send-c: #fff;
+  }
+  .t-memphis .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f4efe6'/><g fill='%23fbbf24'><circle cx='16' cy='16' r='3'/><circle cx='84' cy='20' r='4'/><circle cx='12' cy='82' r='2.5'/><circle cx='90' cy='78' r='3'/><circle cx='70' cy='10' r='2.5'/></g><g fill='%23e63946'><path d='M0 0 L30 0 L0 30 Z'/><circle cx='82' cy='62' r='16'/><rect x='6' y='70' width='7' height='26' transform='rotate(20 9 83)'/></g><g fill='%232563eb'><path d='M100 0 L70 0 L100 30 Z'/><rect x='86' y='40' width='12' height='26' transform='rotate(-12 92 53)'/><path d='M38 0 L52 0 L40 14 Z'/></g><g fill='%2334d399'><circle cx='40' cy='30' r='7'/><path d='M54 92 L64 76 L74 92 Z'/><rect x='20' y='40' width='5' height='22' transform='rotate(30 22 51)'/></g><g stroke='%231a1a1a' stroke-width='1.2' fill='none'><path d='M0 66 Q50 58 100 66'/><path d='M0 88 Q40 94 100 84'/></g><g><animateTransform attributeName='transform' type='translate' values='0 0; 0 -4; 0 0' dur='3s' repeatCount='indefinite'/><circle cx='50' cy='54' r='9' fill='%23e63946'/><circle cx='50' cy='54' r='3.5' fill='%23fff'/></g></svg>"),
+      linear-gradient(160deg,#f4efe6 0%,#eae2d2 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-memphis .ph-cover::before {
+    content: "MEMPHIS · GEOMETRY";
+    position: absolute; top: 7px; left: 9px;
+    font-size: 6.5px; font-weight: 800; letter-spacing: 1.8px; color: #1a1a1a; opacity: 0.8;
+  }
+  .t-memphis .ph-inner { background-image: repeating-linear-gradient(45deg, rgba(26,26,26,0.03) 0 2px, transparent 2px 12px); }
+  .t-memphis .ph-name::after { content: " ◯"; font-size: 10px; color: #e63946; }
+  .t-memphis .ph-cap-role::before { content: "◯ "; }
+  .t-memphis .ph-song { font-weight: 900; letter-spacing: -0.01em; }
+  .t-memphis .ph-caption, .t-memphis .ph-msg .ph-mbubble, .t-memphis .ph-cbtn { border: 1.5px solid rgba(26,26,26,0.5); }
+
+  /* ================================================================
+     主题 22 · 深夜爵士 Jazz Bar
+  ================================================================ */
+  .t-jazz {
+    --p-bg: linear-gradient(180deg, #2a0d10 0%, #1a0608 100%);
+    --p-text: #f5e6d8; --p-font: "Georgia", "PingFang SC", "Microsoft YaHei", serif;
+    --p-radius: 6px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(255,209,102,0.35);
+    --p-shadow: 0 0 0 1px rgba(255,209,102,0.14), 0 0 30px rgba(255,43,110,0.12), 0 26px 60px rgba(0,0,0,0.85);
+    --p-avatar: linear-gradient(135deg,#ffd166,#e07b39); --p-avatar-r: 50%;
+    --p-border-c: rgba(255,209,102,0.32);
+    --p-cover: linear-gradient(160deg,#33101a 0%,#1a0608 100%); --p-cover-r: 4px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 34px rgba(255,209,102,0.18), 0 16px 34px rgba(0,0,0,0.75);
+    --p-track: rgba(245,230,216,0.15); --p-fill: linear-gradient(90deg,#ffd166,#ff2b6e);
+    --p-btn-bg: rgba(255,209,102,0.08); --p-btn-main: linear-gradient(135deg,#ffd166,#ff2b6e); --p-btn-main-c: #1a0608;
+    --p-btn-r: 4px;
+    --p-cap-bg: rgba(255,209,102,0.07); --p-cap-r: 4px;
+    --p-dj-av: linear-gradient(135deg,#ffd166,#d96b2b); --p-dj-bub: rgba(255,209,102,0.13);
+    --p-user-av: linear-gradient(135deg,#ff2b6e,#b0235a); --p-user-bub: rgba(255,43,110,0.13);
+    --p-input-bg: rgba(26,6,8,0.8); --p-send-bg: linear-gradient(135deg,#ffd166,#ff2b6e); --p-send-c: #1a0608;
+  }
+  .t-jazz .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='spot' cx='0.5' cy='0.28' r='0.5'><stop offset='0' stop-color='rgba(255,209,102,0.4)'/><stop offset='1' stop-color='rgba(255,209,102,0)'/></radialGradient></defs><rect width='100' height='100' fill='%23200a0f'/><rect width='100' height='100' fill='url(%23spot)'/><g fill='%23ff2b6e'><text x='22' y='34' font-family='Georgia, serif' font-size='19' font-style='italic' font-weight='700'>JAZZ</text><animate attributeName='opacity' values='0.85;1;0.85' dur='2.4s' repeatCount='indefinite'/></g><text x='22' y='34' font-family='Georgia, serif' font-size='19' font-style='italic' font-weight='700' fill='%23ffd166' opacity='0.75'>JAZZ</text><g stroke='%23ffd166' stroke-width='1' fill='none' opacity='0.6'><path d='M20 40 L36 40'/><path d='M20 44 L30 44'/></g><g fill='%230f0406'><path d='M18 72 L42 72 L48 86 L12 86 Z'/><path d='M52 72 L82 72 L88 88 L46 88 Z'/><circle cx='56' cy='72' r='3.4'/><circle cx='64' cy='72' r='3.4'/><circle cx='72' cy='72' r='3.4'/></g><g stroke='rgba(255,209,102,0.5)' stroke-width='1.2' fill='none'><path d='M20 70 Q30 62 26 52'/><path d='M62 70 Q70 58 66 46'/></g><g><g opacity='0.5'><animateTransform attributeName='transform' type='translate' values='0 0; 6 -10; 12 -20' dur='4s' repeatCount='indefinite'/><ellipse cx='34' cy='66' rx='9' ry='3.4' fill='rgba(245,230,216,0.16)'/></g><g opacity='0.4'><animateTransform attributeName='transform' type='translate' values='0 0; -5 -9; -10 -18' dur='5s' repeatCount='indefinite'/><ellipse cx='70' cy='62' rx='7' ry='2.8' fill='rgba(245,230,216,0.14)'/></g></g><path d='M36 88 L70 88 L74 94 L32 94 Z' fill='%230f0406'/></svg>"),
+      linear-gradient(160deg,#33101a 0%,#1a0608 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-jazz .ph-cover::before {
+    content: "◉ LIVE MUSIC · 11PM";
+    position: absolute; top: 7px; left: 9px;
+    font-family: "Courier New", monospace; font-size: 6.5px; font-weight: 700;
+    letter-spacing: 1.8px; color: #ffd166; opacity: 0.85;
+    text-shadow: 0 0 6px rgba(255,209,102,0.7);
+  }
+  .t-jazz .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 95% at 50% 40%, transparent 46%, rgba(10,3,4,0.7) 100%);
+  }
+  .t-jazz .ph-inner { background-image: radial-gradient(120% 55% at 50% 112%, rgba(255,43,110,0.10), transparent 62%); }
+  .t-jazz .ph-name::after { content: " ◉"; font-size: 9px; color: #ffd166; }
+  .t-jazz .ph-cap-role::before { content: "◉ "; }
+  .t-jazz .ph-cap-en { font-family: Georgia, serif; font-style: italic; letter-spacing: 0.03em; color: #ffd9a0; }
+  .t-jazz .ph-song { font-family: Georgia, serif; font-weight: 700; letter-spacing: 0.02em; }
+  .t-jazz .ph-cbtn { border-radius: 2px; }
+
+  /* ================================================================
+     主题 23 · 复古漫画 Comic Book
+  ================================================================ */
+  .t-comic {
+    --p-bg: linear-gradient(180deg, #ffb347 0%, #ff8c3a 100%);
+    --p-text: #111; --p-font: "Arial Black", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --p-radius: 2px; --p-pad: 18px 16px 16px; --p-border: 3px solid #111;
+    --p-shadow: 0 0 0 4px #ffd500, 0 0 0 7px #111, 0 24px 50px rgba(0,0,0,0.35);
+    --p-avatar: #ff2b2b; --p-avatar-r: 50%;
+    --p-border-c: #111;
+    --p-cover: #2b6bff; --p-cover-r: 0; --p-cover-w: 100%;
+    --p-cover-shadow: 4px 4px 0 #111;
+    --p-track: rgba(255,255,255,0.4); --p-fill: #ffd500;
+    --p-btn-bg: #fff; --p-btn-main: #ff2b2b; --p-btn-main-c: #fff;
+    --p-btn-r: 0;
+    --p-cap-bg: #fff; --p-cap-r: 0;
+    --p-dj-av: #ffd500; --p-dj-bub: #fff;
+    --p-user-av: #2b6bff; --p-user-bub: #fff;
+    --p-input-bg: #fff; --p-send-bg: #111; --p-send-c: #fff;
+  }
+  .t-comic .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='cdot' width='5' height='5' patternUnits='userSpaceOnUse'><circle cx='1.2' cy='1.2' r='1' fill='rgba(0,0,0,0.2)'/></pattern></defs><rect width='100' height='100' fill='%232b6bff'/><rect width='100' height='100' fill='url(%23cdot)'/><g fill='%2309101f'><path d='M0 74 L12 74 L12 60 L22 60 L22 68 L30 68 L30 50 L40 50 L40 74 L52 74 L52 62 L62 62 L62 74 L74 74 L74 52 L84 52 L84 60 L100 60 L100 100 L0 100 Z'/></g><g fill='%23ffd500'><path d='M18 92 L26 76 L34 92 Z'/><path d='M70 90 L76 76 L82 90 Z'/></g><g><animateTransform attributeName='transform' type='scale' values='1;1.12;1' dur='1.6s' repeatCount='indefinite'/><g transform='translate(50 34)'><path d='M-26 -8 L-12 -8 L-12 -20 L-4 -12 L4 -24 L4 -10 L20 -10 L20 4 L-26 4 Z' fill='%23fff' stroke='%23111' stroke-width='2.2'/><text x='-21' y='-5' font-family='Arial Black' font-size='10.5' font-weight='900' fill='%23ff2b2b' stroke='%23111' stroke-width='0.8'>POW!</text></g></g><g fill='%23ffd500'><path d='M70 18 L76 10 L82 18 L90 14 L86 22 L94 24 L85 27 L86 35 L79 29 L72 35 L73 27 L64 24 L72 22 Z'/></g><g fill='%23ff2b2b'><rect x='8' y='8' width='22' height='9' stroke='%23111' stroke-width='2'/><text x='10' y='15' font-family='Arial Black' font-size='7' font-weight='900' fill='%23fff'>BOOM</text></g></svg>"),
+      #2b6bff;
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-comic .ph-cover::before {
+    content: "★ KAPOW ★";
+    position: absolute; top: 5px; right: 8px;
+    font-size: 7px; font-weight: 900; color: #ffd500;
+    background: #111; padding: 2px 6px; letter-spacing: 1px;
+  }
+  .t-comic .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0 1.5px, transparent 1.5px 4px);
+  }
+  .t-comic .ph-inner { background-image: repeating-linear-gradient(45deg, rgba(17,17,17,0.05) 0 2px, transparent 2px 9px); }
+  .t-comic .ph-name::after { content: " 💥"; font-size: 10px; }
+  .t-comic .ph-cap-role::before { content: "★ "; }
+  .t-comic .ph-song { font-weight: 900; -webkit-text-stroke: 0.5px #fff; }
+  .t-comic .ph-caption, .t-comic .ph-msg .ph-mbubble, .t-comic .ph-cbtn, .t-comic .ph-input .ph-field, .t-comic .ph-input .ph-mic { border: 2px solid #111; box-shadow: 2px 2px 0 #111; }
+
+  /* ================================================================
+     主题 24 · 沙漠绿洲 Desert Oasis
+  ================================================================ */
+  .t-oasis {
+    --p-bg: linear-gradient(180deg, #1c2b3a 0%, #12304d 100%);
+    --p-text: #fdf3e0; --p-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --p-radius: 20px; --p-pad: 18px 16px 16px; --p-border: 1px solid rgba(253,243,224,0.18);
+    --p-shadow: 0 22px 50px rgba(0,0,0,0.6);
+    --p-avatar: linear-gradient(135deg,#ff9e58,#e85d3a); --p-avatar-r: 50%;
+    --p-border-c: rgba(253,243,224,0.25);
+    --p-cover: linear-gradient(160deg,#ff9e58 0%,#ff6b3a 60%,#e85d3a 100%); --p-cover-r: 14px;
+    --p-cover-w: 100%; --p-cover-shadow: 0 0 0 1px rgba(253,243,224,0.12), 0 16px 34px rgba(0,0,0,0.55);
+    --p-track: rgba(253,243,224,0.16); --p-fill: linear-gradient(90deg,#ff9e58,#ff6b3a);
+    --p-btn-bg: rgba(253,243,224,0.07); --p-btn-main: linear-gradient(135deg,#ff9e58,#ff6b3a); --p-btn-main-c: #2a1508;
+    --p-btn-r: 12px;
+    --p-cap-bg: rgba(255,158,88,0.09); --p-cap-r: 12px;
+    --p-dj-av: linear-gradient(135deg,#ff9e58,#e85d3a); --p-dj-bub: rgba(255,158,88,0.14);
+    --p-user-av: linear-gradient(135deg,#2f8fa3,#1d6f6a); --p-user-bub: rgba(47,143,163,0.14);
+    --p-input-bg: rgba(18,48,77,0.75); --p-send-bg: linear-gradient(135deg,#ff9e58,#ff6b3a); --p-send-c: #2a1508;
+  }
+  .t-oasis .ph-cover {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='sky' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%230f2c47'/><stop offset='0.45' stop-color='%23ff9e58'/><stop offset='1' stop-color='%23ff6b3a'/></linearGradient></defs><rect width='100' height='100' fill='url(%23sky)'/><g fill='%23fff3c9'><circle cx='14' cy='10' r='1.2' opacity='0.9'><animate attributeName='opacity' values='0.3;1;0.3' dur='2.8s' repeatCount='indefinite'/></circle><circle cx='38' cy='6' r='1' opacity='0.8'><animate attributeName='opacity' values='0.2;1;0.2' dur='3.4s' repeatCount='indefinite'/></circle><circle cx='62' cy='12' r='1.1' opacity='0.8'><animate attributeName='opacity' values='0.3;1;0.3' dur='2.2s' repeatCount='indefinite'/></circle><circle cx='86' cy='8' r='1.2' opacity='0.9'><animate attributeName='opacity' values='0.2;1;0.2' dur='3s' repeatCount='indefinite'/></circle></g><circle cx='78' cy='34' r='10' fill='%23fff3c9'/><g stroke='%23fff3c9' stroke-width='0.9' opacity='0.55'><path d='M0 76 Q24 66 48 76 Q72 86 100 76 L100 100 L0 100 Z'/><path d='M0 84 Q24 76 50 84 Q74 92 100 84 L100 100 L0 100 Z'/></g><path d='M0 70 Q25 62 50 70 Q75 78 100 70 L100 100 L0 100 Z' fill='%23e8a35c'/><path d='M0 80 Q25 72 50 80 Q75 88 100 80 L100 100 L0 100 Z' fill='%23c9823f'/><path d='M0 90 Q25 84 50 90 Q75 96 100 90 L100 100 L0 100 Z' fill='%23a5682c'/><ellipse cx='42' cy='88' rx='16' ry='5' fill='%232f8fa3'/><ellipse cx='42' cy='87' rx='16' ry='5' fill='%23a8d8d8'><animate attributeName='opacity' values='0.7;1;0.7' dur='3s' repeatCount='indefinite'/></ellipse><path d='M50 88 Q54 84 58 88' stroke='%23fff' stroke-width='1' fill='none' opacity='0.7'/><g stroke='%230e2a14' stroke-width='2' fill='none' stroke-linecap='round'><path d='M56 96 Q58 82 62 70'/><path d='M62 96 Q64 84 62 74'/></g><g fill='%231d4d3a'><path d='M62 70 Q52 66 50 58 Q58 60 62 70 Z'/><path d='M62 70 Q72 64 76 56 Q68 60 62 70 Z'/><path d='M62 70 Q60 60 66 54 Q66 62 62 70 Z'/></g><path d='M54 78 Q58 80 62 78 Q66 80 70 78' stroke='%231d4d3a' stroke-width='1.6' fill='none'/></svg>"),
+      linear-gradient(160deg,#ff9e58 0%,#ff6b3a 60%,#e85d3a 100%);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 0 0;
+    background-repeat: no-repeat;
+  }
+  .t-oasis .ph-cover::before {
+    content: "◈ DESERT OASIS";
+    position: absolute; top: 7px; left: 9px;
+    font-size: 6.5px; font-weight: 800; letter-spacing: 2px; color: #fff3c9; opacity: 0.85;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  }
+  .t-oasis .ph-cover::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(180deg, transparent 45%, rgba(10,15,25,0.45) 100%);
+  }
+  .t-oasis .ph-inner { background-image: radial-gradient(120% 60% at 50% 112%, rgba(255,158,88,0.10), transparent 62%); }
+  .t-oasis .ph-name::after { content: " 🌴"; font-size: 10px; }
+  .t-oasis .ph-cap-role::before { content: "🏜 "; }
+  .t-oasis .ph-song { font-weight: 800; }
+
+/* 主题专属微调 */
+  .t-retro .ph-cover::after, .t-pixel .ph-cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 5px);
+  }
+  .t-mono .ph-caption, .t-editorial .ph-caption { border-left: 3px solid #111; }
+  .t-festival .ph-caption { border-left: 6px solid #fde047; transform: rotate(-0.6deg); }
+  .t-festival .ph-song { transform: rotate(-1.2deg) scale(1.04); letter-spacing: 0.01em; text-transform: uppercase; }
+  .t-festival .ph-cbtn.main { transform: rotate(0.8deg) skewX(-4deg); }
+  .t-luxe .ph-cap-en, .t-luxe .ph-song { letter-spacing: 0.02em; }
+  .t-editorial .ph-cap-en { font-size: 13px; }
+  .t-editorial .ph-msg .ph-mbubble { font-family: "Helvetica Neue", Arial, "PingFang SC", sans-serif; }
+  .t-retro .ph-msg .ph-mbubble { font-family: "PingFang SC", sans-serif; }
+  .t-neon .ph-cover { box-shadow: 0 0 0 2px rgba(0,243,255,0.6), 0 0 30px rgba(157,0,255,0.55); }
+
+  footer { max-width: 1280px; margin: 44px auto 0; color: var(--page-muted); font-size: 12.5px; line-height: 1.8; }
+  footer b { color: var(--page-text); }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>🎛️ AI 电台 · 24 款 UI 风格参考</h1>
+  <p>所有方案均保留现有功能与布局（DJ 头像 / 播放器 / 进度条 / 控制键 / 倍速音量 / 双语字幕 / 聊天面板 / 语音输入），只替换视觉皮肤。<br>滑到页面底部告诉我你喜欢的编号，我把它实装成正式主题（CSS 变量级改造，功能代码零改动）。</p>
+  <span class="tag">当前风格：赛博朋克霓虹 × 像素矩阵</span>
+</div>
+
+<div class="gallery">
+
+  <!-- 01 暖阳橙调 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>01 · 暖阳橙调</h2>
+      <div class="en">Sunset Glow</div>
+      <p class="desc">傍晚落日般的暖橙渐变，像黄昏下班路上的车载电台，温暖治愈。</p>
+      <div class="swatches"><i style="background:#ffb347"></i><i style="background:#ff6b35"></i><i style="background:#ff5e62"></i><i style="background:#2a1008"></i></div>
+      <div class="badge">圆角卡片 · 暖色辉光 · 治愈系</div>
+    </div>
+    <div class="phone t-sunset">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 极简黑白 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>02 · 极简黑白</h2>
+      <div class="en">Mono Minimal</div>
+      <p class="desc">纯黑白灰 + 大面积留白，无装饰无渐变，靠排版和节奏感取胜，专注听歌本身。</p>
+      <div class="swatches"><i style="background:#111"></i><i style="background:#f6f6f4"></i><i style="background:#bbb"></i><i style="background:#e6e6e2"></i></div>
+      <div class="badge">无彩色 · 直角 · 杂志排版感</div>
+    </div>
+    <div class="phone t-mono">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">SFX ON</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 复古磁带 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>03 · 复古磁带</h2>
+      <div class="en">Retro Cassette</div>
+      <p class="desc">80 年代磁带机味道：米黄机身、棕色旋钮、衬线字体，像打开一盒老磁带。</p>
+      <div class="swatches"><i style="background:#efe3cd"></i><i style="background:#8b5a2b"></i><i style="background:#5a3a1e"></i><i style="background:#c98d4b"></i></div>
+      <div class="badge">米黄 × 深棕 · 衬线字体 · 老物件质感</div>
+    </div>
+    <div class="phone t-retro">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 霓虹脉冲 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>04 · 霓虹脉冲</h2>
+      <div class="en">Neon Pulse</div>
+      <p class="desc">在现有赛博朋克基础上「净化」：去掉噪点扫描线，保留青紫霓虹，更干净更脉冲感。</p>
+      <div class="swatches"><i style="background:#00f3ff"></i><i style="background:#9d00ff"></i><i style="background:#ff2ec4"></i><i style="background:#0a0a14"></i></div>
+      <div class="badge">现风格改良版 · 更干净的霓虹</div>
+    </div>
+    <div class="phone t-neon">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 奶油新拟态 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>05 · 奶油新拟态</h2>
+      <div class="en">Neumorphism</div>
+      <p class="desc">浅灰奶油底 + 同色系凹凸阴影，按钮像「长在」界面里一样，柔和立体。</p>
+      <div class="swatches"><i style="background:#e6e9f2"></i><i style="background:#6c7cff"></i><i style="background:#9a8cff"></i><i style="background:#ffb35c"></i></div>
+      <div class="badge">柔光立体 · 极浅灰调 · 触感亲切</div>
+    </div>
+    <div class="phone t-neumo">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 玻璃拟态 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>06 · 玻璃拟态</h2>
+      <div class="en">Glassmorphism</div>
+      <p class="desc">粉紫蓝渐变背景 + 半透明毛玻璃卡片，模糊叠层，现代灵动有呼吸感。</p>
+      <div class="swatches"><i style="background:#2b1055"></i><i style="background:#7597de"></i><i style="background:#e2a9c8"></i><i style="background:#fda085"></i></div>
+      <div class="badge">多彩渐变 · 毛玻璃 · 轻奢灵动</div>
+    </div>
+    <div class="phone t-glass">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 日系奶油 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>07 · 日系奶油</h2>
+      <div class="en">Japandi Cream</div>
+      <p class="desc">奶油白 + 原木色 + 超大圆角胶囊按钮，日式杂货铺的温暖松弛感。</p>
+      <div class="swatches"><i style="background:#faf6ef"></i><i style="background:#a98b5f"></i><i style="background:#c9a87c"></i><i style="background:#7f9d7a"></i></div>
+      <div class="badge">奶油 × 原木 · 胶囊圆角 · 松弛感</div>
+    </div>
+    <div class="phone t-japandi">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 暗夜鎏金 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>08 · 暗夜鎏金</h2>
+      <div class="en">Dark Luxe</div>
+      <p class="desc">纯黑背景 + 金色点缀 + 衬线字体，午夜酒吧的高级感，像深夜 FM 金曲节目。</p>
+      <div class="swatches"><i style="background:#0c0b09"></i><i style="background:#d4af37"></i><i style="background:#f0d77b"></i><i style="background:#4a3d20"></i></div>
+      <div class="badge">黑 × 金 · 衬线字体 · 深夜电台感</div>
+    </div>
+    <div class="phone t-luxe">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 像素游戏 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>09 · 像素游戏</h2>
+      <div class="en">8-Bit Game</div>
+      <p class="desc">红白机游戏 HUD：硬边像素块、亮青色主色、贴地投影，像在打音游。</p>
+      <div class="swatches"><i style="background:#1a1c2c"></i><i style="background:#4cf"></i><i style="background:#f3ef5c"></i><i style="background:#94b13c"></i></div>
+      <div class="badge">硬边像素 · 游戏 HUD · 贴地投影</div>
+    </div>
+    <div class="phone t-pixel">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 极光幻境 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>10 · 极光幻境</h2>
+      <div class="en">Aurora</div>
+      <p class="desc">深蓝夜空 + 蓝绿紫极光渐变封面与进度条，静谧又迷幻，适合深夜播放。</p>
+      <div class="swatches"><i style="background:#070b1e"></i><i style="background:#5ab0ff"></i><i style="background:#7cf5c4"></i><i style="background:#c084fc"></i></div>
+      <div class="badge">深蓝 × 极光渐变色 · 静谧迷幻</div>
+    </div>
+    <div class="phone t-aurora">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 播客编辑风 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>11 · 播客编辑风</h2>
+      <div class="en">Editorial Podcast</div>
+      <p class="desc">白底黑字 + 衬线大标题，像 Apple Podcasts / 报纸排版，干净利落的"内容优先"。</p>
+      <div class="swatches"><i style="background:#ffffff"></i><i style="background:#16161a"></i><i style="background:#e2e2e6"></i><i style="background:#8f8f9a"></i></div>
+      <div class="badge">白底衬线 · 内容优先 · 播客杂志感</div>
+    </div>
+    <div class="phone t-editorial">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">SFX ON</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 音乐节海报 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>12 · 音乐节海报</h2>
+      <div class="en">Festival Poster</div>
+      <p class="desc">高饱和紫底 + 荧光黄撞色 + 粗斜体，斜切贴纸感，像音乐节主舞台大屏。</p>
+      <div class="swatches"><i style="background:#4c1d95"></i><i style="background:#fde047"></i><i style="background:#f97316"></i><i style="background:#22d3ee"></i></div>
+      <div class="badge">高饱和撞色 · 粗斜体 · 贴纸感</div>
+    </div>
+    <div class="phone t-festival">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover">♪</div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Alright, warming up the night with this one.</span><span class="ph-cap-zh">晚上好，这首歌给大家热热身。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">今晚第 3 首，Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 夏威夷度假 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>13 · 夏威夷度假</h2>
+      <div class="en">Hawaiian Resort · Sunset Poster</div>
+      <p class="desc">血红夕阳冲浪大片：巨型血红落日半沉海面、倒影金波闪烁、四层卷浪追逐滚动、冲浪者贴浪尖驰骋、椰树剪影随风摇，整片封面都是夏威夷的黄昏。</p>
+      <div class="swatches"><i style="background:#ff5e3a"></i><i style="background:#d92c55"></i><i style="background:#8e1e4e"></i><i style="background:#2f8fa3"></i><i style="background:#3a1526"></i></div>
+      <div class="badge">血红落日 × 卷浪冲浪 · 倒影金波 · 椰树剪影 · 海鸥 · Aloha</div>
+    </div>
+    <div class="phone t-hawaii">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Catch a red sunset, ride the wave.</span><span class="ph-cap-zh">追上这片血红落日，踩着浪头冲过去。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">冲浪时间到！夕阳烧红海面，正好来首 Ed Sheeran 的 Shape of You～</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 暗黑装饰艺术 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>14 · 银翼杀手 2049</h2>
+      <div class="en">Blade Runner 2049 · Dark Future</div>
+      <p class="desc">银翼杀手 2049 的暗黑未来：全息女声广告悬浮在塔楼群之上、昏黄巨日隐入雾霾、斜雨穿过霓虹、橙色雾气吞没街道，在 2049 年的洛杉矶里听歌。</p>
+      <div class="swatches"><i style="background:#0a0c10"></i><i style="background:#ff8c3a"></i><i style="background:#49c4d6"></i><i style="background:#ff9d4d"></i><i style="background:#cfd6da"></i></div>
+      <div class="badge">全息 Joi 广告 × 塔楼剪影 · 昏黄巨日 · 斜雨 · 橙色雾霾 · 霓虹地面光</div>
+    </div>
+    <div class="phone t-decoart">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Rain falls, the city breathes, we keep playing.</span><span class="ph-cap-zh">雨一直下，城市还在呼吸，音乐不能停。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">这里是 2049 年的洛杉矶，霓虹还醒着——Ed Sheeran 的 Shape of You，信号从塔顶发来。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 赛博东京雨夜 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>15 · 赛博东京雨夜</h2>
+      <div class="en">Cyberpunk Tokyo · Neon Rain</div>
+      <p class="desc">赛博东京雨夜：霓虹月亮悬在塔楼群之上、粉紫霓虹招牌闪烁、雨丝斜落穿过灯光、街道反光带拖出青紫长线，整座城在雨里发光。</p>
+      <div class="swatches"><i style="background:#0d0818"></i><i style="background:#ff2bd6"></i><i style="background:#00e5ff"></i><i style="background:#7b2bff"></i><i style="background:#20081a"></i></div>
+      <div class="badge">霓虹月亮 × 塔楼剪影 · 雨丝动画 · 街面反光 · 日文霓虹字 · 東京</div>
+    </div>
+    <div class="phone t-cyberpunk">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Rain over neon, the city never sleeps.</span><span class="ph-cap-zh">雨落霓虹城，东京不睡觉，音乐也不停。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">新宿的雨正下着，霓虹把街道染成粉色——Shape of You，送你一片赛博黄昏。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 波普艺术 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>16 · 波普艺术</h2>
+      <div class="en">Pop Art · Boom Culture</div>
+      <p class="desc">波普艺术：亮黄底半调网点、粗黑描边、红蓝撞色太阳射线旋转、黑白同心圆爆炸、POP 大字压场，夸张得像漫画杂志封面。</p>
+      <div class="swatches"><i style="background:#ffd500"></i><i style="background:#ff2b2b"></i><i style="background:#0062ff"></i><i style="background:#111111"></i><i style="background:#ffffff"></i></div>
+      <div class="badge">半调网点 × 粗黑轮廓 · 旋转太阳射线 · 同心圆 · POP 大字 · 撞色</div>
+    </div>
+    <div class="phone t-popart">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">POP! Let the colors shout.</span><span class="ph-cap-zh">砰！让颜色大声喊出来，这就是波普的态度。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">BANG！这颜色够炸吧——Shape of You 配上波普撞色，耳朵和眼睛一起开派对。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 北欧木屋 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>17 · 北欧木屋</h2>
+      <div class="en">Nordic Cabin · Winter Night</div>
+      <p class="desc">北欧木屋冬夜：深蓝夜空星星眨眼、满月挂在山脊、三层雪山由亮到暗、松林剪影下小木屋亮着暖黄窗光一明一暗，像在壁炉边听歌。</p>
+      <div class="swatches"><i style="background:#17353f"></i><i style="background:#dce8e2"></i><i style="background:#799b8d"></i><i style="background:#ffb84d"></i><i style="background:#6b4a2f"></i></div>
+      <div class="badge">星星眨眼 × 三层雪山 · 松林剪影 · 木屋暖窗呼吸 · 满月 · 冬夜</div>
+    </div>
+    <div class="phone t-nordic">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Snow falls, fire glows, stay a while.</span><span class="ph-cap-zh">雪落着，壁炉亮着，别急着走，再听一首。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">窗外是雪山和星星，屋里是暖黄的壁炉——Shape of You，陪你度过这个北欧夜晚。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 蒸汽波未来 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>18 · 蒸汽波未来</h2>
+      <div class="en">Vaporwave · Retro Future</div>
+      <p class="desc">蒸汽波未来：粉紫渐变天空、条纹半日悬浮、透视网格地平线延伸、罗马柱剪影立在两侧、复古磁带图标，泛着上世纪对未来的想象。</p>
+      <div class="swatches"><i style="background:#ff6ad5"></i><i style="background:#c774e8"></i><i style="background:#5658d6"></i><i style="background:#ff2b6e"></i><i style="background:#221a44"></i></div>
+      <div class="badge">粉紫渐变 × 条纹半日 · 透视网格 · 罗马柱 · 复古磁带 · AESTHETIC</div>
+    </div>
+    <div class="phone t-vapor">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">A E S T H E T I C · forever.</span><span class="ph-cap-zh">粉色地平线上的复古未来，信号从磁带里传来。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">欢迎来到 1984 年想象中的未来——Shape of You 在罗马柱之间循环播放，无限复古。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 19 中国水墨 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>19 · 中国水墨</h2>
+      <div class="en">Ink Wash · 山水电台</div>
+      <p class="desc">中国水墨山水：宣纸底上远山淡近山浓、云雾缓缓横移、朱红落日点睛、三只飞鸟掠过、角落盖一枚「樂」字印章，留白处都是诗意。</p>
+      <div class="swatches"><i style="background:#fbf7ec"></i><i style="background:#2b2b33"></i><i style="background:#6d6d78"></i><i style="background:#c22b2b"></i><i style="background:#efe6d0"></i></div>
+      <div class="badge">宣纸底 × 远山近山 · 云雾横移 · 朱红落日 · 飞鸟 · 印章「樂」</div>
+    </div>
+    <div class="phone t-ink">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Mountains listen, rivers hum along.</span><span class="ph-cap-zh">山在听，水在哼，这一曲入山水。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">各位施主有礼了，此曲名为 Shape of You，山高水长，且听我娓娓道来。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20 太空漫游 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>20 · 太空漫游</h2>
+      <div class="en">Deep Space · Orbit Radio</div>
+      <p class="desc">太空漫游：紫青双色星云铺底、星星忽明忽暗、彗星拖尾划过、土星带着光环静静旋转、远处一颗青色行星，在深空里放歌。</p>
+      <div class="swatches"><i style="background:#05060f"></i><i style="background:#7b4dd8"></i><i style="background:#3fc8ff"></i><i style="background:#e8b85a"></i><i style="background:#fff"></i></div>
+      <div class="badge">紫青云星云 × 闪烁群星 · 彗星拖尾 · 土星光环 · 青色行星 · DEEP SPACE</div>
+    </div>
+    <div class="phone t-space">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Drifting past Saturn, music on repeat.</span><span class="ph-cap-zh">正掠过土星，信号微弱但旋律不断。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">这里是轨道电台，距离地球 12 亿公里——Shape of You 顺着星云传到你耳中。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 21 孟菲斯几何 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>21 · 孟菲斯几何</h2>
+      <div class="en">Memphis · Playful Geometry</div>
+      <p class="desc">孟菲斯几何：米白底上红三角蓝色块、波点散落、圆环漂浮、曲线横穿，红黄蓝绿大胆撞色，像 80 年代家具海报一样活泼。</p>
+      <div class="swatches"><i style="background:#f4efe6"></i><i style="background:#e63946"></i><i style="background:#2563eb"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></div>
+      <div class="badge">红蓝黄绿撞色 × 几何色块 · 波点 · 漂浮圆环 · 曲线 · MEMPHIS</div>
+    </div>
+    <div class="phone t-memphis">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Geometry, color, repeat the fun.</span><span class="ph-cap-zh">几何跳舞，颜色开会，快乐循环播放。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">红色圆和蓝色块正在合唱——Shape of You，孟菲斯电台第一首主打歌。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 22 深夜爵士 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>22 · 深夜爵士</h2>
+      <div class="en">Jazz Bar · Midnight Set</div>
+      <p class="desc">深夜爵士酒吧：聚光灯下 JAZZ 灯牌粉色闪烁、吧台上高脚杯与萨克斯剪影、烟雾袅袅上升、金红暖光里微醺的一夜。</p>
+      <div class="swatches"><i style="background:#200a0f"></i><i style="background:#ffd166"></i><i style="background:#ff2b6e"></i><i style="background:#33101a"></i><i style="background:#f5e6d8"></i></div>
+      <div class="badge">JAZZ 灯牌闪烁 × 聚光灯 · 高脚杯剪影 · 萨克斯 · 上升烟雾 · LIVE</div>
+    </div>
+    <div class="phone t-jazz">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Last call. One more slow one.</span><span class="ph-cap-zh">最后一杯了，再来一首慢的。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">深夜十一点，吧台的灯还亮着——Shape of You，敬这个微醺的夜晚。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 23 复古漫画 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>23 · 复古漫画</h2>
+      <div class="en">Comic Book · KAPOW</div>
+      <p class="desc">复古漫画：亮蓝底半调网点、城市剪影上方 POW 爆炸框心跳缩放、黄色闪电炸开、BOOM 红条压角，粗黑描边满满美式漫画感。</p>
+      <div class="swatches"><i style="background:#2b6bff"></i><i style="background:#ffd500"></i><i style="background:#ff2b2b"></i><i style="background:#111111"></i><i style="background:#ffffff"></i></div>
+      <div class="badge">半调网点 × POW 爆炸框缩放 · 闪电 · BOOM 红条 · 城市剪影 · KAPOW</div>
+    </div>
+    <div class="phone t-comic">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">KAPOW! Next track, hero.</span><span class="ph-cap-zh">砰！下一首，英雄该登场了。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">BOOM！Shape of You 登场，节奏就是你的超能力——准备好变身了吗？</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 24 沙漠绿洲 -->
+  <section class="theme">
+    <div class="theme-info">
+      <h2>24 · 沙漠绿洲</h2>
+      <div class="en">Desert Oasis · Night Camp</div>
+      <p class="desc">沙漠绿洲夜营：落日尽头沙丘起伏、大月亮挂在星空的边缘、棕榈树剪影弯向绿洲、水面波光一闪一闪，篝火旁的夜晚。</p>
+      <div class="swatches"><i style="background:#0f2c47"></i><i style="background:#ff9e58"></i><i style="background:#ff6b3a"></i><i style="background:#2f8fa3"></i><i style="background:#fff3c9"></i></div>
+      <div class="badge">星空 × 大月亮 · 三层沙丘 · 棕榈树剪影 · 绿洲波光 · 篝火露营</div>
+    </div>
+    <div class="phone t-oasis">
+      <div class="ph-inner">
+        <div class="ph-header">
+          <div class="ph-brand"><div class="ph-avatar">DJ</div><div><div class="ph-name">AI Radio</div><div class="ph-status">Online</div></div></div>
+          <div class="ph-hr"><span class="ph-sfx">😄 音效开</span><span class="ph-timer">00:42</span></div>
+        </div>
+        <div class="ph-cover"></div>
+        <div class="ph-meta"><div class="ph-song">Shape of You</div><div class="ph-artist">Ed Sheeran</div></div>
+        <div class="ph-progress"><i></i></div>
+        <div class="ph-times"><span>1:12</span><span>3:53</span></div>
+        <div class="ph-controls"><button class="ph-cbtn">⏮</button><button class="ph-cbtn main">▶</button><button class="ph-cbtn">⏭</button></div>
+        <div class="ph-aux"><span class="ph-rate">1.0x</span><div class="ph-vol"><i></i></div><span>🔊</span></div>
+        <div class="ph-caption"><span class="ph-cap-role">DJ</span><span class="ph-cap-en">Campfire crackles, desert sings.</span><span class="ph-cap-zh">篝火噼啪，沙漠哼着歌，绿洲就在眼前。</span></div>
+        <div class="ph-chat">
+          <div class="ph-msg dj"><div class="ph-mavatar">DJ</div><div class="ph-mbubble">绿洲的篝火刚点着，棕榈树在风里摇晃——Shape of You，沙漠夜电台开播。</div></div>
+          <div class="ph-msg user"><div class="ph-mavatar">我</div><div class="ph-mbubble">来首周杰伦试试</div></div>
+        </div>
+        <div class="ph-input"><span class="ph-field">跟 DJ 说点什么…</span><span class="ph-mic">🎤</span><span class="ph-send">发送</span></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <b>24 款一览：</b> ① 暖阳橙调（治愈） ② 极简黑白（克制） ③ 复古磁带（怀旧） ④ 霓虹脉冲（现风格改良） ⑤ 奶油新拟态（柔和） ⑥ 玻璃拟态（灵动） ⑦ 日系奶油（松弛） ⑧ 暗夜鎏金（高级） ⑨ 像素游戏（玩味） ⑩ 极光幻境（迷幻） ⑪ 播客编辑风（内容） ⑫ 音乐节海报（炸裂） ⑬ 夏威夷度假（血红夕阳·冲浪） ⑭ 银翼杀手 2049（暗黑未来） ⑮ 赛博东京雨夜（赛博朋克） ⑯ 波普艺术（撞色） ⑰ 北欧木屋（冬日） ⑱ 蒸汽波未来（复古未来） ⑲ 中国水墨（山水） ⑳ 太空漫游（深空） ㉑ 孟菲斯几何（活泼） ㉒ 深夜爵士（微醺） ㉓ 复古漫画（KAPOW） ㉔ 沙漠绿洲（夜营）<br>
+  选中后回复编号即可（如「换 07」），我会按该风格重写主题变量并实装，功能零改动。
+</footer>
+
+</body>
+</html>
