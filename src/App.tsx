@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRadioStore, WALLPAPERS, CUSTOM_TOKEN_LIST, type WallpaperId } from "@/store/useRadioStore";
+import { useRadioStore, WALLPAPERS, type WallpaperId } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { ReconnectingWS } from "@/lib/ws";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
@@ -19,8 +19,8 @@ export default function App() {
   const toggleSfx = useRadioStore((s) => s.toggleSfx);
   const wallpaperId = useRadioStore((s) => s.wallpaperId);
   const setWallpaper = useRadioStore((s) => s.setWallpaper);
-  const customColors = useRadioStore((s) => s.customColors);
-  const setCustomColors = useRadioStore((s) => s.setCustomColors);
+  const customImage = useRadioStore((s) => s.customImage);
+  const setCustomImage = useRadioStore((s) => s.setCustomImage);
   const [pickerOpen, setPickerOpen] = useState(false);
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
@@ -196,22 +196,18 @@ export default function App() {
 
   // 开场白只在"开始电台"按钮点击时触发一次（移除自动触发，避免重复说话）
 
-  // 自定义壁纸：把 7 个 token 的 H/S/L 注入为 21 个 CSS 变量。
-  // CSS .app[data-wallpaper="custom"] 会用这些变量派生 --bg / --surface / --text 等。
-  const customStyle = useMemo<React.CSSProperties | undefined>(() => {
-    if (wallpaperId !== "custom") return undefined;
-    const style: Record<string, string> = {};
-    for (const { key } of CUSTOM_TOKEN_LIST) {
-      const v = customColors[key];
-      style[`--c-${key}-h`] = `${v.h}`;
-      style[`--c-${key}-s`] = `${v.s}%`;
-      style[`--c-${key}-l`] = `${v.l}%`;
+  // 自定义图片壁纸：把 DataURL 注入为 CSS 变量 --wp-custom-image，
+  // CSS .app[data-wallpaper="image"] 的 ::before 用它铺底，叠加暗色蒙版保证文字可读。
+  useEffect(() => {
+    if (customImage) {
+      document.documentElement.style.setProperty("--wp-custom-image", `url("${customImage}")`);
+    } else {
+      document.documentElement.style.removeProperty("--wp-custom-image");
     }
-    return style as React.CSSProperties;
-  }, [wallpaperId, customColors]);
+  }, [customImage]);
 
   return (
-    <div className="app" data-wallpaper={wallpaperId} style={customStyle}>
+    <div className="app" data-wallpaper={wallpaperId}>
       <header className="header">
         <div className="header-brand">
           <div className="header-avatar" aria-label="DJ">DJ</div>
@@ -263,7 +259,6 @@ export default function App() {
               playDj={engine.playDj}
               stopDj={engine.stopDj}
               wallpaperId={wallpaperId}
-              customColors={customColors}
             />
           ) : null
         }
@@ -277,9 +272,9 @@ export default function App() {
       {pickerOpen && (
         <WallpaperPicker
           current={wallpaperId}
-          custom={customColors}
+          customImage={customImage}
           onPick={(id: WallpaperId) => { setWallpaper(id); }}
-          onCustom={(patch) => setCustomColors(patch)}
+          onImage={(url) => setCustomImage(url)}
           onClose={() => setPickerOpen(false)}
         />
       )}

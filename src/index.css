@@ -3149,34 +3149,33 @@ body::after {
 }
 
 /* =========================================================
- * 🎨 自定义壁纸（7 token 设计器 · 每个 token 独立色轮调节）
- * App.tsx 会注入 7×3=21 个 CSS 变量：
- *   --c-bg-h / --c-bg-s / --c-bg-l
- *   --c-surface-h / -s / -l
- *   --c-surfaceAlt-h / -s / -l
- *   --c-text-h / -s / -l
- *   --c-textSoft-h / -s / -l
- *   --c-accent-h / -s / -l
- *   --c-border-h / -s / -l
- * 下面把所有 UI 变量（--bg/--surface/--text/--accent/...）从 7 token 派生。
- * 频谱紫色 LED 不在此切换。
+ * 🖼 自定义图片壁纸（用户上传图片作为整页背景）
+ * App.tsx 会注入 --wp-custom-image: url(...)
+ * ::before 放图片层，::after 放暗色蒙版保证文字可读
+ * UI 元素继承默认 pulse token（白字 + 深色 panel），无需 override
  * ========================================================= */
-.app[data-wallpaper="custom"] {
-  --bg:          hsl(var(--c-bg-h)         var(--c-bg-s)         var(--c-bg-l));
-  --bg-deep:     hsl(var(--c-bg-h)         var(--c-bg-s)         calc(var(--c-bg-l) * 0.45));
-  --surface:     hsl(var(--c-surface-h)    var(--c-surface-s)    var(--c-surface-l));
-  --surface-2:   hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
-  --text:        hsl(var(--c-text-h)       var(--c-text-s)       var(--c-text-l));
-  --text-soft:   hsl(var(--c-textSoft-h)   var(--c-textSoft-s)   var(--c-textSoft-l));
-  --muted:       hsla(var(--c-textSoft-h)  var(--c-textSoft-s)   var(--c-textSoft-l) / 0.6);
-  --muted-2:     hsla(var(--c-textSoft-h)  var(--c-textSoft-s)   var(--c-textSoft-l) / 0.3);
-  --accent:      hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
-  --accent-glow: hsla(var(--c-accent-h)    var(--c-accent-s)     var(--c-accent-l) / 0.55);
-  --border:      hsl(var(--c-border-h)     var(--c-border-s)     var(--c-border-l));
-  --border-strong: hsl(var(--c-border-h)   var(--c-border-s)     calc(var(--c-border-l) + 12%));
-  --neon-cyan:   hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
-  --neon-purple: hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
-  --glitch-red:  hsl(var(--c-accent-h)     var(--c-accent-s)     var(--c-accent-l));
+.app[data-wallpaper="image"] {
+  position: relative;
+  isolation: isolate;
+}
+.app[data-wallpaper="image"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--wp-custom-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -2;
+  pointer-events: none;
+}
+.app[data-wallpaper="image"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* =========================================================
@@ -3684,59 +3683,6 @@ body::after {
   color: #e8ebf2;
 }
 
-/* 派生：把 7 token 注入到 settings-card，让 var(--bg)/--surface/--text 全部生效 */
-.settings-card[data-wallpaper="custom"] {
-  background:
-    linear-gradient(180deg,
-      hsl(var(--c-bg-h) var(--c-bg-s) calc(var(--c-bg-l) + 4%)) 0%,
-      hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l)) 100%);
-  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
-}
-.settings-card[data-wallpaper="custom"] .modal-title {
-  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
-}
-.settings-card[data-wallpaper="custom"] .modal-label {
-  color: hsl(var(--c-text-soft-h, var(--c-textSoft-h)) var(--c-text-soft-s, var(--c-textSoft-s)) var(--c-text-soft-l, var(--c-textSoft-l)));
-}
-.settings-card[data-wallpaper="custom"] .modal-hint {
-  color: hsl(var(--c-textSoft-h) var(--c-textSoft-s) var(--c-textSoft-l) / 0.75);
-}
-.settings-card[data-wallpaper="custom"] .modal-textarea {
-  background: hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
-  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
-}
-.settings-card[data-wallpaper="custom"] .gender-chip,
-.settings-card[data-wallpaper="custom"] .humor-chip {
-  background: hsl(var(--c-surface-h) var(--c-surface-s) var(--c-surface-l));
-  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
-  border-color: hsl(var(--c-border-h) var(--c-border-s) var(--c-border-l));
-}
-.settings-card[data-wallpaper="custom"] .gender-chip.active,
-.settings-card[data-wallpaper="custom"] .humor-chip.active {
-  background: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
-  color: hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l));
-}
-.settings-card[data-wallpaper="custom"] .voice-item {
-  background: hsl(var(--c-surfaceAlt-h) var(--c-surfaceAlt-s) var(--c-surfaceAlt-l));
-  color: hsl(var(--c-text-h) var(--c-text-s) var(--c-text-l));
-}
-.settings-card[data-wallpaper="custom"] .voice-item.active {
-  border-color: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
-}
-.settings-card[data-wallpaper="custom"] .modal-avatar-tile {
-  background: hsl(var(--c-surface-h) var(--c-surface-s) var(--c-surface-l));
-}
-.settings-card[data-wallpaper="custom"] .modal-btn-primary {
-  background: hsl(var(--c-accent-h) var(--c-accent-s) var(--c-accent-l));
-  color: hsl(var(--c-bg-h) var(--c-bg-s) var(--c-bg-l));
-  border: none;
-}
-.settings-card[data-wallpaper="custom"] .modal-btn-secondary {
-  color: hsl(var(--c-text-soft-h, var(--c-textSoft-h)) var(--c-text-soft-s, var(--c-textSoft-s)) var(--c-text-soft-l, var(--c-textSoft-l)));
-  border-color: hsl(var(--c-border-h) var(--c-border-s) var(--c-border-l));
-  background: transparent;
-}
-
 /* cream：奶油新拟态亮色 */
 .settings-card[data-wallpaper="cream"] {
   background: linear-gradient(180deg, #f3f6fc, #dde1ec);
@@ -3891,4 +3837,156 @@ body::after {
 /* 始终为 picker-body 预留滚动条通道（视觉提示"这里可滚动"） */
 .wallpaper-picker-body {
   scrollbar-gutter: stable;
+}
+
+/* =========================================================
+ * 🖼 自定义图片卡片（极简黑白 · 无渐变 · 细线边框）
+ * ========================================================= */
+.wallpaper-card-image .wallpaper-preview-image {
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.wallpaper-card-image .wp-image-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  z-index: 1;
+}
+.wallpaper-card-image .wp-image-plus {
+  font-size: 28px;
+  font-weight: 300;
+  opacity: 0.5;
+  line-height: 1;
+}
+.wallpaper-card-image .wp-image-label {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+/* =========================================================
+ * 🖼 图片上传设计器（极简黑白）
+ * 黑底白字 + 1px 细线边框，无任何彩色装饰
+ * ========================================================= */
+.image-uploader {
+  margin-top: 14px;
+  padding: 14px;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.uploader-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.uploader-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+.uploader-title-icon { margin-right: 6px; opacity: 0.7; }
+.uploader-clear {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+.uploader-clear:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.uploader-input { display: none; }
+.uploader-dropzone {
+  background: #000;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  padding: 26px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s;
+  width: 100%;
+  font: inherit;
+}
+.uploader-dropzone:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+}
+.uploader-dropzone-icon {
+  font-size: 26px;
+  font-weight: 300;
+  opacity: 0.5;
+  line-height: 1;
+}
+.uploader-dropzone-text { font-size: 12px; font-weight: 500; }
+.uploader-dropzone-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+}
+.uploader-preview {
+  position: relative;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  width: 100%;
+  height: 130px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  font: inherit;
+}
+.uploader-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.uploader-preview:hover .uploader-preview-overlay { opacity: 1; }
+.uploader-err {
+  font-size: 11px;
+  color: #ff6b6b;
+  padding: 8px 10px;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.32);
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+.uploader-footer {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.38);
+  text-align: center;
+  letter-spacing: 0.04em;
 }

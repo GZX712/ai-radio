@@ -1,109 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   WALLPAPERS,
-  CUSTOM_TOKEN_LIST,
-  DEFAULT_CUSTOM,
-  type CustomColors,
-  type CustomTokenPatch,
   type WallpaperId,
 } from "@/store/useRadioStore";
-import { ColorWheel } from "./ColorWheel";
 
 interface WallpaperPickerProps {
   current: WallpaperId;
-  custom: CustomColors;
+  customImage: string | null;
   onPick: (id: WallpaperId) => void;
-  /** 旧式 onCustom(hsl 单点 patch) → 新式 onCustom(token => hsl patch)，传空对象表示全部 token */
-  onCustom: (patch: CustomTokenPatch) => void;
+  /** 传 null 表示清除；返回 false 表示 quota 失败 */
+  onImage: (dataUrl: string | null) => boolean;
   onClose: () => void;
 }
 
 /**
- * 6 套主题预设 palette（用于"一键套"按钮，给设计器一个快速起点）。
- * bg token 决定主基调；其他 6 个 token 在 preset 中按主色 + 补色 + 黑白色阶派生。
+ * 壁纸选择面板：6 款预设配色 + 1 个 🖼 自定义图片（用户上传 → 整页背景）。
+ * 极简黑白设计：黑底白字 + 细线边框，无渐变无装饰。
  */
-const PRESET_PALETTES: { label: string; colors: CustomColors }[] = [
-  {
-    label: "紫青",
-    colors: {
-      bg:         { h: 265, s: 70,  l: 8  },
-      surface:    { h: 265, s: 55,  l: 14 },
-      surfaceAlt: { h: 265, s: 45,  l: 10 },
-      text:       { h: 240, s: 20,  l: 92 },
-      textSoft:   { h: 240, s: 15,  l: 78 },
-      accent:     { h: 195, s: 100, l: 50 },
-      border:     { h: 265, s: 50,  l: 22 },
-    },
-  },
-  {
-    label: "桃红",
-    colors: {
-      bg:         { h: 335, s: 70,  l: 10 },
-      surface:    { h: 335, s: 55,  l: 16 },
-      surfaceAlt: { h: 335, s: 45,  l: 12 },
-      text:       { h: 340, s: 25,  l: 95 },
-      textSoft:   { h: 340, s: 18,  l: 80 },
-      accent:     { h: 25,  s: 95,  l: 58 },
-      border:     { h: 335, s: 50,  l: 24 },
-    },
-  },
-  {
-    label: "海蓝",
-    colors: {
-      bg:         { h: 210, s: 65,  l: 8  },
-      surface:    { h: 210, s: 50,  l: 14 },
-      surfaceAlt: { h: 210, s: 40,  l: 10 },
-      text:       { h: 200, s: 20,  l: 94 },
-      textSoft:   { h: 200, s: 15,  l: 80 },
-      accent:     { h: 175, s: 100, l: 55 },
-      border:     { h: 210, s: 50,  l: 22 },
-    },
-  },
-  {
-    label: "翡翠",
-    colors: {
-      bg:         { h: 160, s: 60,  l: 9  },
-      surface:    { h: 160, s: 50,  l: 14 },
-      surfaceAlt: { h: 160, s: 40,  l: 10 },
-      text:       { h: 80,  s: 25,  l: 95 },
-      textSoft:   { h: 80,  s: 18,  l: 80 },
-      accent:     { h: 50,  s: 100, l: 55 },
-      border:     { h: 160, s: 50,  l: 22 },
-    },
-  },
-  {
-    label: "紫罗兰",
-    colors: {
-      bg:         { h: 285, s: 60,  l: 11 },
-      surface:    { h: 285, s: 50,  l: 17 },
-      surfaceAlt: { h: 285, s: 40,  l: 13 },
-      text:       { h: 290, s: 25,  l: 95 },
-      textSoft:   { h: 290, s: 18,  l: 80 },
-      accent:     { h: 320, s: 90,  l: 60 },
-      border:     { h: 285, s: 50,  l: 24 },
-    },
-  },
-  {
-    label: "暖橙",
-    colors: {
-      bg:         { h: 20,  s: 60,  l: 9  },
-      surface:    { h: 20,  s: 50,  l: 14 },
-      surfaceAlt: { h: 20,  s: 40,  l: 10 },
-      text:       { h: 30,  s: 25,  l: 95 },
-      textSoft:   { h: 30,  s: 18,  l: 80 },
-      accent:     { h: 200, s: 90,  l: 55 },
-      border:     { h: 20,  s: 50,  l: 22 },
-    },
-  },
-];
-
-/**
- * 壁纸选择面板：6 款预设配色 + 1 个 🎨 自定义设计器（7 token × 色轮）。
- * 通过 createPortal 渲染到 document.body 之下，脱离 .app 主题 CSS 变量污染。
- */
-export function WallpaperPicker({ current, custom, onPick, onCustom, onClose }: WallpaperPickerProps) {
+export function WallpaperPicker({ current, customImage, onPick, onImage, onClose }: WallpaperPickerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setPortalTarget(document.body); }, []);
 
   // ESC 关闭
@@ -120,13 +38,45 @@ export function WallpaperPicker({ current, custom, onPick, onCustom, onClose }: 
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const isCustom = current === "custom";
+  const isImage = current === "image";
 
-  // 自定义预览卡片的渐变（用 bg token 表现主基调）
-  const customPreview = `linear-gradient(135deg,
-    hsl(${custom.bg.h} ${custom.bg.s}% ${Math.max(6, custom.bg.l - 4)}%),
-    hsl(${custom.accent.h} ${custom.accent.s}% ${custom.accent.l}%),
-    hsl(${(custom.bg.h + 60) % 360} ${custom.bg.s}% ${Math.min(92, custom.bg.l + 30)}%))`;
+  // 把 File → DataURL（base64）
+  const readAsDataURL = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error("文件读取失败"));
+      fr.readAsDataURL(file);
+    });
+
+  const handleFile = async (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrMsg("仅支持图片文件（jpg/png/webp/gif）");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrMsg("图片过大（建议 ≤2MB），浏览器已拒绝");
+      return;
+    }
+    try {
+      const url = await readAsDataURL(file);
+      const ok = onImage(url);
+      if (!ok) {
+        setErrMsg("本地存储空间已满，请换一张更小的图");
+      } else {
+        setErrMsg(null);
+      }
+    } catch (e) {
+      setErrMsg((e as Error).message || "上传失败");
+    }
+  };
+
+  const handleClear = () => {
+    onImage(null);
+    setErrMsg(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const tree = (
     <div
@@ -137,7 +87,7 @@ export function WallpaperPicker({ current, custom, onPick, onCustom, onClose }: 
       aria-label="选择壁纸"
     >
       <div
-        className={`modal-card wallpaper-picker ${isCustom ? "is-designer-open" : ""}`}
+        className={`modal-card wallpaper-picker ${isImage ? "is-image-open" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
@@ -149,7 +99,7 @@ export function WallpaperPicker({ current, custom, onPick, onCustom, onClose }: 
           选择会保存到本地，下次打开自动应用。
         </p>
 
-        {/* 滚动主体：grid 卡片 + 设计器，开启自定义时可纵向滚动 */}
+        {/* 滚动主体：grid 卡片 + 图片上传设计器 */}
         <div className="wallpaper-picker-body">
 
         <div className="wallpaper-grid">
@@ -183,118 +133,94 @@ export function WallpaperPicker({ current, custom, onPick, onCustom, onClose }: 
             </button>
           ))}
 
-          {/* 🎨 自定义卡片（永远在末尾） */}
+          {/* 🖼 自定义图片卡片（极简黑白，永远在末尾） */}
           <button
             type="button"
-            className={`wallpaper-card wallpaper-card-custom ${isCustom ? "active" : ""}`}
-            onClick={() => onPick("custom")}
-            data-wallpaper="custom"
-            aria-pressed={isCustom}
+            className={`wallpaper-card wallpaper-card-image ${isImage ? "active" : ""}`}
+            onClick={() => onPick("image")}
+            data-wallpaper="image"
+            aria-pressed={isImage}
           >
             <div
-              className="wallpaper-preview wallpaper-preview-live"
-              style={{ background: customPreview }}
+              className="wallpaper-preview wallpaper-preview-image"
+              style={customImage ? { backgroundImage: `url(${customImage})` } : undefined}
             >
+              {!customImage && (
+                <div className="wp-image-empty">
+                  <span className="wp-image-plus">＋</span>
+                  <span className="wp-image-label">点击上传图片</span>
+                </div>
+              )}
               <div className="wp-led">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <span key={i} className="wp-led-cell" style={{ height: `${30 + Math.abs(Math.sin(i * 0.9)) * 70}%` }} />
                 ))}
               </div>
-              {!isCustom && <div className="wp-live-hint">点击自由调色</div>}
             </div>
             <div className="wallpaper-meta">
-              <div className="wallpaper-name">🎨 自定义</div>
-              <div className="wallpaper-desc">7 token · 色轮设计器</div>
+              <div className="wallpaper-name">🖼 自定义壁纸</div>
+              <div className="wallpaper-desc">上传图片 · 整页背景</div>
             </div>
           </button>
         </div>
 
-        {/* 7 token 色轮设计器（只有当前选 custom 才显示） */}
-        {isCustom && (
-          <div className="designer">
-            <div className="designer-header">
-              <div className="designer-title">
-                <span className="designer-title-icon">✨</span>
-                设计器 · 每个 UI 部分独立色轮
+        {/* 图片上传设计器（仅当 current === "image" 时显示，极简黑白） */}
+        {isImage && (
+          <div className="image-uploader">
+            <div className="uploader-header">
+              <div className="uploader-title">
+                <span className="uploader-title-icon">⬆</span>
+                上传自定义壁纸
               </div>
+              {customImage && (
+                <button
+                  type="button"
+                  className="uploader-clear"
+                  onClick={handleClear}
+                  aria-label="清除图片"
+                >
+                  ✕ 清除
+                </button>
+              )}
+            </div>
+
+            {/* 隐藏 input + label 触发器 */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="uploader-input"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+
+            {customImage ? (
               <button
                 type="button"
-                className="designer-reset"
-                onClick={() => {
-                  // 一次性塞 7 个 token 的默认值
-                  const patch: CustomTokenPatch = {};
-                  for (const k of CUSTOM_TOKEN_LIST) {
-                    patch[k.key] = { ...DEFAULT_CUSTOM[k.key] };
-                  }
-                  onCustom(patch);
-                }}
-                aria-label="恢复默认"
+                className="uploader-preview"
+                style={{ backgroundImage: `url(${customImage})` }}
+                onClick={() => fileRef.current?.click()}
+                aria-label="点击替换图片"
               >
-                ↺ 恢复默认
+                <span className="uploader-preview-overlay">点击替换</span>
               </button>
-            </div>
+            ) : (
+              <button
+                type="button"
+                className="uploader-dropzone"
+                onClick={() => fileRef.current?.click()}
+              >
+                <span className="uploader-dropzone-icon">＋</span>
+                <span className="uploader-dropzone-text">点击选择图片</span>
+                <span className="uploader-dropzone-hint">jpg · png · webp · ≤2MB</span>
+              </button>
+            )}
 
-            <div className="designer-list">
-              {CUSTOM_TOKEN_LIST.map(({ key, label, hint }) => {
-                const hsl = custom[key];
-                return (
-                  <div className="token-row" key={key}>
-                    <div className="token-meta">
-                      <div className="token-label">{label}</div>
-                      <div className="token-hint">{hint}</div>
-                      <div
-                        className="token-swatch-inline"
-                        style={{ background: `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)` }}
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <ColorWheel
-                      value={hsl}
-                      size={56}
-                      onChange={(patch) => onCustom({ [key]: patch } as CustomTokenPatch)}
-                    />
-                    <div className="token-values" aria-label={`${label} 当前值`}>
-                      <span style={{ background: `hsl(${hsl.h}, 100%, 50%)`, color: "#fff" }}>
-                        {hsl.h}°
-                      </span>
-                      <span style={{ color: `hsl(${hsl.h}, ${hsl.s}%, ${Math.max(20, hsl.l - 30)}%)` }}>
-                        S {hsl.s}
-                      </span>
-                      <span style={{ color: `hsl(${hsl.h}, ${Math.max(15, hsl.s - 30)}%, 88%)` }}>
-                        L {hsl.l}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {errMsg && <div className="uploader-err">⚠ {errMsg}</div>}
 
-            <div className="designer-footer">
-              <span>💡 拖动圆环选色相 / 拖动方块选 S&amp;L</span>
-              <div className="designer-presets">
-                <span className="designer-presets-label">一键套：</span>
-                {PRESET_PALETTES.map((sw) => (
-                  <button
-                    key={sw.label}
-                    type="button"
-                    className="designer-swatch"
-                    onClick={() => {
-                      const patch: CustomTokenPatch = {};
-                      for (const k of CUSTOM_TOKEN_LIST) patch[k.key] = { ...sw.colors[k.key] };
-                      onCustom(patch);
-                    }}
-                    style={{
-                      background: `linear-gradient(135deg,
-                        hsl(${sw.colors.bg.h} ${sw.colors.bg.s}% ${Math.max(6, sw.colors.bg.l - 6)}%),
-                        hsl(${sw.colors.accent.h} ${sw.colors.accent.s}% ${sw.colors.accent.l}%))`,
-                    }}
-                    title={sw.label}
-                    aria-label={`应用${sw.label}预设`}
-                  >
-                    {sw.label}
-                  </button>
-                ))}
-              </div>
+            <div className="uploader-footer">
+              <span>💡 图片会作为 .app 整页背景，叠加暗色蒙版保证文字可读</span>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { ReconnectingWS } from "@/lib/ws";
-import { useRadioStore, type CustomColors, type WallpaperId } from "@/store/useRadioStore";
+import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 
 interface ChatMessage {
   id: number;
@@ -19,9 +19,8 @@ interface ChatPanelProps {
   /** 播放/停止 DJ 语音（用于 chat-reply 手动 ▶ 播放） */
   playDj: (url: string, en?: string, zh?: string, force?: boolean) => Promise<void>;
   stopDj: () => void;
-  /** 让 DJ 设置弹窗跟随当前壁纸（custom 模式带入 7 token 颜色） */
+  /** 让 DJ 设置弹窗跟随当前壁纸 */
   wallpaperId: WallpaperId;
-  customColors: CustomColors;
 }
 
 // Web Speech API 类型（iOS Safari 用 webkit 前缀）
@@ -109,7 +108,7 @@ function loadPersonality(): Personality {
  * - ⚙️ 按钮可修改 DJ 性别 + 性格特征（持久化于 localStorage）
  * - 语音播放由 App 统一处理，这里只负责显示
  */
-export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId, customColors }: ChatPanelProps) {
+export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // 截图脚本专用：从 localStorage 读测试消息（?testMsgs=1 触发）
     if (typeof window === "undefined") return [];
@@ -549,24 +548,12 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId, customCol
         <button type="button" className="chat-send" onClick={handleSend} aria-label="Send">Send</button>
       </div>
 
-      {/* DJ 性格设置模态框：跟随当前壁纸主题（data-wallpaper + custom 注入 CSS 变量） */}
-      {showSettings && (() => {
-        // custom 模式：注入 7 token 21 个变量到 modal，让 7 token 派生 modal-card 颜色
-        const customVars: Record<string, string> = {};
-        if (wallpaperId === "custom") {
-          for (const k of ["bg","surface","surfaceAlt","text","textSoft","accent","border"] as const) {
-            const v = customColors[k];
-            customVars[`--c-${k}-h`] = `${v.h}`;
-            customVars[`--c-${k}-s`] = `${v.s}%`;
-            customVars[`--c-${k}-l`] = `${v.l}%`;
-          }
-        }
-        return (
+      {/* DJ 性格设置模态框：跟随当前壁纸主题（settings-card[data-wallpaper] 提供主题样式） */}
+      {showSettings && (
         <div className="modal-overlay" onClick={() => setShowSettings(false)} role="dialog" aria-modal="true">
           <div
             className="modal-card settings-card"
             data-wallpaper={wallpaperId}
-            style={customVars as React.CSSProperties}
             onClick={(e) => e.stopPropagation()}
           >
             <header className="modal-header">
@@ -699,8 +686,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId, customCol
             </footer>
           </div>
         </div>
-        );
-      })()}
+      )}
     </section>
   );
 }
