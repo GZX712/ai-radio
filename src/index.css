@@ -296,6 +296,87 @@ body::after {
   font-size: 48px;
 }
 
+/* ============== 自定义封面（无歌曲时用户上传图） ============== */
+.cover-file-input { display: none; }
+.cover-custom {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.cover-custom-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
+}
+.cover-edit-btn {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s, background 0.18s, border-color 0.18s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-family: inherit;
+}
+.cover-custom:hover .cover-edit-btn { opacity: 1; }
+.cover-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.cover-edit-clear { top: 8px; right: 8px; }
+.cover-edit-replace { bottom: 8px; right: 8px; }
+
+/* 无自定义图占位（虚线 dropzone） */
+.cover-add {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  background: #000;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.cover-add:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+.cover-add-plus {
+  font-size: 30px;
+  font-weight: 300;
+  opacity: 0.6;
+  line-height: 1;
+}
+.cover-add-label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
 .meta {
   display: flex;
   flex-direction: column;
@@ -1820,15 +1901,8 @@ body::after {
   color: var(--neon-cyan);
 }
 
-.chat-msg.dj {
-  background: rgba(115, 89, 192, 0.06);
-  border-left: 2px solid rgba(115, 89, 192, 0.55);   /* Fuchsia Blue 紫 */
-}
-
-.chat-msg.user {
-  background: rgba(251, 166, 70, 0.06);
-  border-left: 2px solid rgba(251, 166, 70, 0.55);   /* Solar Fusion 暖橙 */
-}
+/* 移除：之前 .chat-msg.dj/.user 这两层各加了 6% 彩底 + 2px 左/右侧彩边作为区分，但整条消息背景+边线在视觉上读成"侧边假线"被用户吐槽。
+   DJ/USER 区分度交给 .chat-msg-content 自身（pulse: 14% Fuchsia Blue + glow；其他主题单独覆写）。 */
 
 .chat-role {
   font-family: "JetBrains Mono", monospace;

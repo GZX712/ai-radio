@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useRef } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
@@ -46,6 +47,38 @@ export function Player({
   const duration = useRadioStore((s) => s.duration);
   const volume = useRadioStore((s) => s.volume);
   const rate = useRadioStore((s) => s.playbackRate);
+  const customCover = useRadioStore((s) => s.customCover);
+  const setCustomCover = useRadioStore((s) => s.setCustomCover);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  /** File → DataURL */
+  const readAsDataURL = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error("文件读取失败"));
+      fr.readAsDataURL(file);
+    });
+
+  const handleCoverFile = async (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    try {
+      const url = await readAsDataURL(file);
+      setCustomCover(url);
+    } catch {
+      /* 静默失败 */
+    }
+  };
+
+  const handleCoverClear = () => {
+    setCustomCover(null);
+    if (coverInputRef.current) coverInputRef.current.value = "";
+  };
+
+  const hasSongCover = !!now?.picUrl;
+  const songPicUrl = now?.picUrl;
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
 
@@ -57,11 +90,60 @@ export function Player({
 
   return (
     <main className="player" data-playing={isPlaying}>
+      {/* 隐藏 file input（触发上传） */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="cover-file-input"
+        onChange={(e) => handleCoverFile(e.target.files?.[0])}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
       <div className="cover-wrapper">
-        {now?.picUrl ? (
-          <PixelCover src={now.picUrl} alt={now.name || "Cover"} isPlaying={isPlaying} />
+        {hasSongCover ? (
+          // 1. 有歌曲封面：优先用专辑封面（不可改）
+          <PixelCover src={songPicUrl!} alt={now.name || "Cover"} isPlaying={isPlaying} />
+        ) : customCover ? (
+          // 2. 无歌曲但有自定义图：用户图 + hover 显示清除按钮
+          <div className="cover-custom">
+            <div
+              className="cover-custom-bg"
+              style={{ backgroundImage: `url(${customCover})` }}
+              role="img"
+              aria-label="自定义播放器封面"
+            />
+            <button
+              type="button"
+              className="cover-edit-btn cover-edit-clear"
+              onClick={handleCoverClear}
+              title="清除自定义封面"
+              aria-label="清除自定义封面"
+            >
+              ✕
+            </button>
+            <button
+              type="button"
+              className="cover-edit-btn cover-edit-replace"
+              onClick={() => coverInputRef.current?.click()}
+              title="替换图片"
+              aria-label="替换图片"
+            >
+              ✏
+            </button>
+          </div>
         ) : (
-          <div className="cover-placeholder" />
+          // 3. 都无：虚线 dropzone 占位（点击上传）
+          <button
+            type="button"
+            className="cover-add"
+            onClick={() => coverInputRef.current?.click()}
+            aria-label="上传自定义播放器封面"
+          >
+            <span className="cover-add-plus">＋</span>
+            <span className="cover-add-label">上传封面</span>
+          </button>
         )}
       </div>
 
