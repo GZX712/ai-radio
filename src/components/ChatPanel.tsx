@@ -512,8 +512,11 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                   {playingReplyId === m.id ? "🔊 正在播放…" : "🎧 点 ▶ 听 DJ 的回复"}
                 </span>
               )}
-              {/* DJ 气泡右下角💡小灯（壁纸主题适配） */}
-              {m.role === "dj" && <span className="chat-bulb" aria-hidden="true">💡</span>}
+              {/* DJ 气泡右下角💡小灯（仅 auto 类型：切歌/开场/天气/趣闻；
+                 reply（聊天回复）不要小灯，免得在用户交流场景显得娱乐过头） */}
+              {m.role === "dj" && m.kind === "auto" && (
+                <span className="chat-bulb" aria-hidden="true">💡</span>
+              )}
               {/* DJ 消息回复手动 ▶/⏸ 按钮 */}
               {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
                 <button
