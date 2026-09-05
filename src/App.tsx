@@ -21,6 +21,7 @@ export default function App() {
   const setWallpaper = useRadioStore((s) => s.setWallpaper);
   const playerBgImage = useRadioStore((s) => s.playerBgImage);
   const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
+  const djAvatar = useRadioStore((s) => s.djAvatar);
   const [pickerOpen, setPickerOpen] = useState(false);
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
@@ -199,7 +200,11 @@ export default function App() {
     <div className="app" data-wallpaper={wallpaperId}>
       <header className="header">
         <div className="header-brand">
-          <div className="header-avatar" aria-label="DJ">DJ</div>
+          <div className="header-avatar" aria-label="DJ">
+            {djAvatar
+              ? <img src={djAvatar} alt="DJ" className="header-avatar-img" />
+              : <span className="header-avatar-fallback">DJ</span>}
+          </div>
           <div>
             <div className="header-name">AI Radio</div>
             <div className="header-status">{isPlaying ? "Speaking" : "Online"}</div>

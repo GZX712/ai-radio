@@ -113,6 +113,9 @@ function loadPersonality(): Personality {
  * - 语音播放由 App 统一处理，这里只负责显示
  */
 export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPanelProps) {
+  // 聊天历史初始值：从 store / localStorage 加载（用户消息 + DJ reply；DJ auto 不存）
+  const persistedChat = useRadioStore((s) => s.chatHistory);
+  const saveChatHistory = useRadioStore((s) => s.saveChatHistory);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // 截图脚本专用：从 localStorage 读测试消息（?testMsgs=1 触发）
     if (typeof window === "undefined") return [];
@@ -125,6 +128,25 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     } catch { /* ignore */ }
     return [];
   });
+  // 启动时把持久化历史里的 user/reply 灌入 messages（首次挂载）
+  const historyHydrated = useRef(false);
+  if (!historyHydrated.current && persistedChat.length > 0) {
+    historyHydrated.current = true;
+    // 仅在 messages 为空时才灌入（避免覆盖用户的当前会话）
+    if (messages.length === 0) {
+      const hydrated: ChatMessage[] = persistedChat.map((it) => ({
+        id: it.id,
+        role: it.role,
+        // ChatMessage.kind 不含 "user"，用户消息用 "auto"（display 上靠 role===user 区分）
+        kind: it.kind === "reply" ? "reply" : "auto",
+        en: it.en,
+        zh: it.zh,
+        time: it.time,
+      }));
+      // 用 setTimeout 0 避在 render 期间 setState
+      setTimeout(() => setMessages(hydrated), 0);
+    }
+  }
   const [input, setInput] = useState("");
   const [hideZh, setHideZh] = useState(false);
   const [isOpen, setIsOpen] = useState(true); // 默认展开对话窗口
@@ -143,11 +165,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     if (typeof localStorage === "undefined") return null;
     return localStorage.getItem("ai-radio-user-avatar");
   });
-  // DJ 头像（上传后覆盖默认 🎙，影响所有 DJ 消息气泡左边的圆形头像）
-  const [djAvatar, setDjAvatar] = useState<string | null>(() => {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem("ai-radio-dj-avatar");
-  });
+  // DJ 头像：所有 DJ 气泡 + 顶部 header 用同一张图（统一从 store 拿，不再组件内 useState）
+  const djAvatar = useRadioStore((s) => s.djAvatar);
+  const setDjAvatar = useRadioStore((s) => s.setDjAvatar);
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const djAvatarFileRef = useRef<HTMLInputElement>(null);
   const syncTimerRef = useRef<number | null>(null);
@@ -183,6 +203,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   const nextId = useRef(1);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const djThinking = useRadioStore((s) => s.djThinking);
+  // "3D 流式打字" 动效标记：reply 到达后 1.7s 内该 id 的文本 reveal 出
+  const streamingIdRef = useRef<number | null>(null);
+  const streamTimerRef = useRef<number | null>(null);
   // 当前手动播放的 chat-reply 消息 id（▶ 再点变 ⏸）
   const [playingReplyId, setPlayingReplyId] = useState<number | null>(null);
 
@@ -191,34 +214,61 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   };
 
-  // DJ 消息显示（dj 类型语音由 App 自动播；chat-reply 由用户手动 ▶）
+  // DJ 消息显示
+  // - chat-reply（用户与 DJ 真对话）→ APPEND 累积（历史对话）→ 持久化到 store
+  // - auto（切歌/开场/天气/趣闻等）→ REPLACE 最新一条（用最新一条覆盖，bubble 不堆积）
+  // 这条规则解决两个用户痛点：
+  //   1) "DJ 答非所问"：之前 chat-reply 显示但被下一轮 auto 替换掉了上下文
+  //   2) "DJ 话术覆盖用户消息"：之前所有 DJ 都 filter 替换会显得"切歌话把对话顶走了"
   useEffect(() => {
     return ws.onMessage((msg) => {
       const m = msg as Record<string, unknown>;
       if ((m.type === "dj" || m.type === "chat-reply") && m.en) {
         const reply = m as { en: string; zh: string; audioUrl?: string; action?: string; song?: unknown; funny?: boolean };
         setMessages((prev) => {
-          // 去重：与上一条 DJ 消息相同 → 不追加（防"同一句说两遍"）
-          const lastDj = [...prev].reverse().find((x) => x.role === "dj");
-          if (lastDj && lastDj.en === reply.en) return prev;
-          // 替换式：旧的 DJ 消息全部移除，只保留最新一条（用户消息保留）
-          // 罐头笑判定：后端 funny=true（LLM 自评）→ 必笑；
-          // 兜底：幽默人设（非 none）下用户与 DJ 拌嘴的真回复 → 50% 也笑（LLM 判定偶尔偏严，拌嘴场景不该冷场）
+          // 去重：与上一条同 kind 同内容 → 不追加（防"同一句说两遍"）
+          const lastSame = [...prev].reverse().find((x) =>
+            x.role === "dj" &&
+            ((m.type === "chat-reply" && x.kind === "reply") ||
+             (m.type !== "chat-reply" && x.kind === "auto")) &&
+            x.en === reply.en
+          );
+          if (lastSame) return prev;
+
+          const isReply = m.type === "chat-reply";
           const humorOn = (personalityRef.current?.humorStyle ?? "none") !== "none";
-          const djReplyIsReal = !!reply.audioUrl && m.type === "chat-reply";
+          const djReplyIsReal = !!reply.audioUrl && isReply;
           const funnyFinal = reply.funny === true || (humorOn && djReplyIsReal && Math.random() < 0.5);
+
+          const newItem: ChatMessage = {
+            id: nextId.current++,
+            role: "dj",
+            kind: isReply ? "reply" : "auto",
+            en: reply.en,
+            zh: reply.zh ?? "",
+            audioUrl: reply.audioUrl,
+            funny: funnyFinal,
+            time: now(),
+          };
+
+          if (isReply) {
+            // chat-reply APPEND（保留所有 DJ 历史）
+            // 设 streamingId → 通知渲染层给最新一条加 "3D 流式"打字动效（剪裁 reveal）
+            const appended = [...prev, newItem];
+            streamingIdRef.current = newItem.id;
+            // 1.6s 后清掉 streaming 标记（届时已 reveal 完成）
+            if (streamTimerRef.current !== null) window.clearTimeout(streamTimerRef.current);
+            streamTimerRef.current = window.setTimeout(() => {
+              streamingIdRef.current = null;
+              // 触发重渲染 — 用 setMessages(null) 不会真改数据，只为驱动 reflow
+              setMessages((cur) => [...cur]);
+            }, 1700);
+            return appended;
+          }
+          // auto REPLACE：所有旧的 auto DJ 消息移除；user + reply 保留
           return [
-            ...prev.filter((x) => x.role !== "dj"),
-            {
-              id: nextId.current++,
-              role: "dj",
-              kind: m.type === "chat-reply" ? "reply" : "auto",
-              en: reply.en,
-              zh: reply.zh ?? "",
-              audioUrl: reply.audioUrl,
-              funny: funnyFinal,
-              time: now(),
-            },
+            ...prev.filter((x) => x.role !== "dj" || x.kind !== "auto"),
+            newItem,
           ];
         });
         // 播放控制命令 → 执行对应动作（切歌/暂停/播放/音量/点歌）
@@ -226,6 +276,29 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
       }
     });
   }, [ws, onAction]);
+
+  // 持久化：messages 变化时把 user + DJ reply 写入 localStorage（debounce 500ms）
+  // - 用户消息（role==="user"，kind 这里当成 "user"）— 全部保存
+  // - DJ 真回复（role==="dj" && kind==="reply"）— 保存
+  // - DJ 自动话术（kind==="auto"）— 不保存（辛老师要的："切歌话术不需要保存"）
+  // 上限 100 条（store loadChatHistory 同样限制）
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const persisted = messages
+        .filter((m) => m.role === "user" || (m.role === "dj" && m.kind === "reply"))
+        .slice(-100)
+        .map((m) => ({
+          id: m.id,
+          role: m.role,
+          kind: (m.role === "user" ? "user" : "reply") as "user" | "reply",
+          en: m.en,
+          zh: m.zh,
+          time: m.time,
+        }));
+      saveChatHistory(persisted);
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [messages, saveChatHistory]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -301,17 +374,37 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     }
   };
 
-  // 发新消息：清掉上一条（单轮对话）+ 停掉正在播的切歌话术（回复独占）
-  // 附带 personality 让 LLM 调整话术风格、TTS 切换音色
+  // 发新消息：
+  //   1) 立即在 messages 里加 user 一条 → 用户看见自己问的
+  //   2) 立即把"DJ 正在打字..." thinking spinner 开 → 用户感觉很快
+  //   3) 把最近 10 条 user/DJ reply 历史塞进 history → LLM 看得见上下文，避免答非所问
+  //   4) 发 chat 到 WS（保留旧的 personality 字段，让后端调音色/话术风格）
   const sendMessage = (text: string) => {
     const t = text.trim();
     if (!t) return;
     stopDj();
     setPlayingReplyId(null);
-    setMessages([{ id: nextId.current++, role: "user", kind: "auto", en: t, zh: t, time: now() }]);
+    const userMsg: ChatMessage = {
+      id: nextId.current++,
+      role: "user",
+      kind: "auto",
+      en: t,
+      zh: t,
+      time: now(),
+    };
+    // 不清老消息 — 让对话记录连贯累积；用户消息 APPEND
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     useRadioStore.getState().setDjThinking(true);
-    ws.send({ type: "chat", text: t, personality });
+    // 收集最近 10 条对话历史（user + DJ reply；不带 auto / 不带当前这条）
+    const historyPayload = messages
+      .filter((m) => m.role === "user" || (m.role === "dj" && m.kind === "reply"))
+      .slice(-10)
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.en, // 用英文喂给 LLM（DJ 主语种）
+      }));
+    ws.send({ type: "chat", text: t, personality, history: historyPayload });
   };
 
   const handleSend = () => sendMessage(input);
@@ -503,7 +596,12 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               </div>
             </div>
             <div className="chat-msg-content">
-              <span className="chat-text">{m.en}</span>
+              <span
+                className={`chat-text ${m.id === streamingIdRef.current ? "streaming" : ""}`}
+                style={m.id === streamingIdRef.current ? { ["--reveal-delay" as string]: "0s" } : undefined}
+              >
+                {m.en}
+              </span>
               {m.role === "dj" && m.zh && m.zh !== m.en && !hideZh && (
                 <span className="chat-zh">{m.zh}</span>
               )}

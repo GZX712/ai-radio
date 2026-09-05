@@ -117,17 +117,33 @@ body::after {
 }
 
 .header-avatar {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: linear-gradient(135deg, #f97316, #fbbf24);
   display: grid;
   place-items: center;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #000;
   position: relative;
   animation: pulse-avatar 3s ease-in-out infinite;
+  overflow: hidden;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset, 0 2px 8px rgba(249,115,22,0.18);
+}
+
+.header-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+.header-avatar-fallback {
+  display: block;
+  line-height: 1;
 }
 
 @keyframes pulse-avatar {
@@ -630,8 +646,47 @@ body::after {
   .chat-send { padding: 10px 13px; font-size: 12px; }
 }
 
-.chat-list::-webkit-scrollbar { width: 4px; }
-.chat-list::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 2px; }
+.chat-list::-webkit-scrollbar { width: 6px; }
+.chat-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+.chat-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(157, 0, 255, 0.45), rgba(0, 243, 255, 0.45));
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.chat-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(157, 0, 255, 0.78), rgba(0, 243, 255, 0.78));
+}
+/* Firefox scrollbar */
+.chat-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(157, 0, 255, 0.55) rgba(255, 255, 255, 0.04);
+}
+
+/* "3D 流式"打字动效（chat-reply 到达时给 en 文本加 .streaming，1.7s 内 reveal）
+   - 实现：用 clip-path 从左向右揭示 → 视觉是"一字字冒出来"
+   - 同时配以 translateZ(0) + 微弱 3D rotateY → 有立体感
+   - 不做每字符 span 拆分（避免 layout shift & 性能）*/
+.chat-text.streaming {
+  display: inline-block;
+  transform: perspective(800px) translateZ(0) rotateY(-2deg);
+  transform-origin: left center;
+  animation:
+    stream-reveal 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards,
+    stream-3d-settle 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards;
+  will-change: clip-path, transform;
+}
+
+@keyframes stream-reveal {
+  from { clip-path: inset(0 100% 0 0); -webkit-clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0);    -webkit-clip-path: inset(0 0 0 0); }
+}
+@keyframes stream-3d-settle {
+  from { transform: perspective(800px) translateZ(0) rotateY(-2deg); }
+  to   { transform: perspective(800px) translateZ(0) rotateY(0deg); }
+}
 
 .chat-empty {
   font-size: 13px;

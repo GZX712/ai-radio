@@ -38,6 +38,12 @@ export interface DJPersonality {
   humorStyle?: HumorStyle;
 }
 
+/** 对话历史条目（user/assistant 多轮） */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface DJContext {
   song?: NeteaseSong;
   previousSong?: NeteaseSong;
@@ -48,6 +54,8 @@ export interface DJContext {
   userMessage?: string;
   /** DJ 性格（性别 + 音色 + 特征），持久化于前端 localStorage */
   personality?: DJPersonality;
+  /** 多轮对话历史（最近 N 条 user + assistant），前端 send chat 时带上 */
+  history?: ChatTurn[];
 }
 
 export interface DJOutput {
@@ -462,13 +470,25 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   let zh = "";
   let funny = false;
   try {
+    // 拼 messages：system + (history) + 当前 user
+    // history = [{role:user|assistant, content:en}]，最多取 ctx.history 后 10 条，
+    // 且只保留 content 非空（避免 LLM 出现"空回合"误解）
+    // 解决"DJ 答非所问"：之前 chat 只传单条 user prompt，LLM 看不到上文 → 问"明天去哪玩"答"下午好"
+    const historyMessages = (ctx.history ?? [])
+      .filter((h) => typeof h.content === "string" && h.content.trim().length > 0)
+      .slice(-10)
+      .map((h) => ({ role: h.role as "user" | "assistant", content: h.content }));
+    const messages = [
+      ...historyMessages,
+      { role: "user" as const, content: prompt },
+    ];
     const raw = await llm.chat({
       system: buildSystemPrompt(ctx.personality),
-      messages: [{ role: "user", content: prompt }],
+      messages,
       // 开场白用更高温度（更发散更即兴，每次打开 APP 都不一样）
       temperature: ctx.scene === "open" ? 1.0 : 0.9,
       // 强制短话术：对话场景更小输出，生成更快
-      maxTokens: ctx.scene === "chat" ? 160 : 120,
+      maxTokens: ctx.scene === "chat" ? 140 : 120,
     });
     const parsed = parseBilingual(raw);
     if (!parsed) throw new Error("无法解析双语 JSON");

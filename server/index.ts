@@ -634,10 +634,23 @@ wss.on("connection", (ws) => {
             : undefined;
           // 记住用户音色/性格选择（所有场景的 TTS 都用它）
           if (personality) setCurrentPersonality(personality);
+          // 前端 send chat 时会带历史对话 (history: [{role, content}])
+          // 交给 LLM 让 DJ 看到上文，避免"答非所问"
+          const history = Array.isArray(msg.history)
+            ? (msg.history as { role?: unknown; content?: unknown }[])
+                .filter((x) =>
+                  (x.role === "user" || x.role === "assistant") &&
+                  typeof x.content === "string" &&
+                  (x.content as string).trim().length > 0
+                )
+                .slice(-10)
+                .map((x) => ({ role: x.role as "user" | "assistant", content: x.content as string }))
+            : undefined;
           const dj = await generateDJLine({
             scene: "chat",
             userMessage: String(msg.text),
             personality,
+            history,
           });
           ws.send(JSON.stringify({ type: "chat-reply", ...dj }));
         } catch (err) {

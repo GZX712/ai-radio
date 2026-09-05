@@ -60,6 +60,42 @@ function cleanupLegacyCustomKeys() {
   } catch { /* ignore */ }
 }
 
+/** 聊天对话历史（持久化用）
+ * - 只保存 role==="user"（用户消息）和 (role==="dj" && kind==="reply")（DJ 真回复）
+ * - DJ 的 auto 类型（切歌/开场/天气/趣闻）**不保存**：语音播完即丢，不算对话
+ * - 上限 HISTORY_MAX 条，超出从最旧丢弃（防止 localStorage 撑爆）
+ */
+export interface ChatHistoryItem {
+  id: number;
+  role: "user" | "dj";
+  kind: "user" | "reply" | "auto";
+  en: string;
+  zh: string;
+  time: string;
+}
+const HISTORY_MAX = 100;
+
+function loadChatHistory(): ChatHistoryItem[] {
+  try {
+    const raw = localStorage.getItem("ai-radio-chat-history");
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    // 过滤：用户消息 + DJ reply 才保留，DJ auto 丢弃
+    return arr
+      .filter((x: unknown) => {
+        if (!x || typeof x !== "object") return false;
+        const it = x as ChatHistoryItem;
+        if (it.role === "user") return true;
+        if (it.role === "dj" && it.kind === "reply") return true;
+        return false;
+      })
+      .slice(-HISTORY_MAX);
+  } catch {
+    return [];
+  }
+}
+
 interface RadioState {
   now: NowPlaying | null;
   djText: string; // 兼容旧字段
@@ -92,6 +128,15 @@ interface RadioState {
   /** 玩家卡片背景图 DataURL（铺满整个 .player 容器，独立于整页 wallpaper） */
   playerBgImage: string | null;
   setPlayerBgImage: (dataUrl: string | null) => boolean;
+
+  // DJ 头像（所有 DJ 气泡 + 顶部 header 用同一张图；dataURL 存 localStorage）
+  djAvatar: string | null;
+  setDjAvatar: (dataUrl: string | null) => boolean;
+
+  // 聊天对话历史（启动从 localStorage 加载；user + DJ reply 持久化；DJ auto 不存）
+  chatHistory: ChatHistoryItem[];
+  saveChatHistory: (items: ChatHistoryItem[]) => void;
+  clearChatHistory: () => void;
 
   setNow: (now: NowPlaying | null) => void;
   setDjText: (text: string) => void;
@@ -169,6 +214,29 @@ export const useRadioStore = create<RadioState>((set, get) => ({
       // QuotaExceededError 等
       return false;
     }
+  },
+
+  // DJ 头像（上传后所有 DJ 气泡 + 顶部 header 都用同一张图；dataURL 存 localStorage）
+  djAvatar: (() => {
+    try { return localStorage.getItem("ai-radio-dj-avatar"); } catch { return null; }
+  })(),
+  setDjAvatar: (dataUrl) => {
+    try {
+      if (dataUrl === null) localStorage.removeItem("ai-radio-dj-avatar");
+      else localStorage.setItem("ai-radio-dj-avatar", dataUrl);
+      set({ djAvatar: dataUrl });
+      return true;
+    } catch { return false; }
+  },
+
+  // 聊天对话历史（最近 user + DJ reply；DJ auto 不存）；启动时从 localStorage 加载
+  chatHistory: loadChatHistory(),
+  saveChatHistory: (items) => {
+    try { localStorage.setItem("ai-radio-chat-history", JSON.stringify(items)); } catch { /* ignore */ }
+  },
+  clearChatHistory: () => {
+    try { localStorage.removeItem("ai-radio-chat-history"); } catch { /* ignore */ }
+    set({ chatHistory: [] });
   },
 
   setNow: (now) => set({ now }),
