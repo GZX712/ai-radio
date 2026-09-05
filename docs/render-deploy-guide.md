@@ -84,7 +84,7 @@ git push github main
    - `NETEASE_BASE` = `https://ai-radio-netease.onrender.com` ← **第 3 步复制的 URL**
    - `DEEPSEEK_API_KEY` = 您的 DeepSeek Key
    - `TTS_VOICE` = `en-US-GuyNeural`
-   - `PLAYLIST_ID` = `6920950691`
+   - `PLAYLIST_ID` = `18342860645`（辛老师新默认歌单，网易云链接 `https://music.163.com/playlist?id=18342860645`）
 5. 点「**Create Web Service**」→ 等 3-5 分钟
 6. **复制 URL**（形如 `https://ai-radio-server.onrender.com`）
 

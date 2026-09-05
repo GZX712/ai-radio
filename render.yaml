@@ -34,6 +34,6 @@ services:
       - key: TTS_VOICE
         value: en-US-GuyNeural
       - key: PLAYLIST_ID
-        value: "6920950691"
+        value: "18342860645"
     healthCheckPath: /api/health
     autoDeploy: true

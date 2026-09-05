@@ -487,8 +487,9 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
       messages,
       // 开场白用更高温度（更发散更即兴，每次打开 APP 都不一样）
       temperature: ctx.scene === "open" ? 1.0 : 0.9,
-      // 强制短话术：对话场景更小输出，生成更快
-      maxTokens: ctx.scene === "chat" ? 140 : 120,
+      // 强制短话术：对话场景 140 → 200（修复 2026-09-05：140 太紧，长对话 history 累积
+      // 后 LLM 输出容易在 zh 字段被截断 → parseBilingual 收到 {"zh":""} → 中文消失）
+      maxTokens: ctx.scene === "chat" ? 200 : 120,
     });
     const parsed = parseBilingual(raw);
     if (!parsed) throw new Error("无法解析双语 JSON");

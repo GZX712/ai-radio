@@ -605,6 +605,13 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               {m.role === "dj" && m.zh && m.zh !== m.en && !hideZh && (
                 <span className="chat-zh">{m.zh}</span>
               )}
+              {/* [兜底 2026-09-05] 后端万一还是返回了 zh 空字符串（虽然 parseBilingual
+                 已加非空检查 + chat 路径 maxTokens 140→200），前端仍兜底：中文区
+                 永远显示内容，en/zh 二选一都不让 UI 出现"中文消失"的视觉断层。
+                 zh 为空或与 en 相同时，退回到 en 译文本身。 */}
+              {m.role === "dj" && !hideZh && (!m.zh || m.zh === m.en) && (
+                <span className="chat-zh" style={{ opacity: 0.6 }}>{m.en}</span>
+              )}
               {m.role === "dj" && m.kind === "reply" && (
                 <span className="chat-reply-hint">
                   {playingReplyId === m.id ? "🔊 正在播放…" : "🎧 点 ▶ 听 DJ 的回复"}

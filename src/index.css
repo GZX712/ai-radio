@@ -622,11 +622,15 @@ body::after {
 .chat-list {
   max-height: 44vh;
   min-height: 180px;
-  overflow-y: auto;
+  /* [修复 2026-09-05] overflow-y: auto → scroll：
+     滚动条轨道常驻显示（不再只在 DJ 回复把列表顶出高度时才出现）
+     padding-bottom: 1px：内容永远比容器多 1px → webkit thumb 也常驻可见 */
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding-right: 4px;
+  padding-bottom: 1px;
 }
 
 @media (max-width: 480px) {
@@ -646,23 +650,31 @@ body::after {
   .chat-send { padding: 10px 13px; font-size: 12px; }
 }
 
-.chat-list::-webkit-scrollbar { width: 6px; }
+/* ===== 聊天滚动条（黑白配色 · 常驻可见） =====
+   [修复 2026-09-05] 原紫→青渐变滚动条改黑白：
+   - thumb: 白灰（hover 更亮）
+   - track: 极淡白灰
+   整体跟"赛博朋克×矩阵"里的黑灰白基调一致，不再抢对话内容视觉。 */
+.chat-list::-webkit-scrollbar {
+  width: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
 .chat-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 3px;
 }
 .chat-list::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(157, 0, 255, 0.45), rgba(0, 243, 255, 0.45));
+  background: rgba(255, 255, 255, 0.35);
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .chat-list::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(157, 0, 255, 0.78), rgba(0, 243, 255, 0.78));
+  background: rgba(255, 255, 255, 0.6);
 }
-/* Firefox scrollbar */
+/* Firefox scrollbar（黑白） */
 .chat-list {
   scrollbar-width: thin;
-  scrollbar-color: rgba(157, 0, 255, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.05);
 }
 
 /* "3D 流式"打字动效（chat-reply 到达时给 en 文本加 .streaming，1.7s 内 reveal）
@@ -1728,14 +1740,17 @@ body::after {
 
 .pixel-flipper {
   /* 内层做 3D 翻转：比 cell 大 4px（inset: -2px）覆盖相邻 cell 之间的 sub-pixel gap。
-     这样即使 cell 间有 1-2px 间隙，相邻 flipper 互相 overlap 4px 彻底盖住。 */
+     这样即使 cell 间有 1-2px 间隙，相邻 flipper 互相 overlap 4px 彻底盖住。
+     [频闪修复 2026-09-05]
+     - 删除 transform-style: preserve-3d：原值让 144 个 flipper 同时保留 3D context，
+       hover 时 144 个独立 GPU 合成层叠加父元素重绘 → Chromium 子像素合成抖动 → 频闪
+     - 删除 will-change: transform：相同原因，会强制 GPU 创建独立合成层
+     - transition 改用 linear 曲线（去掉 cubic-bezier 1.4 弹性值，避免来回弹动）
+     保留：.pixel-grid 上的 perspective: 800px 提供 3D 透视上下文 */
   position: absolute;
   inset: -2px;
-  transform-style: preserve-3d;
-  /* 初始：rotateY(180deg) → 背面（圆形 LED 像素点）朝上 */
   transform: rotateY(180deg);
-  transition: transform 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
-  will-change: transform;
+  transition: transform 0.45s linear;
 }
 
 .pixel-flipper.revealed {
@@ -1750,7 +1765,9 @@ body::after {
   -webkit-backface-visibility: hidden;
 }
 
-/* 背面：圆形 LED 像素点（rotateY(180deg) 补偿 + 圆形 dot） */
+/* 背面：圆形 LED 像素点（rotateY(180deg) 补偿 + 圆形 dot）
+   [频闪修复] 删掉 .dot 上的 width/height/border-radius transition —— 它们没有
+   对应的 revealed 状态变化，是 dead code，但仍触发 GPU layer 监听导致重绘 */
 .pixel-flipper .face-back {
   transform: rotateY(180deg);
   display: flex;
@@ -1763,9 +1780,6 @@ body::after {
   height: 60%;
   border-radius: 50%;
   background: inherit;
-  transition: width 0.55s cubic-bezier(0.34, 1.4, 0.64, 1),
-              height 0.55s cubic-bezier(0.34, 1.4, 0.64, 1),
-              border-radius 0.55s ease;
 }
 
 /* 正面：原图切片（翻正后满格无缝拼合，无任何描边/阴影） */

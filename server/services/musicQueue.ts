@@ -11,7 +11,7 @@ const IS_DEPLOYED = !!process.env.NETEASE_BASE; // 部署到 Render 时 NETEASE_
  * - prev 从 history 回退（prefetch 分支也正确记录历史）
  */
 
-const USER_PLAYLIST_ID = process.env.PLAYLIST_ID || "6920950691"; // 辛老师"我喜欢的音乐" (284首)
+const USER_PLAYLIST_ID = process.env.PLAYLIST_ID || "18342860645"; // 辛老师新默认歌单 (https://music.163.com/playlist?id=18342860645)
 
 const DEFAULT_PLAYLIST = [
   "186016", "28815230", "436514312", "254574",
