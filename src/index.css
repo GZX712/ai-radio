@@ -1655,7 +1655,7 @@ body::after {
   grid-template-columns: repeat(12, 1fr);
   grid-template-rows: repeat(12, 1fr);
   gap: 0;
-  background: #000;
+  background: transparent;           /* 去掉 #000，防止 sub-pixel 间隙透出黑色细线 */
   position: relative;
   cursor: crosshair;
   perspective: 800px;
@@ -1678,7 +1678,9 @@ body::after {
 
 .pixel-cell .face {
   position: absolute;
-  inset: 0;
+  /* inset: -1px 让每张 face 比所在 grid item 大 2px（上下左右各多 1px），
+     这样相邻 cell 的 face 互相搭接 2px，彻底消除 sub-pixel 间隙 → 无缝封面 */
+  inset: -1px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
