@@ -63,14 +63,25 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
   }, [src]);
 
   // rAF 批量提交 mousemove 待翻集合
+  // [防频闪] prev 已是 super set 时直接 return prev → React 跳过组件更新
+  // 不加这个：鼠标 hover cover 时每 16ms setRevealed 都返回新 Set 实例，
+  // React 判为变化 → 每帧 re-render 144 个 cell → paint thrashing 频闪
   useEffect(() => {
     const flush = () => {
       if (pendingRevealRef.current.size === 0) return;
+      const toAdd: number[] = [];
+      pendingRevealRef.current.forEach((i) => toAdd.push(i));
+      pendingRevealRef.current.clear();
       setRevealed((prev) => {
+        let changed = false;
         const next = new Set(prev);
-        for (const i of pendingRevealRef.current) next.add(i);
-        pendingRevealRef.current.clear();
-        return next;
+        for (const i of toAdd) {
+          if (!next.has(i)) {
+            next.add(i);
+            changed = true;
+          }
+        }
+        return changed ? next : prev; // prev 直接回归，React 跳过整个子树 reconcile
       });
     };
     const loop = () => {

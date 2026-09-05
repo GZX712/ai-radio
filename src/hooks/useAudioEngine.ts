@@ -56,7 +56,7 @@ export function useAudioEngine() {
     dj.crossOrigin = "anonymous";
     const djSrc = ctx.createMediaElementSource(dj);
     const djGain = ctx.createGain();
-    djGain.gain.value = 1.6; // DJ 人声增强，盖过音乐
+    djGain.gain.value = 2.0; // DJ 人声：比 duck 后的音乐(0.18)高出 ~21dB，清晰压过背景
     djSrc.connect(djGain).connect(ctx.destination);
 
     // 音乐进度事件
@@ -94,8 +94,10 @@ export function useAudioEngine() {
     // 注册音频压制回调（DJ 说话时音乐变小，说完恢复）
     useRadioStore.getState().setDuckCallbacks(
       () => {
-        // 音乐音量压到 45%，0.3 秒淡入（保留垫底，避免"音乐停了"的错觉）
-        musicGain.gain.setTargetAtTime(0.45, ctx.currentTime, 0.3);
+        // 音乐音量压到 0.18（≈ -15 dB），0.2 秒淡入。
+        // 之前 0.45（-7dB）音乐仍响 → DJ 被盖。
+        // 0.18 让 DJ 2.0 gain 干净压过音乐；保留极低背景"音乐未停"的衔接感
+        musicGain.gain.setTargetAtTime(0.18, ctx.currentTime, 0.2);
       },
       () => {
         // 恢复用户设定的音量，0.3 秒淡出
