@@ -1678,9 +1678,11 @@ body::after {
 
 .pixel-cell .face {
   position: absolute;
-  /* inset: -1px 让每张 face 比所在 grid item 大 2px（上下左右各多 1px），
-     这样相邻 cell 的 face 互相搭接 2px，彻底消除 sub-pixel 间隙 → 无缝封面 */
-  inset: -1px;
+  /* inset: -2px 让每张 face 比所在 grid item 大 4px（上下左右各多 2px），
+     即使列方向 sub-pixel 间隙（col 12 等分时偶有 1–2px）也能彻底
+     搭接覆盖。edge 1–2px 溢出 cover-wrapper 被 overflow: hidden 截断
+     不影响视觉（cell 边界本就在切片边缘） */
+  inset: -2px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -1734,21 +1736,9 @@ body::after {
   animation: none !important;
 }
 
-.cover-wrapper::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.4) 0px,
-    rgba(0, 0, 0, 0.4) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  z-index: 2;
-}
+/* 之前的 .cover-wrapper::after（水平扫描线特效）已删除 — 辛老师反馈：
+   "反转过来后组成一个没有细线分割的封面"，扫描线在 reveal 后明显
+   干扰封面完整度。改成纯封面，无装饰条纹。 */
 
 .cover-wrapper canvas,
 .cover-wrapper img {
