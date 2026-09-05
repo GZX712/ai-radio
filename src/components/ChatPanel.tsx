@@ -11,6 +11,8 @@ interface ChatMessage {
   en: string;
   zh: string;
   audioUrl?: string;
+  /** 这条是不是笑话/怼人（后端 LLM 自评）→ 播完接罐头笑声 */
+  funny?: boolean;
   time: string;
 }
 
@@ -18,7 +20,7 @@ interface ChatPanelProps {
   ws: ReconnectingWS;
   onAction: (action: string, payload?: unknown) => void;
   /** 播放/停止 DJ 语音（用于 chat-reply 手动 ▶ 播放） */
-  playDj: (url: string, en?: string, zh?: string, force?: boolean) => Promise<void>;
+  playDj: (url: string, en?: string, zh?: string, force?: boolean, laugh?: boolean) => Promise<void>;
   stopDj: () => void;
   /** 让 DJ 设置弹窗跟随当前壁纸 */
   wallpaperId: WallpaperId;
@@ -149,6 +151,10 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const djAvatarFileRef = useRef<HTMLInputElement>(null);
   const syncTimerRef = useRef<number | null>(null);
+  // personality 最新值 ref（WS onMessage effect 只在 mount 注册一次，闭包里的 personality 会 stale，
+  // 判断"拌嘴该不该罐头笑"时要用最新 humorStyle）
+  const personalityRef = useRef(personality);
+  personalityRef.current = personality;
   // 立即同步 personality 到后端（debounce 200ms 避免 traits 每次按键都请求）
   // 解决"选音色后 DJ 还是 Edge 音"——之前必须发消息才会同步
   const syncPersonalityToServer = (p: Personality) => {
@@ -190,12 +196,17 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     return ws.onMessage((msg) => {
       const m = msg as Record<string, unknown>;
       if ((m.type === "dj" || m.type === "chat-reply") && m.en) {
-        const reply = m as { en: string; zh: string; audioUrl?: string; action?: string; song?: unknown };
+        const reply = m as { en: string; zh: string; audioUrl?: string; action?: string; song?: unknown; funny?: boolean };
         setMessages((prev) => {
           // 去重：与上一条 DJ 消息相同 → 不追加（防"同一句说两遍"）
           const lastDj = [...prev].reverse().find((x) => x.role === "dj");
           if (lastDj && lastDj.en === reply.en) return prev;
           // 替换式：旧的 DJ 消息全部移除，只保留最新一条（用户消息保留）
+          // 罐头笑判定：后端 funny=true（LLM 自评）→ 必笑；
+          // 兜底：幽默人设（非 none）下用户与 DJ 拌嘴的真回复 → 50% 也笑（LLM 判定偶尔偏严，拌嘴场景不该冷场）
+          const humorOn = (personalityRef.current?.humorStyle ?? "none") !== "none";
+          const djReplyIsReal = !!reply.audioUrl && m.type === "chat-reply";
+          const funnyFinal = reply.funny === true || (humorOn && djReplyIsReal && Math.random() < 0.5);
           return [
             ...prev.filter((x) => x.role !== "dj"),
             {
@@ -205,6 +216,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               en: reply.en,
               zh: reply.zh ?? "",
               audioUrl: reply.audioUrl,
+              funny: funnyFinal,
               time: now(),
             },
           ];
@@ -281,9 +293,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
       stopDj();
       setPlayingReplyId(null);
     } else {
-      // 播这条：先停别的，再播
+      // 播这条：先停别的，再播（funny 台词播完自动接罐头笑声）
       stopDj();
-      playDj(m.audioUrl, m.en, m.zh, true)
+      playDj(m.audioUrl, m.en, m.zh, true, m.funny === true)
         .then(() => setPlayingReplyId(m.id))
         .catch(() => setPlayingReplyId(null));
     }

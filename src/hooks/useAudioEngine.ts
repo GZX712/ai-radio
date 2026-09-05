@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { playRandomSfx } from "@/lib/sfx";
+import { playLaughTrack, stopLaughTrack } from "@/lib/laugh";
 import type { NowPlaying } from "@/types";
 
 interface AudioNodes {
@@ -25,7 +26,8 @@ export function useAudioEngine() {
   const nodesRef = useRef<AudioNodes | null>(null);
 
   // DJ 语音队列：入队 + 当前正在播的字幕同步
-  type DjItem = { url: string; en: string; zh: string };
+  // laugh=true 表示该条是笑话/怼人台词 → 播完后接 sitcom 罐头笑声
+  type DjItem = { url: string; en: string; zh: string; laugh?: boolean };
   const djQueueRef = useRef<DjItem[]>([]);
   const djPlayingRef = useRef(false);
   // 音乐暂停时 DJ 同步暂停；恢复播放时丢弃未说完的（用户明确要求）
@@ -122,6 +124,7 @@ export function useAudioEngine() {
       nodes.dj.src = "";
       useRadioStore.getState().unDuck();
     }
+    stopLaughTrack(); // 停止 DJ 的同时掐断罐头笑声（避免切歌后笑声还在响）
     djQueueRef.current = [];
     djPlayingRef.current = false;
   };
@@ -271,6 +274,7 @@ export function useAudioEngine() {
   /**
    * DJ 语音队列：入队 + 当前正在播的字幕同步
    * 每播完一条才播下一条，字幕永远等于"当前正在播"那条
+   * 播完一条 laugh=true 的话术 → 立刻接 sitcom 罐头笑声（笑点后观众笑）
    */
   const playNextDj = async () => {
     const item = djQueueRef.current.shift();
@@ -287,7 +291,11 @@ export function useAudioEngine() {
     useRadioStore.getState().setDjBilingual(item.en, item.zh);
     const { dj, ctx } = getNodes();
     dj.src = item.url;
-    dj.onended = () => playNextDj();
+    dj.onended = () => {
+      // 这条是笑话/怼人 → 观众罐头笑（punchline 后立刻响）
+      if (item.laugh) playLaughTrack();
+      playNextDj();
+    };
 
     const tryPlay = async (attempt: number): Promise<void> => {
       try {
@@ -306,7 +314,7 @@ export function useAudioEngine() {
     void tryPlay(0);
   };
 
-  const playDj = async (url: string, en = "", zh = "", force = false): Promise<void> => {
+  const playDj = async (url: string, en = "", zh = "", force = false, laugh = false): Promise<void> => {
     // 去重：同一段语音 5 秒内不重复播放（防双广播/双 skip 导致"同一句说两遍"）
     // force=true 用于手动 ▶ 播放（播放→暂停→再播不该被去重拦截）
     if (!force) {
@@ -324,7 +332,7 @@ export function useAudioEngine() {
       djPausedRef.current = false;
       stopDj();
     }
-    djQueueRef.current.push({ url, en, zh });
+    djQueueRef.current.push({ url, en, zh, laugh });
     if (!djPlayingRef.current) {
       djPlayingRef.current = true;
       useRadioStore.getState().duck();

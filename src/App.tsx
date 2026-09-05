@@ -3,7 +3,7 @@ import { useRadioStore, WALLPAPERS, type WallpaperId } from "@/store/useRadioSto
 import { radioApi } from "@/lib/api";
 import { ReconnectingWS } from "@/lib/ws";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
-import { playEntranceSfx, playRandomSfx } from "@/lib/sfx";
+import { playEntranceSfx } from "@/lib/sfx";
 import type { NowPlaying } from "@/types";
 import { Player } from "@/components/Player";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -164,17 +164,16 @@ export default function App() {
     ws.connect();
 
     const off = ws.onMessage((msg) => {
-      const m = msg as { en?: string; zh?: string; audioUrl?: string; type?: string; song?: NowPlaying };
+      const m = msg as { en?: string; zh?: string; audioUrl?: string; type?: string; song?: NowPlaying; funny?: boolean };
       if (m.type === "dj" || m.type === "chat-reply") {
         useRadioStore.getState().setDjThinking(false);
-        // 搞笑音效：DJ 段子/回复到达时 40% 概率随机反应音效（不打断语音，音量轻）
-        if (useRadioStore.getState().sfxEnabled && Math.random() < 0.4) {
-          playRandomSfx();
-        }
+        // 去掉"到达就随机播卡通音效"——改成：dj 类型自动播语音，
+        // 若后端标了 funny（这条是笑话/怼人），语音播完自动接 sitcom 罐头笑声
+        // （playDj 内部处理；chat-reply 由用户点 ▶ 播放，同样在 ChatPanel 传 laugh）
         // dj 类型（切歌/开场/天气/趣闻/整点）→ 自动播放
         // chat-reply 类型 → 不自动播（ChatPanel 显示 ▶ 按钮，用户按了才听）
         if (m.audioUrl && m.type === "dj") {
-          engine.playDj(m.audioUrl, m.en ?? "", m.zh ?? "").catch(() => {});
+          engine.playDj(m.audioUrl, m.en ?? "", m.zh ?? "", false, m.funny === true).catch(() => {});
         }
         return;
       }

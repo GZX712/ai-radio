@@ -55,6 +55,8 @@ export interface DJOutput {
   zh: string;
   audioUrl?: string;
   provider: string;
+  /** 这条台词是不是"笑话/怼人妙语"（供前端播放完接 sitcom 罐头笑声） */
+  funny?: boolean;
 }
 
 /**
@@ -109,7 +111,8 @@ STRICT RULES (follow every one):
 9. LANGUAGE IS NON-NEGOTIABLE: "en" MUST be real English, "zh" MUST be real Chinese — even if the listener wrote in Chinese, reply in English for "en" first, then give the Chinese translation in "zh".
 
 Output JSON only, single line, no markdown:
-{"en":"English line — spoken with feeling: contractions, punchy rhythm, one exclamation","zh":"Chinese translation — equally colloquial and spoken-style, use 口语词 like 咱/呗/呀/哎呦, not formal written Chinese"}`;
+{"en":"English line — spoken with feeling: contractions, punchy rhythm, one exclamation","zh":"Chinese translation — equally colloquial and spoken-style, use 口语词 like 咱/呗/呀/哎呦, not formal written Chinese","funny":true|false}
+RULE for "funny": set true when this line would get an audience laugh track in a sitcom — that includes any witty comeback, playful roast/sass toward the listener, sarcastic remark, teasing jab, punchline, absurd exaggeration, or knowingly clever observation. Set false only for straight answers, warm comfort, plain info (weather, time, news), or genuinely sincere lines. When it's a joke or a sassy retort, it's almost certainly true.`;
 }
 
 /**
@@ -262,8 +265,9 @@ function buildUserPrompt(ctx: DJContext): string {
 
 /**
  * 解析 LLM 返回的 JSON 双语（宽松：支持代码块、前后缀噪音）
+ * funny: LLM 自评这条是否笑点（笑话/怼人妙语）——缺省 false
  */
-function parseBilingual(raw: string): { en: string; zh: string } | null {
+function parseBilingual(raw: string): { en: string; zh: string; funny: boolean } | null {
   let text = raw.trim();
   // 剥离 ```json ... ``` 代码块
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -271,9 +275,13 @@ function parseBilingual(raw: string): { en: string; zh: string } | null {
 
   // 尝试 JSON 解析
   try {
-    const obj = JSON.parse(text) as { en?: unknown; zh?: unknown };
+    const obj = JSON.parse(text) as { en?: unknown; zh?: unknown; funny?: unknown };
     if (typeof obj.en === "string" && obj.en.trim() && typeof obj.zh === "string") {
-      return { en: obj.en.trim(), zh: obj.zh.trim() };
+      return {
+        en: obj.en.trim(),
+        zh: obj.zh.trim(),
+        funny: obj.funny === true || obj.funny === "true",
+      };
     }
   } catch { /* 继续行解析 */ }
 
@@ -281,7 +289,11 @@ function parseBilingual(raw: string): { en: string; zh: string } | null {
   const enMatch = text.match(/["']?en["']?\s*[:：]\s*["']?([^"'\n]+)/i);
   const zhMatch = text.match(/["']?zh["']?\s*[:：]\s*["']?([^"'\n]+)/i);
   if (enMatch?.[1] && zhMatch?.[1]) {
-    return { en: enMatch[1].trim(), zh: zhMatch[1].trim() };
+    return {
+      en: enMatch[1].trim(),
+      zh: zhMatch[1].trim(),
+      funny: /funny["']?\s*[:：]\s*(true|"true")/i.test(text),
+    };
   }
   return null;
 }
@@ -417,18 +429,21 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
             currentPersonality.traits,
           );
           lastDjEn = fromBank.en;
-          return { en: fromBank.en, zh: fromBank.zh, audioUrl: audio.url, provider: "phraseBank" };
+          // 切歌过渡语多为冷笑话性质 → 播完配罐头笑声
+          return { en: fromBank.en, zh: fromBank.zh, audioUrl: audio.url, provider: "phraseBank", funny: true };
         } catch {
           /* 重新合成失败 → 退回预合成音频（至少能播） */
         }
       }
       lastDjEn = fromBank.en;
-      return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank" };
+      // 切歌过渡语多为冷笑话性质 → 播完配罐头笑声
+      return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank", funny: true };
     }
     const fast = improvCache.pop() ?? (await fallbackDJLine(ctx));
     warmImprovCache().catch(() => {});
     lastDjEn = fast.en;
-    return fast;
+    // 缓存切歌语 = 俏皮即兴引入 → 播完也配罐头笑声（fallback 池除外，词句平淡）
+    return { ...fast, funny: fast.provider === "fallback" ? false : true };
   }
 
   // 持续发挥上下文：仅整点报时接着上一句（切歌走预生成缓存；开场要"全新即兴"——每次打开 APP 都是崭新的开场白，不接上次的话茬）
@@ -445,6 +460,7 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
 
   let en = "";
   let zh = "";
+  let funny = false;
   try {
     const raw = await llm.chat({
       system: buildSystemPrompt(ctx.personality),
@@ -458,6 +474,7 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
     if (!parsed) throw new Error("无法解析双语 JSON");
     en = parsed.en;
     zh = parsed.zh;
+    funny = parsed.funny;
     if (!en) throw new Error("empty");
   } catch {
     return await fallbackDJLine(ctx);
@@ -473,7 +490,7 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   }
 
   lastDjEn = en;
-  return { en, zh, audioUrl, provider: llm.name };
+  return { en, zh, audioUrl, provider: llm.name, funny };
 }
 
 async function fallbackDJLine(ctx: DJContext): Promise<DJOutput> {
