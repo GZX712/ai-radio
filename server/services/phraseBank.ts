@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  */
 
 export type PhraseScene = "transition" | "open" | "chat" | "weather" | "trivia" | "night";
-export type PhraseStyle = "financial" | "medical" | "legal" | "poker" | "british" | "none";
+export type PhraseStyle = "financial" | "medical" | "legal" | "poker" | "british" | "savage" | "none";
 
 export interface PhraseItem {
   scene: PhraseScene;
@@ -27,7 +27,7 @@ export interface PhraseItem {
 }
 
 export const PHRASE_SCENES: PhraseScene[] = ["transition", "open", "chat", "weather", "trivia", "night"];
-export const PHRASE_STYLES: PhraseStyle[] = ["financial", "medical", "legal", "poker", "british", "none"];
+export const PHRASE_STYLES: PhraseStyle[] = ["financial", "medical", "legal", "poker", "british", "savage", "none"];
 
 const SCENE_TARGETS: Record<PhraseScene, number> = {
   transition: 30,
@@ -45,6 +45,7 @@ const STYLE_DESC: Record<PhraseStyle, string> = {
   legal: "用法律/合同术语包装日常（条款、违约、诉讼、合同、责任），严肃讲荒谬",
   poker: "用博弈/德州术语包装日常（筹码、底牌、All-in、bluff、梭哈），痞气幽默",
   british: "英式 BBC 毒舌旁白，优雅揶揄，克制中带锋利",
+  savage: "美式凌厉毒舌（Max from 2 Broke Girls），敢怒敢言 + 杂糅冷知识的无所不知",
   none: "自然口语、温暖俏皮，不刻意套术语",
 };
 

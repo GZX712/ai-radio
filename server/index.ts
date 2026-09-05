@@ -413,7 +413,7 @@ app.post("/api/dj/personality", (req, res) => {
     gender?: "male"|"female"|"neutral";
     voice?: string;
     traits?: string;
-    humorStyle?: "financial"|"medical"|"legal"|"poker"|"british"|"none";
+    humorStyle?: "financial"|"medical"|"legal"|"poker"|"british"|"savage"|"none";
   };
   if (!gender) {
     res.status(400).json({ code: 400, message: "缺少 gender" });

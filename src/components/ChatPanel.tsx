@@ -49,7 +49,7 @@ interface Personality {
 }
 
 /** 幽默风格选项（与后端 dj.ts HumorStyle 对齐） */
-type HumorStyle = "financial" | "medical" | "legal" | "poker" | "british" | "none";
+type HumorStyle = "financial" | "medical" | "legal" | "poker" | "british" | "savage" | "none";
 
 const HUMOR_STYLES: { value: HumorStyle; label: string; emoji: string; desc: string }[] = [
   { value: "financial", label: "金融",       emoji: "📈", desc: "用股票/期权/仓位包装感情" },
@@ -57,6 +57,7 @@ const HUMOR_STYLES: { value: HumorStyle; label: string; emoji: string; desc: str
   { value: "legal",     label: "法律",       emoji: "⚖️", desc: "合同/条款/判决口吻" },
   { value: "poker",     label: "博弈",       emoji: "♠️", desc: "扑克/筹码/All-in 口吻" },
   { value: "british",   label: "经典",       emoji: "🎙️", desc: "BBC 毒舌旁白（默认）" },
+  { value: "savage",    label: "毒舌",       emoji: "🔥", desc: "Max 风凌厉毒舌 + 无所不知冷知识" },
   { value: "none",      label: "无",         emoji: "🔇", desc: "不加幽默，正常回应" },
 ];
 
