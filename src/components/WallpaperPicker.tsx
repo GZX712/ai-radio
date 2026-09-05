@@ -17,6 +17,10 @@ interface WallpaperPickerProps {
 /**
  * 壁纸选择面板：6 款预设配色 + 1 个 🖼 自定义图片（用户上传 → 整页背景）。
  * 极简黑白设计：黑底白字 + 细线边框，无渐变无装饰。
+ *
+ * 🖼 自定义壁纸卡片本身就可点：点击直接触发文件选择（不再需要下方独立设计器）。
+ * 已上传时：卡片底图 = 缩略图，右上角 ✕ 清除小按钮（点 stopPropagation 不触发选图）。
+ * 未上传时：卡片显示 + 占位 + "点击上传图片"。
  */
 export function WallpaperPicker({ current, customImage, onPick, onImage, onClose }: WallpaperPickerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -49,6 +53,19 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
       fr.readAsDataURL(file);
     });
 
+  /** 用户在"自定义壁纸"卡片上点了一下 → 弹出文件选择 */
+  const handlePickClick = () => {
+    fileRef.current?.click();
+  };
+
+  /** 用户在 ✕ 上点了一下 → 清除图片（保持当前 wallpaperId = image 不变，可继续上传） */
+  const handleClearClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onImage(null);
+    setErrMsg(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -66,16 +83,12 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
         setErrMsg("本地存储空间已满，请换一张更小的图");
       } else {
         setErrMsg(null);
+        // 自动切到 image 模式（让新图立刻生效为整页背景）
+        if (current !== "image") onPick("image");
       }
     } catch (e) {
       setErrMsg((e as Error).message || "上传失败");
     }
-  };
-
-  const handleClear = () => {
-    onImage(null);
-    setErrMsg(null);
-    if (fileRef.current) fileRef.current.value = "";
   };
 
   const tree = (
@@ -87,7 +100,7 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
       aria-label="选择壁纸"
     >
       <div
-        className={`modal-card wallpaper-picker ${isImage ? "is-image-open" : ""}`}
+        className="modal-card wallpaper-picker"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
@@ -99,8 +112,21 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
           选择会保存到本地，下次打开自动应用。
         </p>
 
-        {/* 滚动主体：grid 卡片 + 图片上传设计器 */}
+        {/* 滚动主体：grid 卡片 */}
         <div className="wallpaper-picker-body">
+
+        {/* 隐藏 file input（在 body 任意位置都能点自定义卡片触发） */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="uploader-input"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
+        {errMsg && <div className="uploader-err uploader-err-floating">⚠ {errMsg}</div>}
 
         <div className="wallpaper-grid">
           {WALLPAPERS.map((wp) => (
@@ -133,13 +159,16 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
             </button>
           ))}
 
-          {/* 🖼 自定义图片卡片（极简黑白，永远在末尾） */}
+          {/* 🖼 自定义图片卡片（极简黑白，永远在末尾）
+              点击整张卡片 = 选图；已上传时右上角 ✕ 单独清除 */}
           <button
             type="button"
             className={`wallpaper-card wallpaper-card-image ${isImage ? "active" : ""}`}
-            onClick={() => onPick("image")}
+            onClick={handlePickClick}
             data-wallpaper="image"
             aria-pressed={isImage}
+            aria-label={customImage ? "点击更换自定义壁纸图片" : "点击上传自定义壁纸图片"}
+            title={customImage ? "点击更换图片" : "点击上传图片"}
           >
             <div
               className="wallpaper-preview wallpaper-preview-image"
@@ -156,74 +185,27 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
                   <span key={i} className="wp-led-cell" style={{ height: `${30 + Math.abs(Math.sin(i * 0.9)) * 70}%` }} />
                 ))}
               </div>
+              {customImage && (
+                <button
+                  type="button"
+                  className="wp-image-clear"
+                  onClick={handleClearClick}
+                  aria-label="清除自定义壁纸"
+                  title="清除图片"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div className="wallpaper-meta">
               <div className="wallpaper-name">🖼 自定义壁纸</div>
-              <div className="wallpaper-desc">上传图片 · 整页背景</div>
+              <div className="wallpaper-desc">
+                {customImage ? "点击更换 · 整页背景" : "上传图片 · 整页背景"}
+              </div>
             </div>
           </button>
         </div>
 
-        {/* 图片上传设计器（仅当 current === "image" 时显示，极简黑白） */}
-        {isImage && (
-          <div className="image-uploader">
-            <div className="uploader-header">
-              <div className="uploader-title">
-                <span className="uploader-title-icon">⬆</span>
-                上传自定义壁纸
-              </div>
-              {customImage && (
-                <button
-                  type="button"
-                  className="uploader-clear"
-                  onClick={handleClear}
-                  aria-label="清除图片"
-                >
-                  ✕ 清除
-                </button>
-              )}
-            </div>
-
-            {/* 隐藏 input + label 触发器 */}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="uploader-input"
-              onChange={(e) => handleFile(e.target.files?.[0])}
-              aria-hidden="true"
-              tabIndex={-1}
-            />
-
-            {customImage ? (
-              <button
-                type="button"
-                className="uploader-preview"
-                style={{ backgroundImage: `url(${customImage})` }}
-                onClick={() => fileRef.current?.click()}
-                aria-label="点击替换图片"
-              >
-                <span className="uploader-preview-overlay">点击替换</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="uploader-dropzone"
-                onClick={() => fileRef.current?.click()}
-              >
-                <span className="uploader-dropzone-icon">＋</span>
-                <span className="uploader-dropzone-text">点击选择图片</span>
-                <span className="uploader-dropzone-hint">jpg · png · webp · ≤2MB</span>
-              </button>
-            )}
-
-            {errMsg && <div className="uploader-err">⚠ {errMsg}</div>}
-
-            <div className="uploader-footer">
-              <span>💡 图片会作为 .app 整页背景，叠加暗色蒙版保证文字可读</span>
-            </div>
-          </div>
-        )}
         </div>{/* /wallpaper-picker-body */}
 
       </div>

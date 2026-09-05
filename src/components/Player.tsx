@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
@@ -47,36 +46,6 @@ export function Player({
   const duration = useRadioStore((s) => s.duration);
   const volume = useRadioStore((s) => s.volume);
   const rate = useRadioStore((s) => s.playbackRate);
-  const playerBgImage = useRadioStore((s) => s.playerBgImage);
-  const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
-  const bgInputRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
-
-  /** File → DataURL */
-  const readAsDataURL = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = () => reject(new Error("文件读取失败"));
-      fr.readAsDataURL(file);
-    });
-
-  const handleBgFile = async (file: File | undefined | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 5 * 1024 * 1024) return;
-    try {
-      const url = await readAsDataURL(file);
-      setPlayerBgImage(url);
-    } catch {
-      /* 静默失败 */
-    }
-  };
-
-  const handleBgClear = () => {
-    setPlayerBgImage(null);
-    if (bgInputRef.current) bgInputRef.current.value = "";
-  };
 
   const songPicUrl = now?.picUrl;
 
@@ -88,63 +57,8 @@ export function Player({
     onSeekTo(Math.max(0, Math.min(1, pct)));
   };
 
-  const hasBg = !!playerBgImage;
-
   return (
-    <main
-      className="player"
-      data-playing={isPlaying}
-      data-player-bg={hasBg ? "on" : "off"}
-      style={hasBg ? { backgroundImage: `url(${playerBgImage})` } : undefined}
-      onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOver(false);
-        handleBgFile(e.dataTransfer.files?.[0]);
-      }}
-    >
-      {/* 隐藏 file input（触发上传） */}
-      <input
-        ref={bgInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
-        className="player-bg-file-input"
-        onChange={(e) => handleBgFile(e.target.files?.[0])}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-
-      {/* 背景图状态微指示：拖拽时高亮 / 无图时显示 "＋ 上传背景" 按钮（hover 显，按钮靠右下） */}
-      {hasBg ? (
-        <button
-          type="button"
-          className="player-bg-btn player-bg-btn-clear"
-          onClick={handleBgClear}
-          title="清除自定义背景"
-          aria-label="清除自定义背景"
-        >
-          ✕ 清除背景
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="player-bg-btn player-bg-btn-add"
-          onClick={() => bgInputRef.current?.click()}
-          title="上传自定义背景图（仅作用于播放器卡片）"
-          aria-label="上传自定义背景图"
-        >
-          🖼 添加背景
-        </button>
-      )}
-
-      {dragOver && (
-        <div className="player-bg-dropzone" aria-hidden="true">
-          <span>释放图片上传</span>
-        </div>
-      )}
-
+    <main className="player" data-playing={isPlaying}>
       <div className="cover-wrapper">
         {songPicUrl ? (
           <PixelCover src={songPicUrl} alt={now.name || "Cover"} isPlaying={isPlaying} />

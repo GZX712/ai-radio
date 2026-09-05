@@ -83,10 +83,6 @@ interface RadioState {
   customImage: string | null;
   setCustomImage: (dataUrl: string | null) => boolean; // 失败（quota 等）返回 false
 
-  /** 用户上传的播放器卡片背景图 DataURL（铺满整个 .player 容器，独立于整页 wallpaper） */
-  playerBgImage: string | null;
-  setPlayerBgImage: (dataUrl: string | null) => boolean;
-
   setNow: (now: NowPlaying | null) => void;
   setDjText: (text: string) => void;
   setDjBilingual: (en: string, zh: string) => void;
@@ -158,28 +154,6 @@ export const useRadioStore = create<RadioState>((set, get) => ({
         localStorage.setItem("ai-radio-custom-image", dataUrl);
       }
       set({ customImage: dataUrl });
-      return true;
-    } catch {
-      // QuotaExceededError 等
-      return false;
-    }
-  },
-
-  playerBgImage: (() => {
-    try {
-      const v = localStorage.getItem("ai-radio-player-bg");
-      if (typeof v === "string" && v.startsWith("data:image/")) return v;
-    } catch { /* ignore */ }
-    return null;
-  })(),
-  setPlayerBgImage: (dataUrl) => {
-    try {
-      if (dataUrl === null) {
-        localStorage.removeItem("ai-radio-player-bg");
-      } else {
-        localStorage.setItem("ai-radio-player-bg", dataUrl);
-      }
-      set({ playerBgImage: dataUrl });
       return true;
     } catch {
       // QuotaExceededError 等
