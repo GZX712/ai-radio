@@ -1647,7 +1647,10 @@ body::after {
   }
 }
 
-/* 像素网格封面：12×12 双面方块（背面=圆形 LED 像素点，正面=原图无缝拼合） */
+/* 像素网格封面：12×12 双面方块（背面=圆形 LED 像素点，正面=原图无缝拼合）
+   架构：.pixel-cell = 2D grid item（无 transform，相邻 cell 普通 2D layout 拼接，
+   无 GPU 合成层缝隙）；.pixel-flipper = 内层 3D 旋转容器，比 cell 大 4px（inset: -2px），
+   覆盖相邻 cell 的任何 sub-pixel 间隙。flipper 内部 .face 是双面（背面朝上/翻正后朝上）。 */
 .pixel-grid {
   width: 100%;
   aspect-ratio: 1;
@@ -1663,7 +1666,16 @@ body::after {
 }
 
 .pixel-cell {
+  /* 2D grid item，不做 transform → 不会创建独立 GPU 合成层，
+     相邻 cell 之间是普通文档流 layout，无 Retina 上 GPU compositing 缝隙 */
   position: relative;
+}
+
+.pixel-flipper {
+  /* 内层做 3D 翻转：比 cell 大 4px（inset: -2px）覆盖相邻 cell 之间的 sub-pixel gap。
+     这样即使 cell 间有 1-2px 间隙，相邻 flipper 互相 overlap 4px 彻底盖住。 */
+  position: absolute;
+  inset: -2px;
   transform-style: preserve-3d;
   /* 初始：rotateY(180deg) → 背面（圆形 LED 像素点）朝上 */
   transform: rotateY(180deg);
@@ -1671,31 +1683,27 @@ body::after {
   will-change: transform;
 }
 
-.pixel-cell.revealed {
+.pixel-flipper.revealed {
   /* 翻正：正面（原图切片）朝上 = 清晰无缝封面 */
   transform: rotateY(0deg);
 }
 
-.pixel-cell .face {
+.pixel-flipper .face {
   position: absolute;
-  /* inset: -2px 让每张 face 比所在 grid item 大 4px（上下左右各多 2px），
-     即使列方向 sub-pixel 间隙（col 12 等分时偶有 1–2px）也能彻底
-     搭接覆盖。edge 1–2px 溢出 cover-wrapper 被 overflow: hidden 截断
-     不影响视觉（cell 边界本就在切片边缘） */
-  inset: -2px;
+  inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 /* 背面：圆形 LED 像素点（rotateY(180deg) 补偿 + 圆形 dot） */
-.pixel-cell .face-back {
+.pixel-flipper .face-back {
   transform: rotateY(180deg);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.pixel-cell .face-back .dot {
+.pixel-flipper .face-back .dot {
   width: 38%;
   height: 60%;
   border-radius: 50%;
@@ -1706,7 +1714,7 @@ body::after {
 }
 
 /* 正面：原图切片（翻正后满格无缝拼合，无任何描边/阴影） */
-.pixel-cell .face-front {
+.pixel-flipper .face-front {
   /* 无 gap、无描边，恢复后即为完整封面 */
 }
 

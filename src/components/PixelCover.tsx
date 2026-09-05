@@ -124,24 +124,30 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
       const posX = (col / (GRID - 1)) * 100;
       const posY = (row / (GRID - 1)) * 100;
       cells.push(
-        <div key={i} className={`pixel-cell ${revealed.has(i) ? "revealed" : ""}`}>
-          {/* 背面：圆形 LED 像素点（初始朝上 = 马赛克圆点阵） */}
-          <div
-            className="face face-back"
-            style={{ background: loading ? "#0a0a0f" : pixelColors[i] }}
-          >
-            <span className="dot" />
+        <div key={i} className="pixel-cell">
+          {/* 关键：3D 旋转放在 .pixel-flipper 子层，.pixel-cell 自己做 2D layout，
+              .pixel-flipper 用 inset: -2px 覆盖相邻 cell 间隙（GPU compositing
+              在 Retina 上会产生 1px gap，这里靠 -2px 让相邻 flipper overlap 4px
+              彻底盖住）。flipper 内部 preserve-3d 保留 3D 翻转动效。 */}
+          <div className={`pixel-flipper ${revealed.has(i) ? "revealed" : ""}`}>
+            {/* 背面：圆形 LED 像素点（初始朝上 = 马赛克圆点阵） */}
+            <div
+              className="face face-back"
+              style={{ background: loading ? "#0a0a0f" : pixelColors[i] }}
+            >
+              <span className="dot" />
+            </div>
+            {/* 正面：原图清晰切片（翻正后朝上 = 完整无缝封面） */}
+            <div
+              className="face face-front"
+              style={{
+                backgroundImage: `url(${src})`,
+                backgroundSize: `${GRID * 100}% ${GRID * 100}%`,
+                backgroundPosition: `${posX}% ${posY}%`,
+                backgroundRepeat: "no-repeat",
+              }}
+            />
           </div>
-          {/* 正面：原图清晰切片（翻正后朝上 = 完整无缝封面） */}
-          <div
-            className="face face-front"
-            style={{
-              backgroundImage: `url(${src})`,
-              backgroundSize: `${GRID * 100}% ${GRID * 100}%`,
-              backgroundPosition: `${posX}% ${posY}%`,
-              backgroundRepeat: "no-repeat",
-            }}
-          />
         </div>
       );
     }
