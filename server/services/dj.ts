@@ -282,9 +282,12 @@ function parseBilingual(raw: string): { en: string; zh: string; funny: boolean }
   if (fence) text = fence[1].trim();
 
   // 尝试 JSON 解析
+  // [修复 2026-09-05] zh 必须 trim 后非空：LLM 偶发输出 {"zh":""} 会漏过原检查
+  // （typeof zh === "string" 对空字符串也为 true）→ 主路径返回 zh:"" → 前端中文区空白。
+  // 现在 zh 空会抛 null → 上层走 fallback（fallback 池必带中文），杜绝"中文消失"。
   try {
     const obj = JSON.parse(text) as { en?: unknown; zh?: unknown; funny?: unknown };
-    if (typeof obj.en === "string" && obj.en.trim() && typeof obj.zh === "string") {
+    if (typeof obj.en === "string" && obj.en.trim() && typeof obj.zh === "string" && obj.zh.trim()) {
       return {
         en: obj.en.trim(),
         zh: obj.zh.trim(),
