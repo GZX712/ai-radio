@@ -46,6 +46,8 @@ export function Player({
   const duration = useRadioStore((s) => s.duration);
   const volume = useRadioStore((s) => s.volume);
   const rate = useRadioStore((s) => s.playbackRate);
+  /** 用户上传的卡片背景图 DataURL（通过壁纸面板的"自定义壁纸"卡片触发上传） */
+  const playerBgImage = useRadioStore((s) => s.playerBgImage);
 
   const songPicUrl = now?.picUrl;
 
@@ -58,7 +60,12 @@ export function Player({
   };
 
   return (
-    <main className="player" data-playing={isPlaying}>
+    <main
+      className="player"
+      data-playing={isPlaying}
+      data-player-bg={playerBgImage ? "on" : "off"}
+      style={playerBgImage ? { backgroundImage: `url(${playerBgImage})` } : undefined}
+    >
       <div className="cover-wrapper">
         {songPicUrl ? (
           <PixelCover src={songPicUrl} alt={now.name || "Cover"} isPlaying={isPlaying} />

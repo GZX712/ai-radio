@@ -1,20 +1,21 @@
 import { create } from "zustand";
 import type { NowPlaying } from "@/types";
 
-/** 壁纸方案 ID（决定 .app 的 data-wallpaper 属性） */
+/** 壁纸方案 ID（决定 .app 的 data-wallpaper 属性）
+ * 注：用户上传图不再作为整页壁纸，而是作为 Player 卡片背景图（独立维度）。
+ * 该类型只管整页 6 主题配色。 */
 export type WallpaperId =
   | "pulse"   // 霓虹脉冲（默认 · 紫色 LED 频谱）
   | "mono"    // 02 极简黑白
   | "cream"   // 05 奶油新拟态
   | "glass"   // 06 玻璃拟态
   | "pop"     // 16 波普艺术
-  | "comic"   // 23 复古漫画
-  | "image";  // 🖼️ 自定义图片壁纸（用户上传的图作为底部背景）
+  | "comic";  // 23 复古漫画
 
 export const WALLPAPERS: { id: WallpaperId; name: string; desc: string; palette: [string, string, string] }[] = [
   { id: "pulse",  name: "霓虹脉冲",   desc: "默认 · 紫青 LED",   palette: ["#9d00ff", "#00f3ff", "#0a0a0f"] },
   { id: "mono",   name: "极简黑白",   desc: "克制 · 干净",       palette: ["#ffffff", "#888888", "#0a0a0a"] },
-  { id: "cream",  name: "奶油新拟态", desc: "浅灰 · 同色系凹凸", palette: ["#e6e9f2", "#6c7cff", "#9a8cff"] },
+  { id: "cream",  name: "奶油新拟态", desc: "浅灰 · 同色系凹凸", palette: ["#e6e9f6", "#6c7cff", "#9a8cff"] },
   { id: "glass",  name: "玻璃拟态",   desc: "通透 · 灵动",       palette: ["#a78bfa", "#60a5fa", "#1e1b4b"] },
   // Memphis 拼贴：粉 / 蓝绿 / 柠檬黄
   { id: "pop",    name: "波普艺术",   desc: "撞色 · 多色拼贴",   palette: ["#ff66b3", "#00d4d4", "#ffd93d"] },
@@ -28,26 +29,35 @@ function loadWallpaper(): WallpaperId {
   try {
     const v = localStorage.getItem("ai-radio-wallpaper");
     if (v && VALID_WALLPAPERS.has(v)) return v as WallpaperId;
-    // 老版本可能存了 "custom"（旧调色盘方案）→ 降级为 pulse
-    if (v === "custom") return "pulse";
+    // 老版本可能存了 "custom" 或 "image" → 降级为 pulse
+    if (v === "custom" || v === "image") return "pulse";
   } catch { /* ignore */ }
   return "pulse";
 }
 
-/** 自定义图片壁纸：DataURL 字符串（jpg/png/webp），存 localStorage */
-function loadCustomImage(): string | null {
+/** Player 卡片背景图：DataURL（jpg/png/webp），存 localStorage */
+function loadPlayerBgImage(): string | null {
+  // 迁移：老 ai-radio-custom-image（旧机制是整页）→ 自动迁移到 Player 卡片
   try {
-    const v = localStorage.getItem("ai-radio-custom-image");
-    if (!v) return null;
-    // 仅接受图片 DataURL
-    if (typeof v === "string" && v.startsWith("data:image/")) return v;
+    const old = localStorage.getItem("ai-radio-custom-image");
+    const cur = localStorage.getItem("ai-radio-player-bg");
+    if (!cur && old && typeof old === "string" && old.startsWith("data:image/")) {
+      localStorage.setItem("ai-radio-player-bg", old);
+      localStorage.removeItem("ai-radio-custom-image");
+      localStorage.setItem("ai-radio-wallpaper", "pulse"); // 整页壁纸回默认
+      return old;
+    }
+    if (cur && typeof cur === "string" && cur.startsWith("data:image/")) return cur;
   } catch { /* ignore */ }
   return null;
 }
 
-/** 清理老的 ai-radio-custom-colors 键（避免用户被新机制意外污染） */
-function cleanupLegacyCustomColors() {
-  try { localStorage.removeItem("ai-radio-custom-colors"); } catch { /* ignore */ }
+/** 清理老的 ai-radio-custom-colors / ai-radio-custom-image 键 */
+function cleanupLegacyCustomKeys() {
+  try {
+    localStorage.removeItem("ai-radio-custom-colors");
+    // ai-radio-custom-image 已经在 loadPlayerBgImage 里迁移并删除
+  } catch { /* ignore */ }
 }
 
 interface RadioState {
@@ -76,12 +86,12 @@ interface RadioState {
   sfxEnabled: boolean;
   toggleSfx: () => void;
 
-  // 壁纸方案：6 款配色 + 1 个自定义图片
+  // 壁纸方案：只管整页 6 主题配色（玩家背景图走 playerBgImage 独立字段）
   wallpaperId: WallpaperId;
   setWallpaper: (id: WallpaperId) => void;
-  /** 用户上传的图片壁纸 DataURL（仅 wallpaperId === "image" 生效） */
-  customImage: string | null;
-  setCustomImage: (dataUrl: string | null) => boolean; // 失败（quota 等）返回 false
+  /** 玩家卡片背景图 DataURL（铺满整个 .player 容器，独立于整页 wallpaper） */
+  playerBgImage: string | null;
+  setPlayerBgImage: (dataUrl: string | null) => boolean;
 
   setNow: (now: NowPlaying | null) => void;
   setDjText: (text: string) => void;
@@ -142,18 +152,18 @@ export const useRadioStore = create<RadioState>((set, get) => ({
       return { wallpaperId: id };
     }),
 
-  customImage: (() => {
-    cleanupLegacyCustomColors(); // 清掉老的 customColors 残留
-    return loadCustomImage();
+  playerBgImage: (() => {
+    cleanupLegacyCustomKeys(); // 清掉老的 customColors 残留 + 迁移 ai-radio-custom-image
+    return loadPlayerBgImage();
   })(),
-  setCustomImage: (dataUrl) => {
+  setPlayerBgImage: (dataUrl) => {
     try {
       if (dataUrl === null) {
-        localStorage.removeItem("ai-radio-custom-image");
+        localStorage.removeItem("ai-radio-player-bg");
       } else {
-        localStorage.setItem("ai-radio-custom-image", dataUrl);
+        localStorage.setItem("ai-radio-player-bg", dataUrl);
       }
-      set({ customImage: dataUrl });
+      set({ playerBgImage: dataUrl });
       return true;
     } catch {
       // QuotaExceededError 等

@@ -7,22 +7,24 @@ import {
 
 interface WallpaperPickerProps {
   current: WallpaperId;
-  customImage: string | null;
+  /** Player 卡片背景图 DataURL（用户上传 → Player 卡片背景，不影响整页） */
+  playerBgImage: string | null;
   onPick: (id: WallpaperId) => void;
   /** 传 null 表示清除；返回 false 表示 quota 失败 */
-  onImage: (dataUrl: string | null) => boolean;
+  onPlayerBgImage: (dataUrl: string | null) => boolean;
   onClose: () => void;
 }
 
 /**
- * 壁纸选择面板：6 款预设配色 + 1 个 🖼 自定义图片（用户上传 → 整页背景）。
+ * 壁纸选择面板：6 款整页预设配色 + 1 个 🖼 自定义图片（用户上传 → Player 卡片背景）。
  * 极简黑白设计：黑底白字 + 细线边框，无渐变无装饰。
  *
- * 🖼 自定义壁纸卡片本身就可点：点击直接触发文件选择（不再需要下方独立设计器）。
- * 已上传时：卡片底图 = 缩略图，右上角 ✕ 清除小按钮（点 stopPropagation 不触发选图）。
- * 未上传时：卡片显示 + 占位 + "点击上传图片"。
+ * 🖼 自定义图片卡片本身就做触发点：
+ *   - 未上传：点击整张卡片直接触发文件选择
+ *   - 已上传：点击整张卡片 = 换图；右上角 ✕ 单独清除（点 stopPropagation 不触发选图）
+ *   - 上传目的：图片只用于 Player 卡片背景（不是整页）
  */
-export function WallpaperPicker({ current, customImage, onPick, onImage, onClose }: WallpaperPickerProps) {
+export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImage, onClose }: WallpaperPickerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -42,7 +44,7 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const isImage = current === "image";
+  const isImageSet = !!playerBgImage;
 
   // 把 File → DataURL（base64）
   const readAsDataURL = (file: File): Promise<string> =>
@@ -58,10 +60,10 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
     fileRef.current?.click();
   };
 
-  /** 用户在 ✕ 上点了一下 → 清除图片（保持当前 wallpaperId = image 不变，可继续上传） */
+  /** 用户在 ✕ 上点了一下 → 清除图片 */
   const handleClearClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onImage(null);
+    onPlayerBgImage(null);
     setErrMsg(null);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -78,13 +80,11 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
     }
     try {
       const url = await readAsDataURL(file);
-      const ok = onImage(url);
+      const ok = onPlayerBgImage(url);
       if (!ok) {
         setErrMsg("本地存储空间已满，请换一张更小的图");
       } else {
         setErrMsg(null);
-        // 自动切到 image 模式（让新图立刻生效为整页背景）
-        if (current !== "image") onPick("image");
       }
     } catch (e) {
       setErrMsg((e as Error).message || "上传失败");
@@ -160,21 +160,22 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
           ))}
 
           {/* 🖼 自定义图片卡片（极简黑白，永远在末尾）
-              点击整张卡片 = 选图；已上传时右上角 ✕ 单独清除 */}
+              点击整张卡片 = 选图；已上传时右上角 ✕ 单独清除。
+              图片用途：Player 卡片背景图（不影响整页） */}
           <button
             type="button"
-            className={`wallpaper-card wallpaper-card-image ${isImage ? "active" : ""}`}
+            className={`wallpaper-card wallpaper-card-image ${isImageSet ? "active" : ""}`}
             onClick={handlePickClick}
             data-wallpaper="image"
-            aria-pressed={isImage}
-            aria-label={customImage ? "点击更换自定义壁纸图片" : "点击上传自定义壁纸图片"}
-            title={customImage ? "点击更换图片" : "点击上传图片"}
+            aria-pressed={isImageSet}
+            aria-label={isImageSet ? "点击更换 Player 卡片背景图" : "点击上传 Player 卡片背景图"}
+            title={isImageSet ? "点击更换图片" : "点击上传图片"}
           >
             <div
               className="wallpaper-preview wallpaper-preview-image"
-              style={customImage ? { backgroundImage: `url(${customImage})` } : undefined}
+              style={playerBgImage ? { backgroundImage: `url(${playerBgImage})` } : undefined}
             >
-              {!customImage && (
+              {!playerBgImage && (
                 <div className="wp-image-empty">
                   <span className="wp-image-plus">＋</span>
                   <span className="wp-image-label">点击上传图片</span>
@@ -185,7 +186,7 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
                   <span key={i} className="wp-led-cell" style={{ height: `${30 + Math.abs(Math.sin(i * 0.9)) * 70}%` }} />
                 ))}
               </div>
-              {customImage && (
+              {playerBgImage && (
                 <button
                   type="button"
                   className="wp-image-clear"
@@ -200,7 +201,7 @@ export function WallpaperPicker({ current, customImage, onPick, onImage, onClose
             <div className="wallpaper-meta">
               <div className="wallpaper-name">🖼 自定义壁纸</div>
               <div className="wallpaper-desc">
-                {customImage ? "点击更换 · 整页背景" : "上传图片 · 整页背景"}
+                {playerBgImage ? "点击更换 · Player 背景" : "上传图片 · Player 背景"}
               </div>
             </div>
           </button>

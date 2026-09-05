@@ -253,6 +253,28 @@ body::after {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ============== Player 卡片背景图（用户上传 · 通过壁纸面板触发） ============== */
+/* 用户图生效时：铺满 + 暗色蒙版保证内层文字/控件可读。
+   Player 卡片本身**完全被动**——没有任何按钮/拖拽逻辑，靠壁纸面板入口触发上传。 */
+.player[data-player-bg="on"] {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: #1a1530 !important;
+  position: relative;
+  border-color: transparent;
+}
+.player[data-player-bg="on"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 15, 0.55) 0%, rgba(10, 10, 15, 0.72) 100%);
+  border-radius: 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+.player[data-player-bg="on"] > * { position: relative; z-index: 1; }
+
 .cover-wrapper {
   width: 100%;
   aspect-ratio: 1;
@@ -3139,36 +3161,6 @@ body::after {
   font-family: "Impact", monospace;
   font-weight: 800;
   text-shadow: none !important;
-}
-
-/* =========================================================
- * 🖼 自定义图片壁纸（用户上传图片作为整页背景）
- * App.tsx 会注入 --wp-custom-image: url(...)
- * ::before 放图片层，::after 放暗色蒙版保证文字可读
- * UI 元素继承默认 pulse token（白字 + 深色 panel），无需 override
- * ========================================================= */
-.app[data-wallpaper="image"] {
-  position: relative;
-  isolation: isolate;
-}
-.app[data-wallpaper="image"]::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: var(--wp-custom-image, none);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  z-index: -2;
-  pointer-events: none;
-}
-.app[data-wallpaper="image"]::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: -1;
-  pointer-events: none;
 }
 
 /* =========================================================
