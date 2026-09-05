@@ -3900,3 +3900,49 @@ body::after {
   z-index: 5;
   background: #0a0a0f;
 }
+
+/* ============== DJ 性格设置 Modal：贴顶弹出 + 手机占满全屏 ============== */
+/* 辛老师反馈：默认 modal-overlay { align-items: center; max-height: 90vh } 在手机上
+   把 DJ 性格设置挤到中线以下，"禁忌词"/"保存"按钮不可见要滚动。
+   改为贴顶部 + 高度自适应 + 手机完全占满全屏（border-radius 仅底部圆角）。 */
+/* 桌面/平板：贴顶部显示，顶部 padding 仅 6px */
+.settings-overlay {
+  align-items: flex-start;
+  padding: 6px 16px 16px;
+  animation: none;
+}
+
+/* 让 settings card 自上而下 slide-down 进入，让"往上跳出"有动效感 */
+.settings-overlay .modal-card {
+  animation: settings-pop-down 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes settings-pop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 手机窄屏（屏宽 ≤ 600px）：完全贴顶 + 占满全屏高度（用 dvh 避开 iOS URL bar）*/
+@media (max-width: 600px) {
+  .settings-overlay {
+    align-items: stretch;
+    padding: 0;
+    padding-top: env(safe-area-inset-top, 0);   /* 避开 iOS notch / 状态栏 */
+  }
+  .settings-overlay .modal-card {
+    max-height: 100dvh;
+    max-width: none;
+    width: 100%;
+    border-radius: 0 0 18px 18px;
+  }
+  .settings-overlay .modal-body {
+    /* 确保内部仍然可滚但弹性占满剩余高度 */
+    -webkit-overflow-scrolling: touch;
+  }
+}

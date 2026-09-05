@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 
@@ -548,9 +549,13 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
         <button type="button" className="chat-send" onClick={handleSend} aria-label="Send">Send</button>
       </div>
 
-      {/* DJ 性格设置模态框：跟随当前壁纸主题（settings-card[data-wallpaper] 提供主题样式） */}
-      {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)} role="dialog" aria-modal="true">
+      {/* DJ 性格设置模态框：跟随当前壁纸主题（settings-card[data-wallpaper] 提供主题样式）
+          关键：用 createPortal 渲染到 document.body 根下，**脱离 .player 的 containing block**
+          （.player 有 backdrop-filter: blur(20px)，会让 fixed-positioned 后代相对 .player 而
+          非 viewport 定位 → mobile 上 modal 被挤到屏幕下半），保证 modal-overlay fixed inset:0
+          真正贴满全屏。 */}
+      {showSettings && createPortal(
+        <div className="modal-overlay settings-overlay" onClick={() => setShowSettings(false)} role="dialog" aria-modal="true">
           <div
             className="modal-card settings-card"
             data-wallpaper={wallpaperId}
@@ -685,7 +690,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               <button type="button" className="modal-btn-primary" onClick={saveSettings}>保存</button>
             </footer>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
