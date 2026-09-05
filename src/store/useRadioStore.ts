@@ -83,9 +83,9 @@ interface RadioState {
   customImage: string | null;
   setCustomImage: (dataUrl: string | null) => boolean; // 失败（quota 等）返回 false
 
-  /** 用户上传的播放器封面图 DataURL（无歌曲 picUrl 时显示） */
-  customCover: string | null;
-  setCustomCover: (dataUrl: string | null) => boolean;
+  /** 用户上传的播放器卡片背景图 DataURL（铺满整个 .player 容器，独立于整页 wallpaper） */
+  playerBgImage: string | null;
+  setPlayerBgImage: (dataUrl: string | null) => boolean;
 
   setNow: (now: NowPlaying | null) => void;
   setDjText: (text: string) => void;
@@ -165,23 +165,24 @@ export const useRadioStore = create<RadioState>((set, get) => ({
     }
   },
 
-  customCover: (() => {
+  playerBgImage: (() => {
     try {
-      const v = localStorage.getItem("ai-radio-player-cover");
+      const v = localStorage.getItem("ai-radio-player-bg");
       if (typeof v === "string" && v.startsWith("data:image/")) return v;
     } catch { /* ignore */ }
     return null;
   })(),
-  setCustomCover: (dataUrl) => {
+  setPlayerBgImage: (dataUrl) => {
     try {
       if (dataUrl === null) {
-        localStorage.removeItem("ai-radio-player-cover");
+        localStorage.removeItem("ai-radio-player-bg");
       } else {
-        localStorage.setItem("ai-radio-player-cover", dataUrl);
+        localStorage.setItem("ai-radio-player-bg", dataUrl);
       }
-      set({ customCover: dataUrl });
+      set({ playerBgImage: dataUrl });
       return true;
     } catch {
+      // QuotaExceededError 等
       return false;
     }
   },

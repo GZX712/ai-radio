@@ -248,6 +248,77 @@ body::after {
   animation: slide-up 0.5s cubic-bezier(0.16,1,0.3,1);
 }
 
+/* ============== Player 自定义背景（仅作用于播放器卡片，不动整页 wallpaper） ============== */
+.player-bg-file-input { display: none; }
+
+/* 用户图生效时：铺满 + 半透明蒙版保证内层文字/控件可读 */
+.player[data-player-bg="on"] {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: #1a1530 !important;
+  position: relative;
+  border-color: transparent;
+}
+/* 暗色蒙版：让文本/控件始终可读 */
+.player[data-player-bg="on"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 15, 0.55) 0%, rgba(10, 10, 15, 0.72) 100%);
+  border-radius: 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+/* 所有内部子元素提到蒙版之上 */
+.player[data-player-bg="on"] > * { position: relative; z-index: 1; }
+
+/* 触发按钮：右下角小贴片；hover 半透，opacity 默认 0.6 hover 1 */
+.player-bg-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s, background 0.18s, border-color 0.18s, transform 0.18s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: inherit;
+}
+.player:hover .player-bg-btn { opacity: 0.85; }
+.player-bg-btn:hover {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* 拖拽高亮：边框 + 半透白蒙版提示 */
+.player-bg-dropzone {
+  position: absolute;
+  inset: 4px;
+  z-index: 3;
+  border-radius: 22px;
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -294,87 +365,6 @@ body::after {
   place-items: center;
   color: var(--muted-2);
   font-size: 48px;
-}
-
-/* ============== 自定义封面（无歌曲时用户上传图） ============== */
-.cover-file-input { display: none; }
-.cover-custom {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-.cover-custom-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-color: #000;
-}
-.cover-edit-btn {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.18s, background 0.18s, border-color 0.18s;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  font-family: inherit;
-}
-.cover-custom:hover .cover-edit-btn { opacity: 1; }
-.cover-edit-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.7);
-}
-.cover-edit-clear { top: 8px; right: 8px; }
-.cover-edit-replace { bottom: 8px; right: 8px; }
-
-/* 无自定义图占位（虚线 dropzone） */
-.cover-add {
-  width: 100%;
-  height: 100%;
-  min-height: 180px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.28);
-  background: #000;
-  color: rgba(255, 255, 255, 0.75);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-.cover-add:hover {
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
-}
-.cover-add-plus {
-  font-size: 30px;
-  font-weight: 300;
-  opacity: 0.6;
-  line-height: 1;
-}
-.cover-add-label {
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  opacity: 0.85;
 }
 
 .meta {

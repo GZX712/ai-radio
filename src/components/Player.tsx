@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
@@ -47,9 +47,10 @@ export function Player({
   const duration = useRadioStore((s) => s.duration);
   const volume = useRadioStore((s) => s.volume);
   const rate = useRadioStore((s) => s.playbackRate);
-  const customCover = useRadioStore((s) => s.customCover);
-  const setCustomCover = useRadioStore((s) => s.setCustomCover);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  const playerBgImage = useRadioStore((s) => s.playerBgImage);
+  const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   /** File → DataURL */
   const readAsDataURL = (file: File): Promise<string> =>
@@ -60,24 +61,23 @@ export function Player({
       fr.readAsDataURL(file);
     });
 
-  const handleCoverFile = async (file: File | undefined | null) => {
+  const handleBgFile = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
     if (file.size > 5 * 1024 * 1024) return;
     try {
       const url = await readAsDataURL(file);
-      setCustomCover(url);
+      setPlayerBgImage(url);
     } catch {
       /* 静默失败 */
     }
   };
 
-  const handleCoverClear = () => {
-    setCustomCover(null);
-    if (coverInputRef.current) coverInputRef.current.value = "";
+  const handleBgClear = () => {
+    setPlayerBgImage(null);
+    if (bgInputRef.current) bgInputRef.current.value = "";
   };
 
-  const hasSongCover = !!now?.picUrl;
   const songPicUrl = now?.picUrl;
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
@@ -88,62 +88,68 @@ export function Player({
     onSeekTo(Math.max(0, Math.min(1, pct)));
   };
 
+  const hasBg = !!playerBgImage;
+
   return (
-    <main className="player" data-playing={isPlaying}>
+    <main
+      className="player"
+      data-playing={isPlaying}
+      data-player-bg={hasBg ? "on" : "off"}
+      style={hasBg ? { backgroundImage: `url(${playerBgImage})` } : undefined}
+      onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleBgFile(e.dataTransfer.files?.[0]);
+      }}
+    >
       {/* 隐藏 file input（触发上传） */}
       <input
-        ref={coverInputRef}
+        ref={bgInputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/gif"
-        className="cover-file-input"
-        onChange={(e) => handleCoverFile(e.target.files?.[0])}
+        className="player-bg-file-input"
+        onChange={(e) => handleBgFile(e.target.files?.[0])}
         aria-hidden="true"
         tabIndex={-1}
       />
 
+      {/* 背景图状态微指示：拖拽时高亮 / 无图时显示 "＋ 上传背景" 按钮（hover 显，按钮靠右下） */}
+      {hasBg ? (
+        <button
+          type="button"
+          className="player-bg-btn player-bg-btn-clear"
+          onClick={handleBgClear}
+          title="清除自定义背景"
+          aria-label="清除自定义背景"
+        >
+          ✕ 清除背景
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="player-bg-btn player-bg-btn-add"
+          onClick={() => bgInputRef.current?.click()}
+          title="上传自定义背景图（仅作用于播放器卡片）"
+          aria-label="上传自定义背景图"
+        >
+          🖼 添加背景
+        </button>
+      )}
+
+      {dragOver && (
+        <div className="player-bg-dropzone" aria-hidden="true">
+          <span>释放图片上传</span>
+        </div>
+      )}
+
       <div className="cover-wrapper">
-        {hasSongCover ? (
-          // 1. 有歌曲封面：优先用专辑封面（不可改）
-          <PixelCover src={songPicUrl!} alt={now.name || "Cover"} isPlaying={isPlaying} />
-        ) : customCover ? (
-          // 2. 无歌曲但有自定义图：用户图 + hover 显示清除按钮
-          <div className="cover-custom">
-            <div
-              className="cover-custom-bg"
-              style={{ backgroundImage: `url(${customCover})` }}
-              role="img"
-              aria-label="自定义播放器封面"
-            />
-            <button
-              type="button"
-              className="cover-edit-btn cover-edit-clear"
-              onClick={handleCoverClear}
-              title="清除自定义封面"
-              aria-label="清除自定义封面"
-            >
-              ✕
-            </button>
-            <button
-              type="button"
-              className="cover-edit-btn cover-edit-replace"
-              onClick={() => coverInputRef.current?.click()}
-              title="替换图片"
-              aria-label="替换图片"
-            >
-              ✏
-            </button>
-          </div>
+        {songPicUrl ? (
+          <PixelCover src={songPicUrl} alt={now.name || "Cover"} isPlaying={isPlaying} />
         ) : (
-          // 3. 都无：虚线 dropzone 占位（点击上传）
-          <button
-            type="button"
-            className="cover-add"
-            onClick={() => coverInputRef.current?.click()}
-            aria-label="上传自定义播放器封面"
-          >
-            <span className="cover-add-plus">＋</span>
-            <span className="cover-add-label">上传封面</span>
-          </button>
+          <div className="cover-placeholder" />
         )}
       </div>
 
