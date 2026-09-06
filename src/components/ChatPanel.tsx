@@ -575,7 +575,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
         )}
         {messages.map((m) => (
           <div key={m.id} className={`chat-msg ${m.role}`}>
-            {/* 头像上方贴 YOU / DJ 标签 + 时间戳（紧凑模式：紧贴右上角） */}
+            {/* 头像列（只留圆形头像，角色/时间挪进气泡头 → 与主区域字幕卡统一视觉语言） */}
             <div className="chat-msg-side">
               <div className={`chat-avatar ${m.role}`}>
                 {m.role === "user" ? (
@@ -590,12 +590,26 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                   <span>🎙</span>
                 )}
               </div>
-              <div className="chat-meta-row">
-                <span className="chat-role">{m.role === "user" ? "YOU" : "DJ"}</span>
-                <span className="chat-time">{m.time}</span>
-              </div>
             </div>
             <div className="chat-msg-content">
+              {/* 气泡头：角色标签 + 时间戳（左侧）｜▶ 播放/暂停（右侧，仅 DJ 手动回复） */}
+              <div className="chat-msg-head">
+                <span className="chat-msg-head-left">
+                  <span className={`chat-role ${m.role}`}>{m.role === "user" ? "YOU" : "DJ"}</span>
+                  <span className="chat-time">{m.time}</span>
+                </span>
+                {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
+                  <button
+                    type="button"
+                    className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""}`}
+                    onClick={() => toggleReplyPlay(m)}
+                    aria-label={playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
+                    title={playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
+                  >
+                    {playingReplyId === m.id ? "⏸" : "▶"}
+                  </button>
+                )}
+              </div>
               <span
                 className={`chat-text ${m.id === streamingIdRef.current ? "streaming" : ""}`}
                 style={m.id === streamingIdRef.current ? { ["--reveal-delay" as string]: "0s" } : undefined}
@@ -612,28 +626,6 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               {m.role === "dj" && !hideZh && (!m.zh || m.zh === m.en) && (
                 <span className="chat-zh" style={{ opacity: 0.6 }}>{m.en}</span>
               )}
-              {m.role === "dj" && m.kind === "reply" && (
-                <span className="chat-reply-hint">
-                  {playingReplyId === m.id ? "🔊 正在播放…" : "🎧 点 ▶ 听 DJ 的回复"}
-                </span>
-              )}
-              {/* DJ 气泡右下角💡小灯（仅 auto 类型：切歌/开场/天气/趣闻；
-                 reply（聊天回复）不要小灯，免得在用户交流场景显得娱乐过头） */}
-              {m.role === "dj" && m.kind === "auto" && (
-                <span className="chat-bulb" aria-hidden="true">💡</span>
-              )}
-              {/* DJ 消息回复手动 ▶/⏸ 按钮 */}
-              {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
-                <button
-                  type="button"
-                  className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""}`}
-                  onClick={() => toggleReplyPlay(m)}
-                  aria-label={playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
-                  title={playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
-                >
-                  {playingReplyId === m.id ? "⏸" : "▶"}
-                </button>
-              )}
             </div>
           </div>
         ))}
@@ -643,16 +635,17 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               <div className="chat-avatar dj">
                 {djAvatar ? <img src={djAvatar} alt="DJ" /> : <span>🎙</span>}
               </div>
-              <div className="chat-meta-row">
-                <span className="chat-role">DJ</span>
-                <span className="chat-time">{now()}</span>
-              </div>
             </div>
             <div className="chat-msg-content">
+              <div className="chat-msg-head">
+                <span className="chat-msg-head-left">
+                  <span className="chat-role dj">DJ</span>
+                  <span className="chat-time">{now()}</span>
+                </span>
+              </div>
               <span className="chat-text">
-                💡 正在敲碗回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
+                正在敲碗回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
               </span>
-              <span className="chat-bulb" aria-hidden="true">💡</span>
             </div>
           </div>
         )}

@@ -710,7 +710,7 @@ body::after {
   align-items: flex-start;
   gap: 8px;
   max-width: 92%;
-  font-size: 13px;
+  font-size: 14px;
   animation: msg-in 0.3s ease-out;
 }
 
@@ -719,35 +719,19 @@ body::after {
   flex-direction: row-reverse;
 }
 
-/* 消息气泡容器：上方标签 + 头像 + 气泡（参考示例：标签贴在头像右上） */
+/* 头像列：只放圆形头像（角色/时间已移入气泡头，视觉语言与主区域字幕卡统一） */
 .chat-msg-side {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
   flex-shrink: 0;
-}
-
-.chat-meta-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
-  opacity: 0.85;
-}
-
-.chat-msg.dj .chat-meta-row {
-  flex-direction: row-reverse;
 }
 
 .chat-msg-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 14px;
+  gap: 3px;
+  padding: 9px 14px 11px;
   border-radius: 14px;
   background: rgba(255,255,255,0.04);
   flex: 1;
@@ -778,17 +762,6 @@ body::after {
 .chat-msg.user .chat-role {
   color: #fcd9a8;                                         /* 暖橙淡色（YOU 角色） */
   text-shadow: 0 0 8px rgba(251, 166, 70, 0.4);
-}
-
-/* DJ 气泡右下角小灯💡（壁纸主题色适配） */
-.chat-bulb {
-  position: absolute;
-  right: 6px;
-  bottom: 4px;
-  font-size: 14px;
-  filter: drop-shadow(0 0 6px rgba(255, 217, 61, 0.55));
-  pointer-events: none;
-  user-select: none;
 }
 
 /* 圆形头像（DJ + 用户） */
@@ -854,24 +827,31 @@ body::after {
   30% { opacity: 1; }
 }
 
-/* DJ 消息头部（角色 + 时间 + 播放/暂停按钮） */
+/* DJ 消息头部（角色 + 时间 左 / 播放暂停按钮 右）—— 与主区域字幕卡同款语言 */
 .chat-msg-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 2px;
 }
 
-/* chat-reply 手动播放按钮（▶ 听回复 / ⏸ 暂停）— 浮在气泡内右下角，与 💡 并排 */
+.chat-msg-head-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* chat-reply 手动播放按钮（▶ 听回复 / ⏸ 暂停）— 固定在气泡头右侧 */
 .chat-reply-toggle {
   background: rgba(255, 159, 28, 0.12);
   border: 1px solid rgba(255, 159, 28, 0.35);
   color: var(--accent);
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -879,8 +859,6 @@ body::after {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
-  align-self: flex-end;
-  margin-top: 2px;
 }
 
 .chat-reply-toggle:hover { background: rgba(255, 159, 28, 0.2); transform: scale(1.08); }
@@ -891,14 +869,6 @@ body::after {
   color: #fff;
 }
 
-.chat-reply-hint {
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.chat-reply-hint:has(.playing) { color: var(--accent); }
-
 @keyframes dj-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.3); }
   50% { box-shadow: 0 0 0 4px rgba(255, 159, 28, 0); }
@@ -908,24 +878,33 @@ body::after {
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1;
 }
 
 .chat-text {
-  line-height: 1.4;
+  font-size: 14.5px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.chat-msg.dj .chat-text {
+  font-size: 15px; /* DJ 主文本略大 —— 消息即"字幕"，视线焦点 */
 }
 
 .chat-zh {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .chat-time {
   font-size: 10px;
   color: var(--muted-2);
-  align-self: flex-end;
-  margin-top: 2px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .chat-input-row {
