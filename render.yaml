@@ -37,5 +37,12 @@ services:
         value: en-US-GuyNeural
       - key: PLAYLIST_ID
         value: "18342860645"
+      # [2026-09-06] COS 本地音乐库模式：彻底摆脱网易云风控循环
+      # - COS_LIBRARY=1 启用 COS 模式，music.ts 走 manifest.json / songs/ 直接播放
+      # - COS_BASE_URL 是公开访问前缀（COS 公有读桶返回 url 即可播放，Range 续播可用）
+      - key: COS_LIBRARY
+        value: "1"
+      - key: COS_BASE_URL
+        value: "https://ai-radio-library-1463614289.cos.ap-nanjing.myqcloud.com"
     healthCheckPath: /api/health
     autoDeploy: true
