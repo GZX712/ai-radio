@@ -37,8 +37,16 @@ export function useAudioEngine() {
   // 是否已成功开播过一首（!booted = 电台启动阶段）：启动阶段不播切歌 jingle，
   // 让 /api/dj/open 的开场白当唯一第一句（辛老师反馈"打开时语音太密集"）
   const bootedRef = useRef(false);
-  // 断流自动跳歌防抖：8 秒内第二次 error 不再自动跳（防网络故障时无限循环切歌）
-  const lastErrorSkipRef = useRef(0);
+  // 自动跳歌滑动窗口限流：60 秒内最多自动跳 5 次；超限 = 疑似断网 → 暂停自动跳并提示，
+  // 窗口滑动后自然恢复。※ 旧版"8 秒内第二次 error 永久放弃"会在连续两首坏歌后
+  // 锁死无声且永不恢复 —— 这是"播放静止"的一个直接 bug，已废弃。
+  const autoSkipTimesRef = useRef<number[]>([]);
+  // 跳歌请求挂起中（防 error/stall/ended 多重触发导致并发重叠 skip）
+  const autoSkipPendingRef = useRef(false);
+  // 心跳看门狗 stall 状态：记录 currentTime 最后推进时刻
+  const stallRef = useRef({ lastTime: -1, lastMoveAt: 0, pending: false });
+  // 始终指向最新 autoSkip 闭包（setInterval / 事件监听器通过它调用，避免闭包过期）
+  const autoSkipRef = useRef<(reason: "error" | "stall") => void>(() => {});
   // DJ 字幕 5 秒自动消失定时器（每次 DJ 念完一句才起 5s 计时；新 DJ 字幕会覆盖并清掉旧 timer）
   const hideDjTimerRef = useRef<number | null>(null);
 
@@ -88,24 +96,10 @@ export function useAudioEngine() {
         }
       }).catch(() => {});
     });
-    // 断流/URL 失效自动跳歌：网易云无 cookie 时 VIP 歌只给试听 URL，播到片段末尾
-    // 会被 CDN 掐断——不会触发 ended，音乐卡死不切歌，用户手动切来切去就"几首来回"。
-    // 监听 error 事件自动切下一首（8 秒内二次 error 不跳，防网络故障死循环）
+    // 断流/URL 失效/试听被掐：一律交给 autoSkip 统一处理（滑动窗口限流 + 挂起保护，
+    // 不再"8 秒内二次 error 永久放弃"——那会在连续两首坏歌后锁死无声永不恢复）
     music.addEventListener("error", () => {
-      const nowTs = Date.now();
-      if (nowTs - lastErrorSkipRef.current < 8000) {
-        console.warn("[audio] 连续播放出错，停止自动跳歌（可能网络故障）");
-        return;
-      }
-      lastErrorSkipRef.current = nowTs;
-      useRadioStore.getState().setIsPlaying(false);
-      radioApi.skip().then((res) => {
-        if (res.song) {
-          music.src = res.song.url;
-          music.play().catch(() => {});
-          useRadioStore.getState().setNow(res.song);
-        }
-      }).catch(() => {});
+      autoSkipRef.current("error");
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
@@ -210,6 +204,79 @@ export function useAudioEngine() {
       useRadioStore.getState().setIsLoading(false);
     }
   };
+
+  /**
+   * 自动跳歌（error 事件 / 心跳看门狗共用通道）：
+   * - 挂起保护：上一次自动跳请求还没返回时不再发起（防并发重叠 skip）
+   * - 滑动窗口限流：60 秒内最多自动跳 5 次；超限 = 疑似断网/服务故障 →
+   *   暂停自动跳并提示，窗口滑出后自然恢复（不再永久锁死）
+   */
+  const autoSkip = (reason: "error" | "stall"): void => {
+    if (autoSkipPendingRef.current) return; // 上次请求还在路上
+    const nowTs = Date.now();
+    const recent = autoSkipTimesRef.current.filter((t) => nowTs - t < 60000);
+    autoSkipTimesRef.current = recent;
+    if (recent.length >= 5) {
+      console.warn(`[audio] 60s 内自动跳歌已 ${recent.length} 次仍失败，暂停自动跳（${reason}），30s 后自动恢复`);
+      useRadioStore.getState().setError("信号不稳，播放暂时中断——约 30 秒后自动恢复");
+      return;
+    }
+    autoSkipTimesRef.current.push(nowTs);
+    autoSkipPendingRef.current = true;
+    console.warn(`[audio] 自动跳歌（${reason}）`);
+    stopDj();
+    useRadioStore.getState().setIsPlaying(false);
+    radioApi
+      .skip()
+      .then((res) => {
+        if (res.song) return loadAndPlay(res.song);
+        throw new Error("没有可播歌曲");
+      })
+      .catch(() => {
+        useRadioStore.getState().setError("切歌失败，请检查网络后手动切歌");
+      })
+      .finally(() => {
+        autoSkipPendingRef.current = false;
+      });
+  };
+  // 每次渲染更新 ref，确保 interval/事件监听器拿到最新闭包
+  autoSkipRef.current = autoSkip;
+
+  // 心跳看门狗：每 3 秒核对播放进度。
+  // 背景：VIP 试听流被 CDN 掐断 / URL 失效时，audio 元素往往既不触发 ended
+  // 也不触发 error —— 只有 currentTime 悄悄停住（"无声静止"）。事件监听兜不住，
+  // 必须主动心跳：播放中但 currentTime 连续 10 秒无推进 → 判定死播 → 自动跳歌。
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const nodes = nodesRef.current;
+      if (!nodes) return;
+      const { music } = nodes;
+      const st = useRadioStore.getState();
+      // 非播放态 / 正在加载 / 无源 → 重置观测，不判定（避免误伤切歌间隙、缓冲、暂停）
+      if (music.paused || music.ended || !music.src || st.isLoading || !st.now?.url) {
+        stallRef.current = { lastTime: -1, lastMoveAt: 0, pending: false };
+        return;
+      }
+      const nowTs = Date.now();
+      const t = music.currentTime;
+      const wd = stallRef.current;
+      if (t !== wd.lastTime) {
+        // 进度在推进 → 健康
+        stallRef.current = { lastTime: t, lastMoveAt: nowTs, pending: false };
+        return;
+      }
+      if (wd.lastMoveAt === 0) {
+        stallRef.current = { lastTime: t, lastMoveAt: nowTs, pending: false };
+        return;
+      }
+      if (nowTs - wd.lastMoveAt > 10000 && !wd.pending) {
+        stallRef.current = { ...wd, pending: true };
+        autoSkipRef.current("stall");
+      }
+    }, 3000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePlay = async (): Promise<void> => {
     // 恢复播放：丢弃暂停期间没说完的 DJ 话术（不再继续说）
