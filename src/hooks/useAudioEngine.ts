@@ -39,6 +39,8 @@ export function useAudioEngine() {
   const bootedRef = useRef(false);
   // 断流自动跳歌防抖：8 秒内第二次 error 不再自动跳（防网络故障时无限循环切歌）
   const lastErrorSkipRef = useRef(0);
+  // DJ 字幕 5 秒自动消失定时器（每次 DJ 念完一句才起 5s 计时；新 DJ 字幕会覆盖并清掉旧 timer）
+  const hideDjTimerRef = useRef<number | null>(null);
 
   const getNodes = useCallback((): AudioNodes => {
     if (nodesRef.current) return nodesRef.current;
@@ -153,6 +155,12 @@ export function useAudioEngine() {
     stopLaughTrack(); // 停止 DJ 的同时掐断罐头笑声（避免切歌后笑声还在响）
     djQueueRef.current = [];
     djPlayingRef.current = false;
+    // 用户主动暂停/切歌/换台 → 字幕立即消失（不留 5 秒）
+    if (hideDjTimerRef.current !== null) {
+      window.clearTimeout(hideDjTimerRef.current);
+      hideDjTimerRef.current = null;
+    }
+    useRadioStore.getState().clearDj();
   };
 
   /**
@@ -323,6 +331,19 @@ export function useAudioEngine() {
     dj.onended = () => {
       // 这条是笑话/怼人 → 观众罐头笑（punchline 后立刻响）
       if (item.laugh) playLaughTrack();
+      // 这条念完 → 起 5s 计时清空字幕；若 5s 内有下一条 DJ 字幕，
+      // 下一条的 setDjBilingual 会清掉旧 timer 重建，这里比对 en/zh 避免误清
+      if (hideDjTimerRef.current !== null) window.clearTimeout(hideDjTimerRef.current);
+      const finishedEn = item.en;
+      const finishedZh = item.zh;
+      hideDjTimerRef.current = window.setTimeout(() => {
+        hideDjTimerRef.current = null;
+        const cur = useRadioStore.getState();
+        // 仍显示的是同一句 → 才清（防止新 DJ 字幕被本条 timer 误清）
+        if (cur.djEn === finishedEn && cur.djZh === finishedZh) {
+          cur.clearDj();
+        }
+      }, 5000);
       playNextDj();
     };
 
@@ -336,6 +357,15 @@ export function useAudioEngine() {
           await new Promise((r) => setTimeout(r, 300));
           await tryPlay(attempt + 1);
         } else {
+          // 播放失败兜底：onended 不会触发，靠这里起 5s 清字幕定时器
+          if (hideDjTimerRef.current !== null) window.clearTimeout(hideDjTimerRef.current);
+          const finishedEn = item.en;
+          const finishedZh = item.zh;
+          hideDjTimerRef.current = window.setTimeout(() => {
+            hideDjTimerRef.current = null;
+            const cur = useRadioStore.getState();
+            if (cur.djEn === finishedEn && cur.djZh === finishedZh) cur.clearDj();
+          }, 5000);
           playNextDj();
         }
       }
