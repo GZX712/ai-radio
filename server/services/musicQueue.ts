@@ -38,6 +38,9 @@ export class MusicQueue {
   // 最近播放集合（随机去重）
   private recent: string[] = [];
   private readonly RECENT_LIMIT = 40;
+  // 已成功消费（播放）的歌曲数——server 用它判断"是否首播"：
+  // 打开电台第一次取歌（consumed 0→1）不广播 LLM 串场，只留开场白一句
+  private consumed = 0;
   // 本会话失败的歌曲 ID（移到队列末尾，下次不再尝试；进程重启后清空）
   private failedIds = new Set<string>();
   // 版权预筛进行中标记
@@ -167,6 +170,7 @@ export class MusicQueue {
       this.currentSong = cached.song;
       this.cursor = cached.index;
       this.poolUsed++;
+      this.consumed++;
       this.pushRecent(this.currentSong.songmid);
       // 播到第 12 首 → 后台预取下一组（提前准备，避免第 15 首后无歌）
       if (this.poolUsed >= this.REFILL_AT && !this.nextPrefetching && this.nextPool.length === 0) {
@@ -204,6 +208,7 @@ export class MusicQueue {
       song = await this.loadAt(this.pickRandomIndex());
     }
     if (song) {
+      this.consumed++;
       this.pushRecent(song.songmid);
     }
     this.prefetchNext();
@@ -288,6 +293,9 @@ export class MusicQueue {
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
         if (r.status === "fulfilled") {
+          // 逐条检查上限：整批 push 可能把池撑到 > POOL_SIZE（并发批无中间检查），
+          // 超发会破坏"组内 15 首不重复"的语义，这里超过即丢弃多余
+          if (pool.length >= this.POOL_SIZE) break;
           pool.push({ index: r.value.idx, song: r.value.song });
         } else {
           const failed = this.queue[picks[i]];
@@ -362,6 +370,12 @@ export class MusicQueue {
     this.nextPool = [];
     this.poolUsed = 0;
     this.recent = [];
+    this.consumed = 0;
+  }
+
+  /** 已消费（切出播放）的歌曲总数——server 判断"是否首播"用 */
+  getConsumedCount(): number {
+    return this.consumed;
   }
 
   getQueueInfo() {
@@ -374,6 +388,7 @@ export class MusicQueue {
       prefetched: this.prefetchPool.length,                       // 当前组剩余
       nextPrefetched: this.nextPool.length,                       // 下一组已预取
       poolUsed: this.poolUsed,
+      consumed: this.consumed,
     };
   }
 }

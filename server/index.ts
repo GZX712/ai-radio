@@ -151,6 +151,9 @@ app.get("/api/now", async (_req, res) => {
 app.post("/api/next", async (_req, res) => {
   try {
     const previousSong = await musicQueue.current();
+    // 首播判定：切到新歌前从未消费过队列（打开电台第一次取歌）→ 不广播 LLM 串场，
+    // 只留 /api/dj/open 的开场白一句，避免"开场白 + 串场介绍"叠着说（辛老师反馈语音太密集）
+    const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.next();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
@@ -159,7 +162,7 @@ app.post("/api/next", async (_req, res) => {
     scheduler.onTrackChange().catch((err) =>
       console.error("[Scheduler] onTrackChange 失败:", err)
     );
-    if (song) {
+    if (song && wasConsumed > 0) {
       triggerDJTransition(previousSong, song).catch((err) =>
         console.error("[DJ] 串场失败:", err)
       );
@@ -174,10 +177,11 @@ app.post("/api/next", async (_req, res) => {
 
 app.post("/api/prev", async (_req, res) => {
   try {
+    const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.prev();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
-    if (song) {
+    if (song && wasConsumed > 0) {
       triggerDJTransition(null, song).catch((err) =>
         console.error("[DJ] 上首串场失败:", err)
       );
@@ -193,6 +197,7 @@ app.post("/api/prev", async (_req, res) => {
 app.post("/api/skip", async (_req, res) => {
   try {
     const previousSong = await musicQueue.current();
+    const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.skip();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
@@ -200,7 +205,7 @@ app.post("/api/skip", async (_req, res) => {
     scheduler.onTrackChange().catch((err) =>
       console.error("[Scheduler] onTrackChange 失败:", err)
     );
-    if (song) {
+    if (song && wasConsumed > 0) {
       triggerDJTransition(previousSong, song).catch((err) =>
         console.error("[DJ] 串场失败:", err)
       );

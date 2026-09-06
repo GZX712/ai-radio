@@ -300,13 +300,10 @@ body::after {
   position: relative;
 }
 
-.cover-wrapper::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.4));
-  pointer-events: none;
-}
+/* [频闪/马赛克修复 2026-09-05] 删除 .cover-wrapper::after 下半部黑渐变遮罩：
+   该层以 z-index 叠在 pixel-flipper 之上参与重绘，是封面"像蒙了层纱/不完整"
+   观感与 144 块翻转抖动的重绘源之一。封面立体感由 box-shadow + 外框承担，
+   不需要内部暗角。 */
 
 .cover {
   width: 100%;

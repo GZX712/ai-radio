@@ -34,6 +34,11 @@ export function useAudioEngine() {
   const djPausedRef = useRef(false);
   // 最近播放的 DJ 语音（去重：防双广播/双 skip 导致"同一句说两遍"）
   const lastDjRef = useRef<{ url: string; at: number }>({ url: "", at: 0 });
+  // 是否已成功开播过一首（!booted = 电台启动阶段）：启动阶段不播切歌 jingle，
+  // 让 /api/dj/open 的开场白当唯一第一句（辛老师反馈"打开时语音太密集"）
+  const bootedRef = useRef(false);
+  // 断流自动跳歌防抖：8 秒内第二次 error 不再自动跳（防网络故障时无限循环切歌）
+  const lastErrorSkipRef = useRef(0);
 
   const getNodes = useCallback((): AudioNodes => {
     if (nodesRef.current) return nodesRef.current;
@@ -74,6 +79,25 @@ export function useAudioEngine() {
         if (res.transition) {
           playDj(res.transition.url, res.transition.en, res.transition.zh, true);
         }
+        if (res.song) {
+          music.src = res.song.url;
+          music.play().catch(() => {});
+          useRadioStore.getState().setNow(res.song);
+        }
+      }).catch(() => {});
+    });
+    // 断流/URL 失效自动跳歌：网易云无 cookie 时 VIP 歌只给试听 URL，播到片段末尾
+    // 会被 CDN 掐断——不会触发 ended，音乐卡死不切歌，用户手动切来切去就"几首来回"。
+    // 监听 error 事件自动切下一首（8 秒内二次 error 不跳，防网络故障死循环）
+    music.addEventListener("error", () => {
+      const nowTs = Date.now();
+      if (nowTs - lastErrorSkipRef.current < 8000) {
+        console.warn("[audio] 连续播放出错，停止自动跳歌（可能网络故障）");
+        return;
+      }
+      lastErrorSkipRef.current = nowTs;
+      useRadioStore.getState().setIsPlaying(false);
+      radioApi.skip().then((res) => {
         if (res.song) {
           music.src = res.song.url;
           music.play().catch(() => {});
@@ -171,6 +195,7 @@ export function useAudioEngine() {
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
       useRadioStore.getState().setProgress(0);
+      bootedRef.current = true; // 成功开播 → 进入"正常播放"阶段（启动阶段不再播 jingle）
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
     } finally {
@@ -189,7 +214,9 @@ export function useAudioEngine() {
     if (!now?.url) {
       try {
         const res = await radioApi.next();
-        if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+        // 启动阶段（还没成功开播过）不播 jingle：第一句交给 /api/dj/open 的开场白，
+        // 避免"开场白 + 切歌 jingle + LLM 串场"在打开电台瞬间叠三条（辛老师反馈语音太密集）
+        if (res.transition && bootedRef.current) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
         if (res.song) await loadAndPlay(res.song);
       } catch (err) {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
