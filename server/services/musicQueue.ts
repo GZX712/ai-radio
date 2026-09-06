@@ -1,4 +1,4 @@
-import { musicService, forceNextNeteaseNode, isCosLibraryMode, type NeteaseSong } from "./music";
+import { musicService, forceNextNeteaseNode, type MusicSource, type NeteaseSong } from "./music";
 
 const IS_DEPLOYED = !!process.env.NETEASE_BASE; // 部署到 Render 时 NETEASE_BASE 已设
 
@@ -20,6 +20,10 @@ const DEFAULT_PLAYLIST = [
 ];
 
 export class MusicQueue {
+  // [架构重构 2026-09-06] 依赖注入 MusicSource（默认线上激活的 musicService）：
+  // 队列永不感知"现在是 COS 还是网易云"，双模式判断收口在 music.ts 的 facade 里。
+  // 测试可注入 fake source，彻底摆脱真实网易云/COS 网络依赖。
+  private musicSource: MusicSource;
   private queue: string[] = [...DEFAULT_PLAYLIST];
   private history: string[] = [];
   private cursor = 0;
@@ -48,6 +52,10 @@ export class MusicQueue {
   // 本会话累计被版权拦截的歌曲数（聚合日志用，进程重启清零）
   private sessionBlockedCount = 0;
 
+  constructor(musicSource?: MusicSource) {
+    this.musicSource = musicSource ?? musicService;
+  }
+
   async init(): Promise<void> {
     if (this.initialized) return;
     // 拉取失败后等待（避免每次切歌都卡在网易云请求上）
@@ -66,10 +74,10 @@ export class MusicQueue {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_ROUND; attempt++) {
         try {
-          const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
+          const ids = await this.musicSource.getPlaylistTrackIds(USER_PLAYLIST_ID);
           if (ids.length >= MIN_TRACKS) {
             this.queue = ids;
-            this.playlistName = isCosLibraryMode() ? "COS 本地音乐库" : "我喜欢的音乐";
+            this.playlistName = this.musicSource.sourceName;
             this.initialized = true;
             this.initRetryAt = 0;
             console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首（第 ${round + 1} 轮第 ${attempt + 1} 次尝试）`);
@@ -112,7 +120,7 @@ export class MusicQueue {
     if (this.screening) return;
     this.screening = true;
     try {
-      const playable = await musicService.getPlayableIds(this.queue);
+      const playable = await this.musicSource.getPlayableIds(this.queue);
       if (playable.size === 0) {
         console.warn("[musicQueue] 预筛 0 首可播（netease 可能刚冷启动），保留原队列稍后重筛");
       } else {
@@ -359,7 +367,7 @@ export class MusicQueue {
       picks.map((idx) => {
         const songmid = this.queue[idx];
         if (!songmid) return Promise.reject(new Error("empty"));
-        return musicService.getCompleteSong(songmid).then((song) => ({ idx, song }));
+        return this.musicSource.getCompleteSong(songmid).then((song) => ({ idx, song }));
       })
     ).then((results) => {
       for (let i = 0; i < results.length; i++) {
@@ -413,7 +421,7 @@ export class MusicQueue {
       return null;
     }
     try {
-      this.currentSong = await musicService.getCompleteSong(songmid);
+      this.currentSong = await this.musicSource.getCompleteSong(songmid);
       return this.currentSong;
     } catch (err) {
       // 网易云版权限制是常态（未授权用户大量歌曲无版权）—— 聚合日志，移到末尾即可
@@ -437,7 +445,7 @@ export class MusicQueue {
   }
 
   async searchAndEnqueue(keyword: string, limit = 5): Promise<NeteaseSong[]> {
-    const results = await musicService.search(keyword, limit);
+    const results = await this.musicSource.search(keyword, limit);
     this.queue.push(...results.map((s) => s.songmid));
     return results;
   }
