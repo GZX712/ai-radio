@@ -67,3 +67,8 @@ vite.config.ts.timestamp-*.mjs
 .cookie-extract/
 .tmp-cookie-grab/
 docs/_shot/
+
+# 本地音乐库（1GB mp3，绝不能进仓库；manifest.json 需手动另传 COS）
+library/
+library_test/
+tools/ncmdump/

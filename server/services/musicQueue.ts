@@ -1,4 +1,4 @@
-import { musicService, forceNextNeteaseNode, type NeteaseSong } from "./music";
+import { musicService, forceNextNeteaseNode, isCosLibraryMode, type NeteaseSong } from "./music";
 
 const IS_DEPLOYED = !!process.env.NETEASE_BASE; // 部署到 Render 时 NETEASE_BASE 已设
 
@@ -69,7 +69,7 @@ export class MusicQueue {
           const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
           if (ids.length >= MIN_TRACKS) {
             this.queue = ids;
-            this.playlistName = "我喜欢的音乐";
+            this.playlistName = isCosLibraryMode() ? "COS 本地音乐库" : "我喜欢的音乐";
             this.initialized = true;
             this.initRetryAt = 0;
             console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首（第 ${round + 1} 轮第 ${attempt + 1} 次尝试）`);

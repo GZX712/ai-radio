@@ -74,6 +74,64 @@ interface NeteaseDetailResponse {
  */
 const NETEASE_COOKIE = process.env.NETEASE_COOKIE || "";
 
+// ============ COS 本地音乐库模式（2026-09-06 新增） ============
+// 辛老师把 97 首歌（自己下载的网易云文件）转 mp3 传到腾讯云 COS（公有读），
+// 后端直接读 COS 上的 manifest.json 当歌单 → 彻底绕开网易云对云 IP 的风控循环。
+// 启用：COS_LIBRARY=1 + COS_BASE_URL=https://bucket.cos.ap-xxx.myqcloud.com
+const COS_LIBRARY = process.env.COS_LIBRARY === "1";
+const COS_BASE_URL = (process.env.COS_BASE_URL || "").replace(/\/+$/, "");
+
+export function isCosLibraryMode(): boolean {
+  return COS_LIBRARY;
+}
+
+interface CosManifest {
+  total?: number;
+  songs: {
+    id: string; // L0001...
+    file: string; // 相对 songs/ 的文件名（可能含中文）
+    name: string;
+    artist: string;
+  }[];
+}
+
+let cosManifestCache: CosManifest | null = null;
+let cosManifestAt = 0;
+let cosManifestFetching: Promise<CosManifest> | null = null;
+
+/** 拉 COS manifest（带 60s 缓存 + 并发去重） */
+async function getCosManifest(force = false): Promise<CosManifest> {
+  if (!force && cosManifestCache && Date.now() - cosManifestAt < 60_000) {
+    return cosManifestCache;
+  }
+  if (!cosManifestFetching) {
+    cosManifestFetching = (async () => {
+      const res = await fetch(`${COS_BASE_URL}/manifest.json`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`COS manifest HTTP ${res.status}`);
+      const m = (await res.json()) as CosManifest;
+      cosManifestCache = m;
+      cosManifestAt = Date.now();
+      return m;
+    })().finally(() => {
+      cosManifestFetching = null;
+    });
+  }
+  return cosManifestFetching;
+}
+
+/** 从 manifest 找歌曲（id 或文件名模糊） */
+async function findCosSong(songmid: string): Promise<CosManifest["songs"][number] | undefined> {
+  const m = await getCosManifest();
+  return m.songs.find((s) => s.id === songmid);
+}
+
+/** 给歌曲文件拼 COS 公开 URL（文件名 URL 编码，COS 支持 Range → 续播 OK） */
+function cosFileUrl(file: string): string {
+  return `${COS_BASE_URL}/songs/${encodeURIComponent(file)}`;
+}
+
 /** 给网易云 API 路径追加 cookie 参数（透传给 netease 节点 → 网易云） */
 function withCookie(path: string): string {
   if (!NETEASE_COOKIE) return path;
@@ -121,6 +179,21 @@ export const musicService = {
    * @param limit 返回条数，默认 10
    */
   async search(keyword: string, limit = 10): Promise<NeteaseSong[]> {
+    // [COS 模式] 在本地 manifest 里模糊搜（艺术家/歌名）
+    if (COS_LIBRARY) {
+      const m = await getCosManifest();
+      const kw = keyword.toLowerCase();
+      const hits = m.songs
+        .filter((s) => `${s.artist} ${s.name}`.toLowerCase().includes(kw))
+        .slice(0, limit);
+      return hits.map((s) => ({
+        songmid: s.id,
+        name: s.name,
+        artist: s.artist,
+        url: cosFileUrl(s.file),
+        picUrl: "",
+      }));
+    }
     // 用 /cloudsearch（/search 常被风控返回 50000005）
     const data = await fetchJson<{ result: { songs?: NeteaseSearchItem[] } }>(
       `/cloudsearch?keywords=${encodeURIComponent(keyword)}&limit=${limit}`
@@ -140,6 +213,13 @@ export const musicService = {
    * @param songmid 歌曲 ID（可批量，逗号分隔）
    */
   async getSongUrl(songmid: string | string[]): Promise<string> {
+    // [COS 模式] URL 直指 COS 文件（公有读 + Range 支持 → 续播/seek 可用）
+    if (COS_LIBRARY) {
+      const id = Array.isArray(songmid) ? songmid[0] : songmid;
+      const song = await findCosSong(id);
+      if (!song) throw new Error(`歌曲 ${id} 不在 COS 音乐库`);
+      return cosFileUrl(song.file);
+    }
     const ids = Array.isArray(songmid) ? songmid.join(",") : songmid;
     const data = await fetchJson<NeteaseUrlResponse>(`/song/url?id=${ids}`);
     // [修复 2026-09-06] 网易云 /song/url 返回 data 是数组 [{id,url,...}] 不是对象。
@@ -158,6 +238,25 @@ export const musicService = {
    * 获取歌曲详情（名/艺术家/封面）
    */
   async getSongDetail(ids: string | string[]): Promise<NeteaseSong[]> {
+    // [COS 模式] 从 manifest 取元数据
+    if (COS_LIBRARY) {
+      const idArr = Array.isArray(ids) ? ids : ids.split(",");
+      const m = await getCosManifest();
+      const out: NeteaseSong[] = [];
+      for (const id of idArr) {
+        const s = m.songs.find((x) => x.id === id);
+        if (s) {
+          out.push({
+            songmid: s.id,
+            name: s.name,
+            artist: s.artist,
+            url: "",
+            picUrl: "", // COS 无封面，前端走默认封面
+          });
+        }
+      }
+      return out;
+    }
     const idStr = Array.isArray(ids) ? ids.join(",") : ids;
     const data = await fetchJson<NeteaseDetailResponse>(`/song/detail?ids=${idStr}`);
     return data.songs.map((s) => ({
@@ -173,6 +272,8 @@ export const musicService = {
    * 获取歌词
    */
   async getLyric(id: string): Promise<string> {
+    // [COS 模式] 无歌词源 → 返回空（前端不展示歌词行）
+    if (COS_LIBRARY) return "";
     const data = await fetchJson<{ lrc?: { lyric?: string } }>(`/lyric?id=${id}`);
     return data.lrc?.lyric ?? "";
   },
@@ -182,6 +283,8 @@ export const musicService = {
    * 一次请求测一批，返回能播放的 ID 集合（防止逐首碰运气导致连续失败）
    */
   async getPlayableIds(ids: string[]): Promise<Set<string>> {
+    // [COS 模式] 本地文件全部可播，直接全量返回
+    if (COS_LIBRARY) return new Set(ids);
     const playable = new Set<string>();
     // 网易云 /song/url 支持逗号批量；分批（每批 50）避免超长 URL
     const BATCH = 50;
@@ -227,6 +330,11 @@ export const musicService = {
    * @param playlistId 歌单 ID
    */
   async getPlaylistTrackIds(playlistId: string): Promise<string[]> {
+    // [COS 模式] 直接读 manifest 当歌单（无需 playlistId）
+    if (COS_LIBRARY) {
+      const m = await getCosManifest();
+      return m.songs.map((s) => s.id);
+    }
     const data = await fetchJson<{ playlist?: { trackIds?: { id: number }[] } }>(
       `/playlist/detail?id=${playlistId}`
     );

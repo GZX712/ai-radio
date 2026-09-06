@@ -13,7 +13,7 @@ import { weatherService } from "./services/weather";
 import { triviaService, type TriviaCategory } from "./services/trivia";
 import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
-import { musicService, neteaseNodeStatus, type NeteaseSong } from "./services/music";
+import { musicService, neteaseNodeStatus, isCosLibraryMode, type NeteaseSong } from "./services/music";
 import { regeneratePhraseBank, phraseBankStatus } from "./services/phraseBank";
 import { loadEnv } from "./services/env";
 
@@ -167,6 +167,9 @@ app.get("/api/health", (_req, res) => {
       ? { set: true, length: process.env.NETEASE_COOKIE.length, prefix: process.env.NETEASE_COOKIE.slice(0, 12) + "..." }
       : { set: false },
     envPlaylistId: process.env.PLAYLIST_ID || "(not set, using default)",
+    musicMode: isCosLibraryMode()
+      ? { cos: true, base: (process.env.COS_BASE_URL || "").replace(/\/+$/, "") }
+      : { cos: false, neteaseNodes: neteaseNodeStatus().nodes.length },
   });
 });
 
