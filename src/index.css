@@ -674,27 +674,23 @@ body::after {
   scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.05);
 }
 
-/* "3D 流式"打字动效（chat-reply 到达时给 en 文本加 .streaming，1.7s 内 reveal）
+/* "3D 流式"打字动效（chat-reply 到达时给 en 文本加 .streaming，1.5s 内 reveal）
    - 实现：用 clip-path 从左向右揭示 → 视觉是"一字字冒出来"
-   - 同时配以 translateZ(0) + 微弱 3D rotateY → 有立体感
+   - 不再做 3D rotateY / perspective：原版同时跑 stream-3d-settle（perspective(800px) rotateY(-2deg → 0deg)）
+     + clip-path 动画叠加 + will-change: clip-path, transform，在某些浏览器/GPU 合成场景下会把字符
+     横向压成一条线（截图里"19, you guessed it wrong..."整段字距≈0重叠成细缝）。已撤掉 3D 部分，
+     只留 clip-path 揭示 —— 视觉差异极小（少 2° 立体感），稳定。
    - 不做每字符 span 拆分（避免 layout shift & 性能）*/
 .chat-text.streaming {
   display: inline-block;
-  transform: perspective(800px) translateZ(0) rotateY(-2deg);
-  transform-origin: left center;
-  animation:
-    stream-reveal 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards,
-    stream-3d-settle 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards;
-  will-change: clip-path, transform;
+  max-width: 100%;
+  animation: stream-reveal 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards;
+  will-change: clip-path;
 }
 
 @keyframes stream-reveal {
   from { clip-path: inset(0 100% 0 0); -webkit-clip-path: inset(0 100% 0 0); }
   to   { clip-path: inset(0 0 0 0);    -webkit-clip-path: inset(0 0 0 0); }
-}
-@keyframes stream-3d-settle {
-  from { transform: perspective(800px) translateZ(0) rotateY(-2deg); }
-  to   { transform: perspective(800px) translateZ(0) rotateY(0deg); }
 }
 
 .chat-empty {
@@ -1718,14 +1714,17 @@ body::after {
   /* 内层做 3D 翻转：比 cell 大 4px（inset: -2px）覆盖相邻 cell 之间的 sub-pixel gap。
      这样即使 cell 间有 1-2px 间隙，相邻 flipper 互相 overlap 4px 彻底盖住。
      [频闪修复 2026-09-05]
-     - 删除 transform-style: preserve-3d：原值让 144 个 flipper 同时保留 3D context，
-       hover 时 144 个独立 GPU 合成层叠加父元素重绘 → Chromium 子像素合成抖动 → 频闪
-     - 删除 will-change: transform：相同原因，会强制 GPU 创建独立合成层
+     - 删除 will-change: transform：强制 GPU 创建独立合成层，144 个叠加造成重绘抖动
      - transition 改用 linear 曲线（去掉 cubic-bezier 1.4 弹性值，避免来回弹动）
-     保留：.pixel-grid 上的 perspective: 800px 提供 3D 透视上下文 */
+     保留：.pixel-grid 上的 perspective: 800px 提供 3D 透视上下文
+     [修复 2026-09-06] 加回 transform-style: preserve-3d：
+       没它时 .face-back (rotateY 180deg) 和 .face-front (rotateY 0) 都会被扁平化到
+       同一个 2D 平面同时渲染 → 圆点点阵 + 原图切片叠加显示 = "封面错乱"。
+       preserve-3d 本身不强制 GPU 合成层（不像 will-change），不会回归频闪。 */
   position: absolute;
   inset: -2px;
   transform: rotateY(180deg);
+  transform-style: preserve-3d;
   transition: transform 0.45s linear;
 }
 

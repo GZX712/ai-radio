@@ -172,6 +172,13 @@ export class MusicQueue {
       this.poolUsed++;
       this.consumed++;
       this.pushRecent(this.currentSong.songmid);
+      // [修复 2026-09-06] 池偏低立刻异步补充：原逻辑只在 poolUsed >= 12 才触发
+      // prefetchNextGroup()；但网易云对云 IP 偶发风控时 fillPool 提前 done()，
+      // 第一组只填到 5 首就停，5 首播完池空时根本没机会触发补充 → 用户听到 5 首循环。
+      // 现在：消费后池 ≤ 3 首立刻 prefetchNext()，保证池不满时持续填充。
+      if (this.prefetchPool.length <= 3 && !this.prefetching && this.queue.length > 1) {
+        this.prefetchNext();
+      }
       // 播到第 12 首 → 后台预取下一组（提前准备，避免第 15 首后无歌）
       if (this.poolUsed >= this.REFILL_AT && !this.nextPrefetching && this.nextPool.length === 0) {
         this.prefetchNextGroup();
