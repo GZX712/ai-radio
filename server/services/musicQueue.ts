@@ -294,12 +294,13 @@ export class MusicQueue {
       return;
     }
     // 批量挑歌（避开当前播放 + 两个池子已有的）
-    // [修复 2026-09-06] 每轮并发从 5 降到 3：getCompleteSong 内部 3 接口并发 =
-    // 每轮 9 个请求同时打节点。免费 Render 实例（0.1 vCPU）扛不住 15 并发会排队 →
-    // 主服务 8s 超时 → 整批 reject → 池永远填不满（用户听到池里那几首循环）。
+    // [修复 2026-09-06 v2] 每轮并发从 5 → 2：Render 免费节点(0.1 vCPU)扛不住并发批量
+    // （getCompleteSong 内部 3 接口 × 每轮 N 首 = 3N 个请求同时打节点 → 排队超时全 reject）。
+    // 线上实测：单首拉歌 1-3s 成功率高，批量 9 并发就超时 → 退化成小并发慢填，
+    // 靠 prefetchNext 自愈循环补满。慢(1-2 分钟填满)但稳，杜绝"卡死/循环那几首"。
     const picks: number[] = [];
     let guard = 0;
-    while (picks.length < 3 && guard < 40) {
+    while (picks.length < 2 && guard < 40) {
       guard++;
       const idx = this.pickRandomIndex();
       if (
