@@ -1,4 +1,4 @@
-import { musicService, type NeteaseSong } from "./music";
+import { musicService, forceNextNeteaseNode, type NeteaseSong } from "./music";
 
 const IS_DEPLOYED = !!process.env.NETEASE_BASE; // 部署到 Render 时 NETEASE_BASE 已设
 
@@ -52,30 +52,48 @@ export class MusicQueue {
     if (this.initialized) return;
     // 拉取失败后等待（避免每次切歌都卡在网易云请求上）
     if (Date.now() < this.initRetryAt) return;
-    try {
-      const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
-      if (ids.length === 0) throw new Error("empty playlist");
-      this.queue = ids;
-      this.playlistName = "我喜欢的音乐";
-      this.initialized = true;
-      this.initRetryAt = 0; // 重置，下次可以重新拉
-      console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首`);
-      // 立即后台预取第一组 15 首（不依赖用户首次点播放）
-      this.prefetchNext();
-      // 后台预筛版权可播歌曲（不阻塞 init；筛完只保留能播的）
-      this.screenPlayable();
-    } catch (err) {
-      // 部署环境（Render）netease 服务可能冷启动（首次 502），8 秒后再试
-      // 本地开发 netease 子进程启动慢，30 秒后再试
-      const wait = IS_DEPLOYED ? 8000 : 30000;
-      this.initRetryAt = Date.now() + wait;
-      console.warn(`[musicQueue] 歌单拉取失败，${wait / 1000} 秒后重试:`, err instanceof Error ? err.message : err);
-      // 主动定时重试（不依赖用户触发播放）：Render 主服务常比 netease 节点先醒，
-      // 冷启动时序会导致首次 init 失败，用户首开只剩内置 12 首；自动重试直到成功
-      setTimeout(() => {
-        void this.init();
-      }, wait + 1000).unref?.();
+    // [修复 2026-09-06] 网易云节点对云 IP 偶发风控 → playlist/detail 返回 trackIds 截断（4 首 / 97 首）
+    // 老逻辑：拿到几首就 init 成功，池子永远填不满 → 用户听到"那几首"循环
+    // 新逻辑：trackIds 数量 < 30 视为异常（用户歌单 97 首 < 30 明显截断）
+    //         → 主动 forceNextNeteaseNode() 切节点重试，最多 5 次
+    const MIN_TRACKS = 30;
+    const MAX_ATTEMPTS = 5;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
+        if (ids.length >= MIN_TRACKS) {
+          this.queue = ids;
+          this.playlistName = "我喜欢的音乐";
+          this.initialized = true;
+          this.initRetryAt = 0;
+          console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首（第 ${attempt + 1} 次尝试）`);
+          this.prefetchNext();
+          this.screenPlayable();
+          return;
+        }
+        // 数量不足 → 当前节点被风控，强制切下一个重试
+        lastErr = new Error(`trackIds 截断: ${ids.length}/${MIN_TRACKS}`);
+        console.warn(`[musicQueue] 歌单数量异常（${ids.length} 首），主动切换节点重试 ${attempt + 1}/${MAX_ATTEMPTS}`);
+        if (attempt < MAX_ATTEMPTS - 1) {
+          forceNextNeteaseNode();
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[musicQueue] 歌单拉取失败（第 ${attempt + 1} 次）:`, err instanceof Error ? err.message : err);
+        if (attempt < MAX_ATTEMPTS - 1) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
     }
+    // 5 次都失败 → 走兜底（定时重试）
+    const wait = IS_DEPLOYED ? 8000 : 30000;
+    this.initRetryAt = Date.now() + wait;
+    console.warn(`[musicQueue] 歌单拉取彻底失败（${MAX_ATTEMPTS} 次重试后），${wait / 1000} 秒后再试:`, lastErr instanceof Error ? lastErr.message : lastErr);
+    setTimeout(() => {
+      void this.init();
+    }, wait + 1000).unref?.();
   }
 
   /** 后台批量检查版权，把拿不到 URL 的歌曲移出 queue（避免逐首碰运气连续失败） */
@@ -91,6 +109,18 @@ export class MusicQueue {
         this.cursor = 0;
         this.failedIds.clear();
         console.log(`[musicQueue] 版权预筛完成：保留 ${this.queue.length}/${playable.size} 首可播`);
+        // [修复 2026-09-06] 预筛后 queue 太短（< 30 首）→ 大概率网易云仍被风控，
+        // 主动重拉歌单（强制切节点）直到凑够可播歌。
+        if (this.queue.length < 30) {
+          console.warn(`[musicQueue] 预筛后仅剩 ${this.queue.length} 首，5 秒后强制重拉歌单`);
+          setTimeout(() => {
+            this.initialized = false;
+            this.initRetryAt = 0;
+            this.prefetchPool = [];
+            this.queue = [];
+            void this.init();
+          }, 5000).unref?.();
+        }
       }
     } catch (err) {
       console.warn("[musicQueue] 版权预筛失败（稍后重试）:", err instanceof Error ? err.message : err);

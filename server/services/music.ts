@@ -16,6 +16,18 @@ export function getActiveNeteaseBase(): string {
   return NETEASE_BASES[activeBaseIndex] ?? NETEASE_BASES[0] ?? "";
 }
 
+/**
+ * 主动切换到下一个网易云节点（不依赖 fetch 失败）
+ * 用法：拉歌单返回数量异常（被风控截断）→ 强制换节点重试
+ */
+export function forceNextNeteaseNode(): string {
+  if (NETEASE_BASES.length > 1) {
+    activeBaseIndex = (activeBaseIndex + 1) % NETEASE_BASES.length;
+    console.warn(`[netease] 主动切换节点 → ${getActiveNeteaseBase()}`);
+  }
+  return getActiveNeteaseBase();
+}
+
 export function neteaseNodeStatus() {
   return {
     nodes: NETEASE_BASES,
