@@ -52,45 +52,56 @@ export class MusicQueue {
     if (this.initialized) return;
     // 拉取失败后等待（避免每次切歌都卡在网易云请求上）
     if (Date.now() < this.initRetryAt) return;
-    // [修复 2026-09-06] 网易云节点对云 IP 偶发风控 → playlist/detail 返回 trackIds 截断（4 首 / 97 首）
+    // [修复 2026-09-06] 网易云节点对云 IP 间歇风控 → playlist/detail 返回 trackIds 截断（4 首 / 97 首）
     // 老逻辑：拿到几首就 init 成功，池子永远填不满 → 用户听到"那几首"循环
     // 新逻辑：trackIds 数量 < 30 视为异常（用户歌单 97 首 < 30 明显截断）
     //         → 主动 forceNextNeteaseNode() 切节点重试，最多 5 次
+    //         → 5 次全败再等 30s 让风控窗口过期，再来一轮（最多 3 轮 = 15 次 ≈ 3 分钟）
+    //         → 3 轮全败才走定时兜底（10 秒后再试）
     const MIN_TRACKS = 30;
-    const MAX_ATTEMPTS = 5;
+    const MAX_ATTEMPTS_PER_ROUND = 5;
+    const MAX_ROUNDS = 3;
+    const COOLDOWN_MS = 30000; // 等网易云风控窗口过期
     let lastErr: unknown;
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      try {
-        const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
-        if (ids.length >= MIN_TRACKS) {
-          this.queue = ids;
-          this.playlistName = "我喜欢的音乐";
-          this.initialized = true;
-          this.initRetryAt = 0;
-          console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首（第 ${attempt + 1} 次尝试）`);
-          this.prefetchNext();
-          this.screenPlayable();
-          return;
-        }
-        // 数量不足 → 当前节点被风控，强制切下一个重试
-        lastErr = new Error(`trackIds 截断: ${ids.length}/${MIN_TRACKS}`);
-        console.warn(`[musicQueue] 歌单数量异常（${ids.length} 首），主动切换节点重试 ${attempt + 1}/${MAX_ATTEMPTS}`);
-        if (attempt < MAX_ATTEMPTS - 1) {
-          forceNextNeteaseNode();
-          await new Promise((r) => setTimeout(r, 1500));
-        }
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[musicQueue] 歌单拉取失败（第 ${attempt + 1} 次）:`, err instanceof Error ? err.message : err);
-        if (attempt < MAX_ATTEMPTS - 1) {
-          await new Promise((r) => setTimeout(r, 1500));
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_ROUND; attempt++) {
+        try {
+          const ids = await musicService.getPlaylistTrackIds(USER_PLAYLIST_ID);
+          if (ids.length >= MIN_TRACKS) {
+            this.queue = ids;
+            this.playlistName = "我喜欢的音乐";
+            this.initialized = true;
+            this.initRetryAt = 0;
+            console.log(`[musicQueue] 已加载歌单「${this.playlistName}」共 ${ids.length} 首（第 ${round + 1} 轮第 ${attempt + 1} 次尝试）`);
+            this.prefetchNext();
+            this.screenPlayable();
+            return;
+          }
+          // 数量不足 → 当前节点被风控，强制切下一个重试
+          lastErr = new Error(`trackIds 截断: ${ids.length}/${MIN_TRACKS}`);
+          console.warn(`[musicQueue] 歌单数量异常（${ids.length} 首），切换节点重试 第${round + 1}轮 ${attempt + 1}/${MAX_ATTEMPTS_PER_ROUND}`);
+          if (attempt < MAX_ATTEMPTS_PER_ROUND - 1) {
+            forceNextNeteaseNode();
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[musicQueue] 歌单拉取失败 第${round + 1}轮 ${attempt + 1}/${MAX_ATTEMPTS_PER_ROUND}:`, err instanceof Error ? err.message : err);
+          if (attempt < MAX_ATTEMPTS_PER_ROUND - 1) {
+            await new Promise((r) => setTimeout(r, 1500));
+          }
         }
       }
+      // 本轮 5 次都失败 → 等待风控窗口过期，再来一轮
+      if (round < MAX_ROUNDS - 1) {
+        console.warn(`[musicQueue] 第 ${round + 1} 轮 5 次全败，等 ${COOLDOWN_MS / 1000}s 跨过风控窗口后重试`);
+        await new Promise((r) => setTimeout(r, COOLDOWN_MS));
+      }
     }
-    // 5 次都失败 → 走兜底（定时重试）
-    const wait = IS_DEPLOYED ? 8000 : 30000;
+    // 3 轮 15 次都失败 → 走兜底（定时重试）
+    const wait = IS_DEPLOYED ? 10000 : 30000;
     this.initRetryAt = Date.now() + wait;
-    console.warn(`[musicQueue] 歌单拉取彻底失败（${MAX_ATTEMPTS} 次重试后），${wait / 1000} 秒后再试:`, lastErr instanceof Error ? lastErr.message : lastErr);
+    console.warn(`[musicQueue] 歌单拉取彻底失败（${MAX_ROUNDS} 轮 × ${MAX_ATTEMPTS_PER_ROUND} 次重试后），${wait / 1000} 秒后再试:`, lastErr instanceof Error ? lastErr.message : lastErr);
     setTimeout(() => {
       void this.init();
     }, wait + 1000).unref?.();

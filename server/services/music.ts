@@ -9,6 +9,8 @@ const NETEASE_BASES = (process.env.NETEASE_BASE || "http://localhost:3000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+// 只读副本：诊断路由用，避免外部代码修改 activeBaseIndex 影响其他请求
+export const NETEASE_BASES_DIAG = [...NETEASE_BASES];
 let activeBaseIndex = 0; // 当前活跃节点索引（失败后 +1，自动切换）
 
 /** 当前使用的节点 */

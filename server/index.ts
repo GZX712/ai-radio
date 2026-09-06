@@ -161,6 +161,12 @@ app.get("/api/health", (_req, res) => {
     queue: musicQueue.getQueueInfo(),
     scheduler: { trackCount: scheduler.getTrackCount() },
     netease: neteaseNodeStatus(),
+    // [诊断 2026-09-06] cookie 状态（不返回完整值，仅长度+前几位脱敏）— Render 出口 IP 被风控时
+    // 确认 NETEASE_COOKIE 是否还生效（VIP 歌需要登录态才能拿到 URL）
+    cookie: process.env.NETEASE_COOKIE
+      ? { set: true, length: process.env.NETEASE_COOKIE.length, prefix: process.env.NETEASE_COOKIE.slice(0, 12) + "..." }
+      : { set: false },
+    envPlaylistId: process.env.PLAYLIST_ID || "(not set, using default)",
   });
 });
 
@@ -485,6 +491,35 @@ app.get("/api/schedule/status", (_req, res) => {
       lastWeather: scheduler.getLastWeather(),
     },
   });
+});
+
+// [诊断 2026-09-06] 直接调网易云 playlist/detail，看 Render 出口 IP 是否被风控
+// 返回每个节点的真实 trackIds 数量（不带 failover，依次硬调，方便排查 IP 段问题）
+import { NETEASE_BASES_DIAG } from "./services/music";
+app.get("/api/diag/playlist/:id", async (req, res) => {
+  const playlistId = req.params.id;
+  const results: any[] = [];
+  for (const base of NETEASE_BASES_DIAG) {
+    try {
+      const url = `${base}/playlist/detail?id=${playlistId}` +
+        (process.env.NETEASE_COOKIE ? `&cookie=${encodeURIComponent(process.env.NETEASE_COOKIE)}` : "");
+      const t0 = Date.now();
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const ms = Date.now() - t0;
+      const text = await r.text();
+      let count = -1;
+      let code: number | null = null;
+      try {
+        const j = JSON.parse(text);
+        count = j?.playlist?.trackIds?.length ?? -2;
+        code = j?.code ?? null;
+      } catch { /* not json */ }
+      results.push({ base, httpStatus: r.status, ms, bytes: text.length, trackIds: count, apiCode: code });
+    } catch (e) {
+      results.push({ base, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  res.json({ code: 0, data: results });
 });
 
 // ============== HTTP + WS 服务 ==============
