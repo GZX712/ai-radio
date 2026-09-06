@@ -68,23 +68,51 @@ app.get("/api/proxy-audio", async (req, res) => {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
       Referer: "https://music.163.com/",
     };
-    // 忽略浏览器 Range 请求（完整缓冲返回 200，audio 标签不需要 seek 也能播）
+    // Range 透传（audio 元素 seek / 续播进度 / 拖进度条都需要）
+    // 浏览器请求代理时带 Range: bytes=xxx- → 原样转发给网易 CDN → CDN 回 206
+    // + Content-Range → 代理同样转发。这让 audio 支持随机 seek，不再被
+    // "Accept-Ranges: none 整段缓冲"锁死（续播从第 37s 恢复全靠它）。
+    const range = req.headers.range;
+    if (range) headers.Range = String(range);
     const upstream = await fetch(upstreamUrl, {
       headers,
       redirect: "follow",
       signal: AbortSignal.timeout(25000),
     });
-    if (!upstream.ok) {
+    // 206（partial）也是成功，必须放行
+    if (!upstream.ok && upstream.status !== 206) {
       res.status(502).json({ code: 502, message: `upstream ${upstream.status}` });
       return;
     }
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    res.status(200);
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Content-Length", buf.length);
+    res.status(upstream.status === 206 ? 206 : 200);
+    const ct = upstream.headers.get("content-type");
+    if (ct) res.setHeader("Content-Type", ct);
+    const cl = upstream.headers.get("content-length");
+    if (cl) res.setHeader("Content-Length", cl);
+    const cr = upstream.headers.get("content-range");
+    if (cr) res.setHeader("Content-Range", cr);
+    res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Cache-Control", "private, max-age=300");
-    res.setHeader("Accept-Ranges", "none");
-    res.send(buf);
+    // 流式转发（不再整段 buffer 到内存：12MB 歌不再等全部下完才出声，
+    // 也消除大文件 25s 超时风险）。带背压：res.write 返回 false 时等 drain
+    const reader = upstream.body?.getReader();
+    if (!reader) {
+      res.end();
+      return;
+    }
+    res.flushHeaders?.();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!res.write(value)) {
+          await new Promise<void>((resolve) => res.once("drain", resolve));
+        }
+      }
+      res.end();
+    } catch {
+      res.destroy();
+    }
   } catch (err) {
     if (!res.headersSent) res.status(502).json({ code: 502, message: err instanceof Error ? err.message : "proxy fail" });
     else res.destroy();

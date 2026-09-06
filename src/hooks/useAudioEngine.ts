@@ -3,6 +3,7 @@ import { useRadioStore } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { playRandomSfx } from "@/lib/sfx";
 import { playLaughTrack, stopLaughTrack } from "@/lib/laugh";
+import { saveResume, loadResume } from "@/lib/resume";
 import type { NowPlaying } from "@/types";
 
 interface AudioNodes {
@@ -47,6 +48,8 @@ export function useAudioEngine() {
   const stallRef = useRef({ lastTime: -1, lastMoveAt: 0, pending: false });
   // 始终指向最新 autoSkip 闭包（setInterval / 事件监听器通过它调用，避免闭包过期）
   const autoSkipRef = useRef<(reason: "error" | "stall") => void>(() => {});
+  // 续播记忆写入节流：timeupdate 高频触发（~4次/秒），最多每 5 秒写一次 localStorage
+  const lastResumeSaveRef = useRef(0);
   // DJ 字幕 5 秒自动消失定时器（每次 DJ 念完一句才起 5s 计时；新 DJ 字幕会覆盖并清掉旧 timer）
   const hideDjTimerRef = useRef<number | null>(null);
 
@@ -76,7 +79,25 @@ export function useAudioEngine() {
 
     // 音乐进度事件
     music.addEventListener("timeupdate", () => {
-      useRadioStore.getState().setProgress(music.currentTime);
+      const st = useRadioStore.getState();
+      st.setProgress(music.currentTime);
+      // 续播记忆：节流每 5 秒落盘（正在播放的进度），刷新/关闭后重开可续播
+      const nowTs = Date.now();
+      if (nowTs - lastResumeSaveRef.current > 5000) {
+        lastResumeSaveRef.current = nowTs;
+        const cur = st.now;
+        if (cur?.url) {
+          saveResume({
+            songmid: String(cur.songmid ?? ""),
+            name: cur.name,
+            artist: cur.artist,
+            url: cur.url,
+            progress: music.currentTime,
+            duration: Number.isFinite(music.duration) ? music.duration : 0,
+            playing: true,
+          });
+        }
+      }
     });
     music.addEventListener("loadedmetadata", () => {
       useRadioStore.getState().setDuration(music.duration);
@@ -90,9 +111,7 @@ export function useAudioEngine() {
           playDj(res.transition.url, res.transition.en, res.transition.zh, true);
         }
         if (res.song) {
-          music.src = res.song.url;
-          music.play().catch(() => {});
-          useRadioStore.getState().setNow(res.song);
+          void loadAndPlay(res.song); // 统一入口：内部 setNow + 写续播记忆
         }
       }).catch(() => {});
     });
@@ -103,6 +122,19 @@ export function useAudioEngine() {
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
+      // 用户暂停/切歌：立刻把当前进度落盘（playing:false → 重开恢复位置但不自动响）
+      const cur = useRadioStore.getState().now;
+      if (cur?.url) {
+        saveResume({
+          songmid: String(cur.songmid ?? ""),
+          name: cur.name,
+          artist: cur.artist,
+          url: cur.url,
+          progress: music.currentTime,
+          duration: Number.isFinite(music.duration) ? music.duration : 0,
+          playing: false,
+        });
+      }
     });
     music.addEventListener("play", () => {
       useRadioStore.getState().setIsPlaying(true);
@@ -177,8 +209,14 @@ export function useAudioEngine() {
     }
   };
 
-  const loadAndPlay = async (song: NowPlaying): Promise<void> => {
+  /**
+   * 加载并播放一首歌。
+   * @param song 歌曲（含可播 URL）
+   * @param opts.seekTo 可选：从第几秒开始播（续播记忆恢复用；默认从头 0 秒）
+   */
+  const loadAndPlay = async (song: NowPlaying, opts?: { seekTo?: number }): Promise<void> => {
     const { music, ctx } = getNodes();
+    const seekTo = opts?.seekTo && Number.isFinite(opts.seekTo) ? Math.max(0, opts.seekTo) : 0;
     useRadioStore.getState().setIsLoading(true);
     try {
       if (ctx.state === "suspended") await ctx.resume();
@@ -189,6 +227,13 @@ export function useAudioEngine() {
         (async () => {
           if (ctx.state === "suspended") await ctx.resume();
           await music.play();
+          // play() 成功 = 数据已就绪，此时 seek 到续播点（若接近结尾，会自然触发 ended 切歌）
+          if (seekTo > 2) {
+            const limit = Number.isFinite(music.duration) && music.duration > seekTo + 3
+              ? seekTo
+              : Math.max(0, (Number.isFinite(music.duration) ? music.duration : seekTo) - 3);
+            music.currentTime = limit;
+          }
         })(),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("播放超时，请重试")), 6000)
@@ -196,7 +241,17 @@ export function useAudioEngine() {
       ]);
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
-      useRadioStore.getState().setProgress(0);
+      useRadioStore.getState().setProgress(seekTo);
+      // 续播记忆：切到新歌立即落盘（progress 起点），此后由 timeupdate 节流持续更新
+      saveResume({
+        songmid: String(song.songmid ?? ""),
+        name: song.name,
+        artist: song.artist,
+        url: song.url,
+        progress: seekTo,
+        duration: Number.isFinite(music.duration) ? music.duration : 0,
+        playing: true,
+      });
       bootedRef.current = true; // 成功开播 → 进入"正常播放"阶段（启动阶段不再播 jingle）
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
@@ -285,7 +340,25 @@ export function useAudioEngine() {
       stopDj();
     }
 
-    const { now } = useRadioStore.getState();
+    const { music, ctx } = getNodes();
+    const st = useRadioStore.getState();
+    const { now } = st;
+
+    // —— 续播记忆恢复（全新会话：audio 还没设过源，页面刚开/刚刷新）——
+    // 用户"暂停/关闭/刷新后重开"时，优先接着上次没放完的那首从原进度继续，
+    // 而不是被 getNow 塞进 store 的后端 current 歌顶掉。
+    if (!music.src) {
+      const resume = loadResume();
+      if (resume?.url) {
+        console.warn(`[audio] 恢复续播: ${resume.name} @${Math.round(resume.progress)}s`);
+        await loadAndPlay(
+          { songmid: resume.songmid, name: resume.name, artist: resume.artist, url: resume.url },
+          { seekTo: resume.progress }
+        );
+        return;
+      }
+    }
+
     if (!now?.url) {
       try {
         const res = await radioApi.next();
@@ -296,11 +369,23 @@ export function useAudioEngine() {
       } catch (err) {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
       }
-    } else {
-      // 🔧 关键修复：now.url 存在也走 loadAndPlay（先 setSrc 再 play）
-      // 否则 music.src 为空时 play() 静默失败 → "音乐不能播放"
-      await loadAndPlay(now);
+      return;
     }
+
+    // —— 同会话"暂停→再播放"：audio 还停在这首歌 → 直接从暂停位置继续，不重载——
+    if (music.paused && !music.ended && music.currentTime > 1) {
+      try {
+        if (ctx.state === "suspended") await ctx.resume();
+        await music.play();
+        useRadioStore.getState().setIsPlaying(true);
+      } catch {
+        await loadAndPlay(now);
+      }
+      return;
+    }
+    // 🔧 关键修复：now.url 存在也走 loadAndPlay（先 setSrc 再 play）
+    // 否则 music.src 为空时 play() 静默失败 → "音乐不能播放"
+    await loadAndPlay(now);
   };
 
   const handlePause = (): void => {
