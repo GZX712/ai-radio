@@ -242,17 +242,32 @@ export class MusicQueue {
     return this.current();
   }
 
-  /**
-   * 后台随机预取"下一首"（详情 + URL + 歌词），版权失败时再随机换一首
-   */
+  /** 判断 getCompleteSong 失败是否属于"永久失败"（版权/不存在）。
+   *  网络超时/连接抖动是瞬时错误——标记 failedIds 会让整首歌本会话永久跳过，
+   *  网易云限流几秒后池子就缩水成"那几首"循环。只有明确版权失败才永久标记。 */
+  private isPermanentFail(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : String(err);
+    return /无可用播放链接|不存在|版权|no url/i.test(msg);
+  }
+
+  /** 后台随机预取"下一首"（详情 + URL + 歌词），版权失败时再随机换一首 */
   /**
    * 后台预取：把当前组填满 POOL_SIZE 首（版权失败自动换下一首）
    */
   private prefetchNext(): void {
     if (this.prefetching || this.queue.length <= 1) return;
     this.prefetching = true;
+    const before = this.prefetchPool.length;
     this.fillPool(this.prefetchPool, () => {
       this.prefetching = false;
+      // [自愈 2026-09-06] fillPool 可能因网易云瞬时限流提前 done（池没填满）。
+      // 原逻辑：done 后干等，直到用户下次点歌才触发 prefetchNext → 池长期 1-2 首，
+      // 用户听到的就是池里那几首循环。现在：池没满就自动续填——
+      // 本轮 0 新增（风控中）→ 15s 退避重试；有新增 → 立即续填到满。
+      if (this.prefetchPool.length >= this.POOL_SIZE) return;
+      const added = this.prefetchPool.length - before;
+      const delay = added === 0 ? 15000 : 500;
+      setTimeout(() => this.prefetchNext(), delay).unref?.();
     });
   }
 
@@ -262,8 +277,13 @@ export class MusicQueue {
   private prefetchNextGroup(): void {
     if (this.nextPrefetching || this.queue.length <= 1) return;
     this.nextPrefetching = true;
+    const before = this.nextPool.length;
     this.fillPool(this.nextPool, () => {
       this.nextPrefetching = false;
+      if (this.nextPool.length >= this.POOL_SIZE) return;
+      const added = this.nextPool.length - before;
+      const delay = added === 0 ? 15000 : 500;
+      setTimeout(() => this.prefetchNextGroup(), delay).unref?.();
     });
   }
 
@@ -274,9 +294,12 @@ export class MusicQueue {
       return;
     }
     // 批量挑歌（避开当前播放 + 两个池子已有的）
+    // [修复 2026-09-06] 每轮并发从 5 降到 3：getCompleteSong 内部 3 接口并发 =
+    // 每轮 9 个请求同时打节点。免费 Render 实例（0.1 vCPU）扛不住 15 并发会排队 →
+    // 主服务 8s 超时 → 整批 reject → 池永远填不满（用户听到池里那几首循环）。
     const picks: number[] = [];
     let guard = 0;
-    while (picks.length < 5 && guard < 40) {
+    while (picks.length < 3 && guard < 40) {
       guard++;
       const idx = this.pickRandomIndex();
       if (
@@ -305,10 +328,15 @@ export class MusicQueue {
           if (pool.length >= this.POOL_SIZE) break;
           pool.push({ index: r.value.idx, song: r.value.song });
         } else {
-          const failed = this.queue[picks[i]];
-          if (failed) {
-            this.failedIds.add(failed);
-            this.sessionBlockedCount++;
+          // [修复 2026-09-06] 只有明确版权/不存在才算永久失败；超时/网络抖动是
+          // 瞬时错误（网易云限流高峰常见），静默跳过 → 下轮自愈续填时会再随机到它。
+          // 原实现把所有失败 add failedIds → 限流几秒内失败的歌本会话永久消失 → 循环那几首。
+          if (this.isPermanentFail(r.reason)) {
+            const failed = this.queue[picks[i]];
+            if (failed) {
+              this.failedIds.add(failed);
+              this.sessionBlockedCount++;
+            }
           }
         }
       }
@@ -349,9 +377,13 @@ export class MusicQueue {
       // 网易云版权限制是常态（未授权用户大量歌曲无版权）—— 聚合日志，移到末尾即可
       // 仅在 loadAt 深度耗尽时统一汇报一次总数，避免每首刷一条日志
       this.sessionBlockedCount++;
-      this.failedIds.add(songmid); // 标记本会话失败
+      // [修复 2026-09-06] 只有版权/不存在才算永久失败并 add failedIds（跳过不再尝试）；
+      // 网络瞬时错误只移到队尾（转一圈会再遇到并重试），不永久标记。
+      if (this.isPermanentFail(err)) {
+        this.failedIds.add(songmid);
+      }
       if (this.queue.length > 1) {
-        // 移到队列末尾（不再尝试）
+        // 移到队列末尾（版权歌本会话不再尝试 / 瞬时失败转一圈再试）
         this.queue.splice(index, 1);
         this.queue.push(songmid);
         const nextIdx = index >= this.queue.length ? 0 : index;

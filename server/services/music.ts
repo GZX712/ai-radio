@@ -41,7 +41,7 @@ interface NeteaseSearchItem {
 }
 
 interface NeteaseUrlResponse {
-  data: Record<string, { url: string; size: number }>;
+  data: { id: number | string; url?: string; size?: number }[];
 }
 
 interface NeteaseDetailResponse {
@@ -128,7 +128,9 @@ export const musicService = {
   async getSongUrl(songmid: string | string[]): Promise<string> {
     const ids = Array.isArray(songmid) ? songmid.join(",") : songmid;
     const data = await fetchJson<NeteaseUrlResponse>(`/song/url?id=${ids}`);
-    const first = Object.values(data.data)[0];
+    // [修复 2026-09-06] 网易云 /song/url 返回 data 是数组 [{id,url,...}] 不是对象。
+    // 原代码按 Record<id,{url}> 解析，Object.values()[0] 单首时碰巧取到歌曲对象，侥幸工作。
+    const first = (data.data ?? [])[0];
     if (!first?.url) {
       throw new Error(`歌曲 ${ids} 无可用播放链接（可能版权限制）`);
     }
@@ -173,9 +175,10 @@ export const musicService = {
       const chunk = ids.slice(i, i + BATCH);
       try {
         const data = await fetchJson<NeteaseUrlResponse>(`/song/url?id=${chunk.join(",")}`);
-        for (const id of chunk) {
-          const v = data.data?.[id];
-          if (v?.url) playable.add(id);
+        // [修复 2026-09-06] 响应 data 是数组 [{id,url}]；原代码按 data[id] 对象解析 → 恒空，
+        // 版权预筛形同虚设（所有歌保留在队列 → fillPool/loadAt 反复试版权歌浪费深度）。
+        for (const v of data.data ?? []) {
+          if (v?.url) playable.add(String(v.id));
         }
       } catch {
         // 该批失败不致命，跳过
