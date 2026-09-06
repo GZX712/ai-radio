@@ -5,7 +5,9 @@ services:
     plan: free
     rootDir: vendor/NeteaseCloudMusicApi
     buildCommand: npm install
-    startCommand: node app.js
+    # 必须用精简入口 app-fixed.js：官方 app.js 没有 /proxy-audio 路由，
+    # 前端音频全走它（Range 透传 + 流式转发，2026-09-06 加了续播 seek 支持）
+    startCommand: node app-fixed.js
     envVars:
       - key: PORT
         value: 3000
