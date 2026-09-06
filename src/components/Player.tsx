@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
-import { DJBubble } from "./DJBubble";
 
 interface PlayerProps {
   onToggle: () => Promise<void>;
@@ -82,9 +81,6 @@ export function Player({
         </div>
         <div className="artist">{now?.artist ?? ""}</div>
       </div>
-
-      {/* DJ 主字幕：开口说话时显示在主区域（封面下方），念完 5 秒自动消失 */}
-      <DJBubble />
 
       <Visualizer analyser={getAnalyser()} isPlaying={isPlaying} />
 
