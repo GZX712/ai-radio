@@ -502,21 +502,62 @@ async function generateSongSpecificTransition(ctx: DJContext): Promise<DJOutput 
  * 不走 LLM（彩蛋必须"一定能响"，LLM 挂了不能哑）——固定文案池 + 当前音色 TTS 合成，
  * 双语字幕随广播下发，前端所有设备同步听到 DJ 欢迎（电台逻辑：来宾是所有人的来宾）。
  * TTS 失败降级返回无 audioUrl 的文本（调用侧跳过播报，不炸连接）。
+ *
+ * 池子规模：6 条 welcome（覆盖 6 种风格：优雅/英伦/暖心/俏皮/温馨/播报腔）+ 4 条 return
+ * （轻松/挽留/吐槽/诚恳）。随机抽取 → 听 N 次不重复。
+ * 想换：辛老师挑新编号给"AI工作助手"直接替换 string 即可，文案都是中英双语、长度 ~25 词。
  */
 const GUEST_WELCOME_LINES: ReadonlyArray<{ en: string; zh: string }> = [
+  // 01 · 经典优雅
   {
-    en: "Well, well — a fresh face in the house! Welcome to the AI Radio, stranger. Grab a seat, the music's just getting good. I'm your host — try not to fall in love with the playlist.",
-    zh: "哎呀，来新朋友了！欢迎光临 AI 电台，随便坐，音乐正到精彩处。我是你们的主播——小心别爱上这份歌单。",
+    en: "Well, look who's here — a friend of Mr. Xin! Welcome, welcome, the music's warm, the jokes are questionable, and the seats are free. Don't be a stranger.",
+    zh: "哟，辛老师的朋友驾到！欢迎欢迎，音乐刚好暖场，段子质量随缘，座位随意——别见外。",
   },
+  // 03 · 英伦幽默
   {
-    en: "Hold on — did the door just open? Welcome in, newcomer! You've tuned into the finest little AI Radio on the planet. Music's on me, jokes are questionable, enjoy the ride.",
-    zh: "等等——是门开了吗？欢迎新来的朋友！你收听的是全宇宙最棒的小电台。音乐我来放，段子质量随缘，enjoy。",
+    en: "Oh dear, another soul wandering into the AI Radio. Friend of Mr. Xin, I presume? Pull up a chair, we're between records and feeling generous.",
+    zh: "哎呀，又一位闯入 AI 电台的迷途灵魂。是辛老师的朋友吧？快坐，正好换曲的间隙，我心情好。",
+  },
+  // 04 · 暖心派
+  {
+    en: "Welcome, friend of Mr. Xin. The booth's a little warmer tonight — must be the company. Stay a while, the playlist's about to get interesting.",
+    zh: "欢迎你，辛老师的朋友。今晚直播间格外暖和——大概是人多了。坐会儿吧，歌单马上精彩起来。",
+  },
+  // 05 · 俏皮挑逗
+  {
+    en: "Look what the cat dragged in — a friend of Xin's! Don't worry, the DJ only bites on Wednesdays. Settle in, the show's just starting.",
+    zh: "看看谁来了——辛老师的朋友！放心，主播只有周三才咬人（大概）。坐稳，节目刚开始。",
+  },
+  // 07 · 温馨电台
+  {
+    en: "Hello there, friend of Xin! Welcome to the AI Radio — where the music's curated, the jokes are questionable, and the company tonight is excellent. You're just in time.",
+    zh: "你好啊，辛老师的朋友！欢迎收听 AI 电台——音乐精挑细选，段子质量看天，今晚嘉宾质量上佳。你来得正好。",
+  },
+  // 09 · 广播播报腔
+  {
+    en: "Attention please — a distinguished guest has joined the AI Radio. A friend of Mr. Xin, no less. Please remain seated, keep your hands inside the vehicle, and enjoy the music.",
+    zh: "各位听众请注意——AI 电台迎来一位贵宾，辛老师的朋友。请坐好、手别伸出窗外、enjoy the music。",
   },
 ];
 const GUEST_RETURN_LINES: ReadonlyArray<{ en: string; zh: string }> = [
   {
     en: "Welcome back, friend. You know the drill — good music, questionable commentary. Enjoy the show.",
     zh: "欢迎回来，朋友。老规矩——好音乐，烂点评。Enjoy。",
+  },
+  // · 俏皮挽留
+  {
+    en: "There you are! Good to see you again — the booth missed you, though honestly it just has good ventilation. The music, on the other hand, definitely waited.",
+    zh: "你来了！真高兴你又出现——直播间想你了（其实它通风好），但音乐是真的在等。",
+  },
+  // · 暖心
+  {
+    en: "Back again? You must really like the music here — or my questionable jokes. Either way, welcome, friend. The playlist's warming up for you.",
+    zh: "又来啦？你是真喜欢这里的歌——还是我那些蹩脚段子。都行，欢迎朋友。歌单正在为你暖场。",
+  },
+  // · 平淡打卡
+  {
+    en: "Welcome back. The booth's exactly where you left it, the music kept playing. Sit down, friend, we pick up right where we were.",
+    zh: "欢迎回来。直播间一切如故，音乐一直在放。坐吧朋友，我们接着上回继续。",
   },
 ];
 
