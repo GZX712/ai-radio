@@ -20,7 +20,7 @@ interface ChatPanelProps {
   ws: ReconnectingWS;
   onAction: (action: string, payload?: unknown) => void;
   /** 播放/停止 DJ 语音（用于 chat-reply 手动 ▶ 播放） */
-  playDj: (url: string, en?: string, zh?: string, force?: boolean, laugh?: boolean) => Promise<void>;
+  playDj: (url: string, en?: string, zh?: string, force?: boolean, laugh?: boolean, onEnded?: () => void) => Promise<void>;
   stopDj: () => void;
   /** 让 DJ 设置弹窗跟随当前壁纸 */
   wallpaperId: WallpaperId;
@@ -368,7 +368,15 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     } else {
       // 播这条：先停别的，再播（funny 台词播完自动接罐头笑声）
       stopDj();
-      playDj(m.audioUrl, m.en, m.zh, true, m.funny === true)
+      playDj(
+        m.audioUrl,
+        m.en,
+        m.zh,
+        true, // force：手动 ▶ 必走强制
+        m.funny === true,
+        // [修复按钮不回弹] 这条 DJ 播完 → 清空当前正在播标记 → 按钮 ⏸ → ▶
+        () => setPlayingReplyId(null),
+      )
         .then(() => setPlayingReplyId(m.id))
         .catch(() => setPlayingReplyId(null));
     }

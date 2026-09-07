@@ -28,7 +28,8 @@ export function useAudioEngine() {
 
   // DJ 语音队列：入队 + 当前正在播的字幕同步
   // laugh=true 表示该条是笑话/怼人台词 → 播完后接 sitcom 罐头笑声
-  type DjItem = { url: string; en: string; zh: string; laugh?: boolean };
+  // onEnded 是该条播完后回调（用于按钮状态回弹："播完"清空 playingReplyId）
+  type DjItem = { url: string; en: string; zh: string; laugh?: boolean; onEnded?: () => void };
   const djQueueRef = useRef<DjItem[]>([]);
   const djPlayingRef = useRef(false);
   // 音乐暂停时 DJ 同步暂停；恢复播放时丢弃未说完的（用户明确要求）
@@ -492,10 +493,19 @@ export function useAudioEngine() {
     // 字幕同步成"当前正在播"这条
     useRadioStore.getState().setDjBilingual(item.en, item.zh);
     const { dj, ctx } = getNodes();
+    // [修复 DJ 重播] HTMLAudioElement 同 URL 重设 src 不会重新 load，
+    // 先清空 src + load() 强制重新加载（用户在 onended 后点 ▶ 重放同一段）
+    if (dj.src && dj.src !== "" && dj.src.endsWith(item.url.split("/").pop() || "")) {
+      try { dj.pause(); } catch { /* noop */ }
+      dj.src = "";
+      dj.load();
+    }
     dj.src = item.url;
     dj.onended = () => {
       // 这条是笑话/怼人 → 观众罐头笑（punchline 后立刻响）
       if (item.laugh) playLaughTrack();
+      // DJ 气泡 ▶/⏸ 按钮：播完通知调用方清状态（按钮自动 ⏸ → ▶ 回弹）
+      try { item.onEnded?.(); } catch { /* 不让单条回调错毁掉整个播放链 */ }
       // 这条念完 → 起 5s 计时清空字幕；若 5s 内有下一条 DJ 字幕，
       // 下一条的 setDjBilingual 会清掉旧 timer 重建，这里比对 en/zh 避免误清
       if (hideDjTimerRef.current !== null) window.clearTimeout(hideDjTimerRef.current);
@@ -538,7 +548,14 @@ export function useAudioEngine() {
     void tryPlay(0);
   };
 
-  const playDj = async (url: string, en = "", zh = "", force = false, laugh = false): Promise<void> => {
+  const playDj = async (
+    url: string,
+    en = "",
+    zh = "",
+    force = false,
+    laugh = false,
+    onEnded?: () => void,
+  ): Promise<void> => {
     // 去重：同一段语音 5 秒内不重复播放（防双广播/双 skip 导致"同一句说两遍"）
     // force=true 用于手动 ▶ 播放（播放→暂停→再播不该被去重拦截）
     if (!force) {
@@ -556,7 +573,7 @@ export function useAudioEngine() {
       djPausedRef.current = false;
       stopDj();
     }
-    djQueueRef.current.push({ url, en, zh, laugh });
+    djQueueRef.current.push({ url, en, zh, laugh, onEnded });
     if (!djPlayingRef.current) {
       djPlayingRef.current = true;
       useRadioStore.getState().duck();
