@@ -111,9 +111,6 @@ export function useAudioEngine() {
       // 仍失败才提示手动切歌（旧版 catch(() => {}) 会让音乐停在 ended 无声，表现"播完不自动切"）。
       const tryAutoNext = (attempt: number): void => {
         radioApi.skip().then((res) => {
-          if (res.transition) {
-            playDj(res.transition.url, res.transition.en, res.transition.zh, true);
-          }
           if (res.song) {
             void loadAndPlay(res.song); // 统一入口：内部 setNow + 写续播记忆
           } else if (attempt < 1) {
@@ -376,9 +373,7 @@ export function useAudioEngine() {
     if (!now?.url) {
       try {
         const res = await radioApi.next();
-        // 启动阶段（还没成功开播过）不播 jingle：第一句交给 /api/dj/open 的开场白，
-        // 避免"开场白 + 切歌 jingle + LLM 串场"在打开电台瞬间叠三条（辛老师反馈语音太密集）
-        if (res.transition && bootedRef.current) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+        // [2026-09-07] 过渡音已移除：第一句交给 /api/dj/open 开场白，避免叠加
         if (res.song) await loadAndPlay(res.song);
       } catch (err) {
         useRadioStore.getState().setError(err instanceof Error ? err.message : "拉取失败");
@@ -427,10 +422,8 @@ export function useAudioEngine() {
       if (useRadioStore.getState().sfxEnabled && Math.random() < 0.3) {
         playRandomSfx();
       }
-      // 过渡语先开口（预生成音频秒播，DJ 不缺席），音乐随后无缝起；
-      // 详细介绍（LLM+TTS）到了自动排队接上
+      // [2026-09-07] 固定过渡音已移除；DJ 话术由后端 WS 广播（冷却+模板池）异步下发
       const res = await radioApi.skip();
-      if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
       if (res.song) await loadAndPlay(res.song);
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "切歌失败");
@@ -441,7 +434,6 @@ export function useAudioEngine() {
     try {
       stopDj();
       const res = await radioApi.prev();
-      if (res.transition) playDj(res.transition.url, res.transition.en, res.transition.zh, true);
       if (res.song) await loadAndPlay(res.song);
     } catch (err) {
       useRadioStore.getState().setError(err instanceof Error ? err.message : "上一首失败");

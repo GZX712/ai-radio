@@ -6,7 +6,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { musicQueue } from "./services/musicQueue";
-import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting } from "./services/dj";
+import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting, getCurrentPersonality, pickSpeakText } from "./services/dj";
+import { buildTransitionScript } from "./services/djScripts";
+import { djThrottleCanSpeak, djThrottleMarkSpoke } from "./services/djThrottle";
 import {
   CLAIM_TOKEN,
   signBond,
@@ -207,7 +209,7 @@ app.post("/api/next", async (_req, res) => {
     // 只留 /api/dj/open 的开场白一句，避免"开场白 + 串场介绍"叠着说（辛老师反馈语音太密集）
     const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.next();
-    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
+    res.json({ code: 0, data: song });
     broadcast({ type: "songChange", data: song });
     warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
 
@@ -232,7 +234,7 @@ app.post("/api/prev", async (_req, res) => {
   try {
     const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.prev();
-    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
+    res.json({ code: 0, data: song });
     broadcast({ type: "songChange", data: song });
     warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
     if (song && wasConsumed > 0) {
@@ -253,7 +255,7 @@ app.post("/api/skip", async (_req, res) => {
     const previousSong = await musicQueue.current();
     const wasConsumed = musicQueue.getConsumedCount();
     const song = await musicQueue.skip();
-    res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
+    res.json({ code: 0, data: song });
     broadcast({ type: "songChange", data: song });
     warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
 
@@ -280,35 +282,55 @@ app.post("/api/skip", async (_req, res) => {
  * 前端拿到后先播过渡语（DJ 立即开口，不等 LLM），音乐随后无缝起；
  * 详细介绍（LLM+TTS，2-5s）到了再排队接上 —— 解决"歌先出 DJ 没说话 / DJ 先说歌卡顿"的竞态。
  */
-const TRANSITION_AUDIO = [
-  { url: "/audio/transition-1.mp3", en: "Next up, here we go!", zh: "接下来这首歌，走着！" },
-  { url: "/audio/transition-2.mp3", en: "Switching it up!", zh: "换首歌，希望你喜欢！" },
-  { url: "/audio/transition-3.mp3", en: "Coming right up!", zh: "下一首，来咯！" },
-  { url: "/audio/transition-4.mp3", en: "This one is a favorite!", zh: "这首歌我超喜欢！" },
-  { url: "/audio/transition-5.mp3", en: "A change of mood!", zh: "换个心情，听点不一样的！" },
-];
-const pickTransition = (): { url: string; en: string; zh: string } =>
-  TRANSITION_AUDIO[Math.floor(Math.random() * TRANSITION_AUDIO.length)];
 /**
- * 切歌 DJ：不走 DJ 锁——切歌话术来自预生成缓存（<10ms 秒回），
- * 若被天气/趣闻的 LLM 生成（~5s）锁住，切歌话术会晚 5 秒才广播（用户感知"回复慢"）。
- * 天气/趣闻生成慢没关系，让它们排队即可；切歌必须即时。
+ * 切歌 DJ 播报（v3 · [2026-09-07] 冷却 + 安全话术池）：
+ * - 冷却：djThrottle 15 分钟窗口，防止"话术太密"——冷却中切歌 DJ 静默（音乐照切）
+ * - 话术：djScripts 模板池（0 LLM），杜绝张冠李戴/念怪/编造——
+ *   歌名仅纯 ASCII 才偶尔念；星期/时段/天气/冷笑话轮抽
+ * - 朗读语言：按当前音色自动选 en/zh（与聊天回复声音一致）
+ * - TTS 失败 → 静默（音乐不受影响，绝不阻塞切歌）
  */
 async function triggerDJTransition(
   previousSong: NeteaseSong | null,
   currentSong: NeteaseSong
 ) {
-  // [2026-09-07] 切歌话术升级：先取当前歌背景档案（缓存秒回/首次生成 ~3s）→ DJ 串场引用真实
-  // 时代背景/创作故事/趣闻。此调用在 skip 响应之后异步执行（音乐已起播），无感知阻塞；
-  // 档案失败返回 null → generateDJLine 自动降级为话术库短语，保证切歌一定有声音。
-  const profile = await getSongProfile(currentSong).catch(() => null);
-  const dj = await generateDJLine({
-    scene: "transition",
-    previousSong: previousSong ?? undefined,
-    song: currentSong,
-    songProfile: profile,
-  });
-  broadcast({ type: "dj", ...dj });
+  if (!djThrottleCanSpeak()) {
+    console.log("[DJ] 冷却中，切歌静默（音乐照切）");
+    return;
+  }
+  try {
+    // 北京时间星期 + 小时（话术变量：星期梗/时段梗）
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Shanghai",
+      hour: "2-digit", hour12: false, weekday: "short",
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "12");
+    const wdMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
+    const weekday = wdMap[parts.find((p) => p.type === "weekday")?.value ?? ""] ?? 0;
+
+    // 天气缓存（0 延迟；拿不到 → 模板池自动落到星期/冷笑话，不阻塞）
+    const w = scheduler.getLastWeather() as { city: string; description: string; temperature: number } | null;
+
+    const script = buildTransitionScript({
+      song: currentSong ? { name: currentSong.name, artist: currentSong.artist } : null,
+      weather: w,
+      hour,
+      weekday,
+    });
+
+    const audio = await ttsService.synthesize(
+      pickSpeakText(script.en, script.zh),
+      "dj",
+      getCurrentPersonality().voice,
+      getCurrentPersonality().traits,
+    );
+    // 切歌冷笑话 → 播完配罐头笑声（funny 标记）
+    broadcast({ type: "dj", ...script, audioUrl: audio.url, provider: "script", funny: script.funny, timestamp: Date.now() });
+    djThrottleMarkSpoke();
+    console.log("[DJ] 切歌话术:", script.en.slice(0, 60));
+  } catch (err) {
+    console.warn("[DJ] 切歌话术失败(静默):", err instanceof Error ? err.message : err);
+  }
 }
 
 app.post("/api/dj/open", async (_req, res) => {

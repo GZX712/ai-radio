@@ -205,6 +205,19 @@ export function setCurrentPersonality(p?: DJPersonality): void {
   }
 }
 
+/** [2026-09-07] 读取当前生效的音色/性格（切歌话术模板合成时需要保持一致） */
+export function getCurrentPersonality(): DJPersonality {
+  return currentPersonality;
+}
+
+/**
+ * [2026-09-07] 按当前音色语言决定朗读文本（en/zh）——公开版 currentSpeakText，
+ * 供 index.ts 切歌话术（模板池）与 djScripts 调用，保证声音跟聊天回复一致。
+ */
+export function pickSpeakText(en: string, zh: string): string {
+  return currentSpeakText(en, zh);
+}
+
 /**
  * 根据当前音色的语言决定朗读语言：
  * - 中文音色（冰糖/茉莉/苏打/白桦/default_zh/云希/晓晓）→ 朗读中文（zh）

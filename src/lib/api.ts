@@ -22,17 +22,14 @@ function parseResponse(raw: unknown): NowPlaying | null {
   return parsed.data.data;
 }
 
-/** 切歌响应：歌 + 过渡语（DJ 先开口用，随接口同步返回） */
+/** 切歌响应：[2026-09-07] transition 过渡音已移除（辛老师拍板：不要固定过渡音，DJ 话术由 WS 广播统一来） */
 export interface SkipResult {
   song: NowPlaying | null;
-  transition?: { url: string; en: string; zh: string };
 }
 
 function parseSkipResponse(raw: unknown): SkipResult {
   const song = parseResponse(raw);
-  const transition = (raw as { transition?: { url: string; en: string; zh: string } })
-    .transition;
-  return { song, transition };
+  return { song };
 }
 
 export const radioApi = {
