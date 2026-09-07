@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
+import { buildLetterCoverSvg } from "../lib/coverArt";
 
 interface PlayerProps {
   onToggle: () => Promise<void>;
@@ -49,7 +51,18 @@ export function Player({
   /** 用户上传的卡片背景图 DataURL（通过壁纸面板的"自定义壁纸"卡片触发上传） */
   const playerBgImage = useRadioStore((s) => s.playerBgImage);
 
-  const songPicUrl = now?.picUrl;
+  // picUrl 空时用字母封面 dataURL 兜底（COS 模式 97 首皆无封面）
+  // useMemo 锁住 name/artist/songmid 三元组：同一首歌不重复 hash/拼字符串/URI 编码
+  const songPicUrl = useMemo(
+    () =>
+      now?.picUrl ||
+      buildLetterCoverSvg({
+        name: now?.name ?? "",
+        artist: now?.artist ?? "",
+        songmid: now?.songmid,
+      }),
+    [now?.picUrl, now?.name, now?.artist, now?.songmid],
+  );
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
 
@@ -68,7 +81,7 @@ export function Player({
     >
       <div className="cover-wrapper">
         {songPicUrl ? (
-          <PixelCover src={songPicUrl} alt={now.name || "Cover"} isPlaying={isPlaying} />
+          <PixelCover src={songPicUrl} alt={now?.name || "Cover"} isPlaying={isPlaying} />
         ) : (
           <div className="cover-placeholder" />
         )}

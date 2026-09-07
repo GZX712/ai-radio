@@ -258,6 +258,8 @@ interface CosManifest {
     file: string; // 相对 songs/ 的文件名（可能含中文）
     name: string;
     artist: string;
+    /** 相对 covers/ 的封面文件名, 如 "L0001.jpg" 或 "L0010.png"; 老 manifest 可能无此字段 */
+    picUrl?: string;
   }[];
 }
 
@@ -300,6 +302,14 @@ class CosLibrarySource implements MusicSource {
     return `${COS_BASE_URL}/songs/${encodeURIComponent(file)}`;
   }
 
+  /** 给封面拼 COS 公开 URL（manifest.picUrl 是相对路径如 "covers/L0001.jpg"） */
+  private coverUrl(relPath: string | undefined): string | undefined {
+    if (!relPath) return undefined;
+    // 防双层编码: relPath 已是明文 "covers/L0001.jpg", 直接拼接
+    // 真名文件用 ID 命名不会再含空格/中文, 但防御性 encodeURIComponent 仍保留
+    return `${COS_BASE_URL}/${relPath.split("/").map(encodeURIComponent).join("/")}`;
+  }
+
   async search(keyword: string, limit = 10): Promise<NeteaseSong[]> {
     // [COS 模式] 在本地 manifest 里模糊搜（艺术家/歌名）
     const m = await this.getManifest();
@@ -312,7 +322,7 @@ class CosLibrarySource implements MusicSource {
       name: s.name,
       artist: s.artist,
       url: this.fileUrl(s.file),
-      picUrl: undefined,
+      picUrl: this.coverUrl(s.picUrl as string | undefined),
     }));
   }
 
@@ -337,7 +347,7 @@ class CosLibrarySource implements MusicSource {
           name: s.name,
           artist: s.artist,
           url: "",
-          picUrl: undefined, // COS 无封面，前端走默认封面
+          picUrl: this.coverUrl(s.picUrl as string | undefined),
         });
       }
     }
