@@ -105,15 +105,28 @@ export function useAudioEngine() {
     music.addEventListener("ended", () => {
       useRadioStore.getState().setIsPlaying(false);
       useRadioStore.getState().setProgress(0);
-      // 播完自动切下一首（随机歌单）：过渡语先开口（DJ 不缺席），音乐随后无缝起
-      radioApi.skip().then((res) => {
-        if (res.transition) {
-          playDj(res.transition.url, res.transition.en, res.transition.zh, true);
-        }
-        if (res.song) {
-          void loadAndPlay(res.song); // 统一入口：内部 setNow + 写续播记忆
-        }
-      }).catch(() => {});
+      // 播完自动切下一首（随机歌单）：过渡语先开口（DJ 不缺席），音乐随后无缝起。
+      // [2026-09-07 韧性] skip 偶发失败（网络/后端 5xx）不再静默卡死——2s 后重试一次，
+      // 仍失败才提示手动切歌（旧版 catch(() => {}) 会让音乐停在 ended 无声，表现"播完不自动切"）。
+      const tryAutoNext = (attempt: number): void => {
+        radioApi.skip().then((res) => {
+          if (res.transition) {
+            playDj(res.transition.url, res.transition.en, res.transition.zh, true);
+          }
+          if (res.song) {
+            void loadAndPlay(res.song); // 统一入口：内部 setNow + 写续播记忆
+          } else if (attempt < 1) {
+            setTimeout(() => tryAutoNext(attempt + 1), 2000);
+          }
+        }).catch(() => {
+          if (attempt < 1) {
+            setTimeout(() => tryAutoNext(attempt + 1), 2000);
+          } else {
+            useRadioStore.getState().setError("自动切歌失败，请手动点下一首");
+          }
+        });
+      };
+      tryAutoNext(0);
     });
     // 断流/URL 失效/试听被掐：一律交给 autoSkip 统一处理（滑动窗口限流 + 挂起保护，
     // 不再"8 秒内二次 error 永久放弃"——那会在连续两首坏歌后锁死无声永不恢复）

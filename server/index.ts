@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { musicQueue } from "./services/musicQueue";
-import { generateDJLine, setDjBroadcast, setCurrentPersonality } from "./services/dj";
+import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir } from "./services/dj";
+import { getSongProfile, getCachedSongProfile, warmSongProfile } from "./services/songKnowledge";
 import { ttsService } from "./services/tts";
 import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/scheduler";
 import { weatherService } from "./services/weather";
@@ -194,6 +195,7 @@ app.post("/api/next", async (_req, res) => {
     const song = await musicQueue.next();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
+    warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
 
     // 调度器计数 + DJ 串场（异步）
     scheduler.onTrackChange().catch((err) =>
@@ -218,6 +220,7 @@ app.post("/api/prev", async (_req, res) => {
     const song = await musicQueue.prev();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
+    warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
     if (song && wasConsumed > 0) {
       triggerDJTransition(null, song).catch((err) =>
         console.error("[DJ] 上首串场失败:", err)
@@ -238,6 +241,7 @@ app.post("/api/skip", async (_req, res) => {
     const song = await musicQueue.skip();
     res.json({ code: 0, data: song, transition: song ? pickTransition() : undefined });
     broadcast({ type: "songChange", data: song });
+    warmSongProfile(song); // [2026-09-07] 切歌后预热背景档案（聊天答歌问/切歌介绍引用）
 
     scheduler.onTrackChange().catch((err) =>
       console.error("[Scheduler] onTrackChange 失败:", err)
@@ -280,10 +284,15 @@ async function triggerDJTransition(
   previousSong: NeteaseSong | null,
   currentSong: NeteaseSong
 ) {
+  // [2026-09-07] 切歌话术升级：先取当前歌背景档案（缓存秒回/首次生成 ~3s）→ DJ 串场引用真实
+  // 时代背景/创作故事/趣闻。此调用在 skip 响应之后异步执行（音乐已起播），无感知阻塞；
+  // 档案失败返回 null → generateDJLine 自动降级为话术库短语，保证切歌一定有声音。
+  const profile = await getSongProfile(currentSong).catch(() => null);
   const dj = await generateDJLine({
     scene: "transition",
     previousSong: previousSong ?? undefined,
     song: currentSong,
+    songProfile: profile,
   });
   broadcast({ type: "dj", ...dj });
 }
@@ -530,6 +539,14 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 
 function broadcast(message: unknown) {
+  // [2026-09-07] 播出记忆：把 DJ 台词与切歌记入 On-Air Log，聊天时 DJ 能"记得"刚说过什么、
+  // 正在放什么 → 上下文连续（index.ts 是唯一广播出口，dj/scheduler/点歌都经这里）
+  const m = message as { type?: string; en?: string; data?: { name?: string; artist?: string } };
+  if (m?.type === "dj" && m.en) {
+    pushOnAir("dj", m.en);
+  } else if (m?.type === "songChange" && m.data?.name) {
+    pushOnAir("song", `"${m.data.name}"${m.data.artist ? " — " + m.data.artist : ""}`);
+  }
   const text = JSON.stringify(message);
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
@@ -571,6 +588,20 @@ function detectAction(text: string): { action: string; en: string; zh: string } 
   }
 
   return null;
+}
+
+/**
+ * [2026-09-07] 歌曲问题检测：问句涉及"当前这首/正在放的歌"的背景、创作、年代、演唱等
+ * → 命中时聊天链路等待该歌的背景档案生成，让 DJ 答歌问时有真材实料。
+ * 强信号词匹配，避免把"今天有什么故事"这类普通闲聊误判成歌问。
+ */
+function detectSongQuestion(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  // 主体词（必须是"歌"相关）+ 常见问法
+  if (/(这首歌|这首|这歌|现在放|正在放|播放的|放的|刚刚那|刚才那|上一首|什么歌|哪首歌|歌的背景|歌曲|cover|feat)/.test(t)) return true;
+  if (/(歌|曲|唱|放|播)/.test(t) && /(背景|创作|灵感|来历|故事|趣闻|百科|年代|哪年|发行|原唱|翻唱|介绍|谁|为什么|怎么)/.test(t)) return true;
+  return false;
 }
 
 /**
@@ -717,12 +748,30 @@ wss.on("connection", (ws) => {
                 .slice(-10)
                 .map((x) => ({ role: x.role as "user" | "assistant", content: x.content as string }))
             : undefined;
-          const dj = await generateDJLine({
-            scene: "chat",
-            userMessage: String(msg.text),
-            personality,
-            history,
-          });
+          const dj = await (async () => {
+            // [2026-09-07] 聊天上下文升级：让 DJ 知道此刻在放什么歌 + 歌的背景档案。
+            // 之前 chat 完全不传当前歌 → 用户问"这歌什么背景/谁唱的"DJ 无从答起（结构性答非所问）。
+            const currentSong = await musicQueue.current().catch(() => null);
+            let songProfile: Awaited<ReturnType<typeof getSongProfile>> | null = null;
+            if (currentSong) {
+              if (detectSongQuestion(String(msg.text))) {
+                // 用户在问歌 → 等档案（缓存秒回；首次生成 ~3s 值得等，答歌问要真材实料）
+                songProfile = await getSongProfile(currentSong).catch(() => null);
+              } else {
+                // 普通闲聊 → 有缓存就带（DJ 更懂歌），没有不阻塞；后台预热下次问就有
+                songProfile = getCachedSongProfile(currentSong);
+                warmSongProfile(currentSong);
+              }
+            }
+            return generateDJLine({
+              scene: "chat",
+              userMessage: String(msg.text),
+              personality,
+              history,
+              song: currentSong ?? undefined,
+              songProfile,
+            });
+          })();
           ws.send(JSON.stringify({ type: "chat-reply", ...dj }));
         } catch (err) {
           ws.send(JSON.stringify({

@@ -2,6 +2,7 @@ import { llm } from "./llm/doubao";
 import { ttsService, EDGE_VOICES } from "./tts";
 import { MIMO_VOICES } from "./tts/mimo";
 import type { NeteaseSong } from "./music";
+import type { SongProfile } from "./songKnowledge";
 import type { WeatherResult } from "./weather";
 import type { Trivia } from "./trivia";
 import { pickPhrase } from "./phraseBank";
@@ -46,6 +47,8 @@ export interface ChatTurn {
 
 export interface DJContext {
   song?: NeteaseSong;
+  /** [2026-09-07] 当前歌背景档案（时代背景/创作故事/趣闻）：聊天答歌问 + 切歌话术引用 */
+  songProfile?: SongProfile | null;
   previousSong?: NeteaseSong;
   weather?: WeatherResult;
   trivia?: Trivia;
@@ -267,7 +270,28 @@ function buildUserPrompt(ctx: DJContext): string {
     lines.push(`Current weather in ${ctx.weather.city}: ${ctx.weather.description}, ${Math.round(ctx.weather.temperature)}°C, wind ${Math.round(ctx.weather.windSpeed)} km/h.`);
     lines.push("One witty weather-related line, 1-2 sentences — commiserate with the listener, as if you're both stuck in it together.");
   } else if (ctx.scene === "chat" && ctx.userMessage) {
-    const msg = ctx.userMessage.slice(0, 80);
+    // [2026-09-07] DJ 连续感三件套：正在播的歌 + 歌的背景档案 + 最近播出内容。
+    // 之前 chat 连"当前歌名"都没给 DJ → 用户问"这歌什么背景"必然答非所问；
+    // 现在 DJ 知道此刻在放什么、这首歌的时代/创作故事/趣闻、以及自己刚说过什么。
+    if (ctx.song) {
+      lines.push(
+        `A song is playing RIGHT NOW as you speak: "${ctx.song.name}" by ${ctx.song.artist}. ` +
+        `(The listener can hear it. If they ask about "this song / what's playing / the current track", THIS is the one.)`
+      );
+    }
+    if (ctx.songProfile) {
+      lines.push(
+        `Background dossier of the current song — use it ONLY if the listener asks about the song (era/story/trivia); weave it in naturally, never dump the whole thing, never invent extra details:\n` +
+        `- 时代背景: ${ctx.songProfile.era}\n- 创作故事: ${ctx.songProfile.story}\n- 趣闻: ${ctx.songProfile.funFact}`
+      );
+    }
+    const onAir = getOnAirContext();
+    if (onAir) {
+      lines.push(
+        `What has been happening on air recently (stay consistent with it — the listener may reference it; don't contradict yourself):\n${onAir}`
+      );
+    }
+    const msg = ctx.userMessage.slice(0, 400); // 放宽截断：长问题/多轮追问不再被砍（原 80）
     lines.push(`Listener said: "${msg}"`);
     lines.push(`Reply directly with REAL FEELING — acknowledge what they said first, then react in character. If they're down, be warm and comforting; if they joke, laugh and riff on it; if they tease, tease back. 2-3 sentences, engaged and natural, never a robot reciting a template.`);
     lines.push(`HARD RULE: if you mention a song, name ONLY its title — NEVER the artist name.`);
@@ -336,6 +360,36 @@ let improvCache: DjCached[] = [];
 const CACHE_TARGET = 10;
 let warmingCache = false;
 
+// ============ 播出记忆（On-Air Log）============
+// DJ 要有"连续感"：把最近在播的歌、DJ 说过的话记下来，
+// 聊天时注入上下文 → 用户问"刚才那首""你刚才说的那个""这歌什么背景"能接上话，
+// 不再答非所问/前后矛盾。（由 server/index.ts 的 broadcast() 统一调用 pushOnAir 记录）
+export interface OnAirEvent {
+  kind: "song" | "dj";
+  time: string;
+  text: string;
+}
+const ON_AIR_MAX = 10;
+let onAirLog: OnAirEvent[] = [];
+
+/** 记录一条播出事件（切歌 / DJ 台词），超限滚动淘汰 */
+export function pushOnAir(kind: OnAirEvent["kind"], text: string): void {
+  const d = new Date();
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  onAirLog.push({ kind, time: `${hh}:${mm}`, text: String(text).slice(0, 160) });
+  if (onAirLog.length > ON_AIR_MAX) onAirLog = onAirLog.slice(-ON_AIR_MAX);
+}
+
+/** 取最近播出内容摘要（注入聊天 prompt，让 DJ 记得自己刚说过什么） */
+export function getOnAirContext(max = 6): string {
+  if (onAirLog.length === 0) return "";
+  return onAirLog
+    .slice(-max)
+    .map((e) => `[${e.time}] ${e.kind === "song" ? "🎵" : "🗣"} ${e.text}`)
+    .join("\n");
+}
+
 // 广播回调（由 server/index.ts 注入）；用于后台 LLM 真联想话术完成后 broadcast 第二条
 let broadcastFn: ((msg: unknown) => void) | null = null;
 
@@ -403,26 +457,34 @@ export async function warmImprovCache(): Promise<void> {
 }
 
 /**
- * 后台真联想话术：调 LLM（含歌曲上下文）生成"有想法"的切歌评论
- * 当前切歌已改为单条话术（不播第二层，避免"跳切"混乱），此函数暂留备用
+ * [2026-09-07] 真·歌曲背景串场：当前歌有背景档案时，LLM 引用 era/story/funFact
+ * 即兴生成一句"真懂这首歌"的切歌介绍（不再是通用短语/话术库冷笑话）。
+ * - 无档案 / LLM 未配置 / 调用失败 → 返回 null，调用侧降级 phraseBank（保证切歌有声）
+ * - 时长 ~2-4s（LLM+TTS），由切歌链路在音乐起播后异步触发，无空窗感
  */
 async function generateSongSpecificTransition(ctx: DJContext): Promise<DJOutput | null> {
   if (!llm.isConfigured()) return null;
-  const prompt = buildUserPrompt(ctx);
+  const song = ctx.song;
+  const profile = ctx.songProfile;
+  if (!song || !profile) return null;
+  const prompt =
+    `A track just started on air: "${song.name}" by ${song.artist}.\n` +
+    `Its background dossier:\n- 时代背景: ${profile.era}\n- 创作故事: ${profile.story}\n- 趣闻: ${profile.funFact}\n\n` +
+    `Introduce this track with ONE witty line (1-2 sentences) built around ONE interesting bit from the dossier — the era, the story, or the fun fact — blended with your usual dry humor. Sound like you genuinely know the song, NOT like you read a wiki page. Land the punchline.\n` +
+    `IMPORTANT: when you name the song, mention ONLY its title ("${song.name}") — never the artist name.`;
   try {
     const raw = await llm.chat({
       system: buildSystemPrompt(ctx.personality),
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.95,
-      maxTokens: 120,
+      temperature: 0.9,
+      maxTokens: 220,
     });
     const parsed = parseBilingual(raw);
     if (!parsed) return null;
     const en = parsed.en.trim();
     const zh = parsed.zh.trim();
     const audio = await ttsService.synthesize(currentSpeakText(en, zh), "dj", currentPersonality.voice, currentPersonality.traits);
-    lastDjEn = en;
-    return { en, zh, audioUrl: audio.url, provider: llm.name };
+    return { en, zh, audioUrl: audio.url, provider: llm.name, funny: parsed.funny };
   } catch {
     return null;
   }
@@ -434,6 +496,15 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
 
   // 切歌：优先从"每日 100 条话术库"取（场景+幽默风格匹配，秒回且不重复）
   if (ctx.scene === "transition") {
+    // [2026-09-07 新功能] 当前歌有背景档案 → 播"真·歌曲背景介绍"（LLM 引用时代/创作故事/趣闻即兴，
+    // 2-4s 由 index.ts 在音乐起播后异步触发，无空窗感）。生成失败 → 降级原逻辑保证切歌有声。
+    if (ctx.songProfile) {
+      const intro = await generateSongSpecificTransition(ctx);
+      if (intro) {
+        lastDjEn = intro.en;
+        return intro;
+      }
+    }
     const fromBank = pickPhrase("transition", currentPersonality.humorStyle);
     if (fromBank) {
       // 音色修复：话术库音频预合成用的是默认音色；用户选了其他音色 → 实时用当前音色重新合成，避免声音在 MiMo/Edge 间跳
