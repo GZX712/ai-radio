@@ -1781,6 +1781,20 @@ body::after {
   /* 无 gap、无描边，恢复后即为完整封面 */
 }
 
+/* [2026-09-07] 翻正黑屏修复：全部 cell 翻正后切到单张完整原图（不靠 144 cell backgroundImage
+   拼接，避免 GPU 合成偶发丢图 → 露出 cover-wrapper 黑底）。object-fit: cover 满铺保证
+   任意宽高比封面都撑满 1:1 容器（与原 1200% backgroundSize 视觉一致）。 */
+.pixel-grid > .full-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* 关闭 3D 上下文：img 替换 12x12 grid 时不再需要 perspective/preserve-3d */
+  z-index: 1;
+}
+
 /* 封面容器覆盖原 PixelCover 的 canvas 规则 */
 .cover-wrapper > .pixel-grid {
   width: 100%;

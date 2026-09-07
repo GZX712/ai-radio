@@ -164,6 +164,13 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
     }
   }
 
+  // [2026-09-07 修复] 翻正黑屏根因：原实现用 144 cell 各设 backgroundImage + 1200% backgroundSize
+  // 拼合，浏览器对 inline-style backgroundImage 在 GPU 合成层下偶发渲染失败 → face-front 透明 →
+  // 露出 cover-wrapper #000 黑底（辛老师截图"反转后黑屏"）。
+  // 修法：当所有 cell 翻正（revealed.size === GRID²）→ 切到单张完整原图（object-fit: cover 满铺），
+  // 既彻底解决黑块，又让翻正后视觉更清晰（无需 144 cell 拼接）。
+  const allRevealed = revealed.size === GRID * GRID && !loading;
+
   return (
     <div
       key={src}
@@ -174,7 +181,11 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
       role="img"
       aria-label={alt}
     >
-      {cells}
+      {allRevealed ? (
+        <img className="full-cover" src={src} alt={alt} />
+      ) : (
+        cells
+      )}
     </div>
   );
 }

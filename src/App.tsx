@@ -304,7 +304,7 @@ export default function App() {
       {!started && (
         <div className="start-overlay" onClick={handleStart}>
           <div className="start-card">
-            <h2 className="start-title">AI 电台</h2>
+            <h2 className="start-title">辛老师的 AI 电台</h2>
             <p className="start-sub">294 首你的歌 · 双语 DJ · 语音操控</p>
             <button type="button" className="start-btn magnetic">
               ▶ 开始电台
