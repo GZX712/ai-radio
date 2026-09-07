@@ -281,8 +281,15 @@ function buildUserPrompt(ctx: DJContext): string {
     }
     if (ctx.songProfile) {
       lines.push(
-        `Background dossier of the current song — use it ONLY if the listener asks about the song (era/story/trivia); weave it in naturally, never dump the whole thing, never invent extra details:\n` +
-        `- 时代背景: ${ctx.songProfile.era}\n- 创作故事: ${ctx.songProfile.story}\n- 趣闻: ${ctx.songProfile.funFact}`
+        `Background dossier of the current song "${ctx.songProfile.name}":\n` +
+        `- 时代背景: ${ctx.songProfile.era}\n` +
+        `- 创作故事: ${ctx.songProfile.story}\n` +
+        `- 趣闻: ${ctx.songProfile.funFact}\n` +
+        `USE THE DOSSIER ONLY WHEN RELEVANT:\n` +
+        `- If the listener asks about THIS song (era/story/who sang/why famous/background), weave 1-2 facts from the dossier into your reply naturally — paraphrase, don't quote verbatim.\n` +
+        `- If the listener asks something unrelated (their day, weather, jokes, feelings), IGNORE the dossier completely — don't shoehorn song facts in.\n` +
+        `- NEVER invent extra details not in the dossier. NEVER claim to "know" things you don't.\n` +
+        `- NEVER list or "explain" the dossier — listeners don't want a wiki entry read aloud.`
       );
     }
     const onAir = getOnAirContext();
@@ -578,7 +585,10 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
     zh = parsed.zh;
     funny = parsed.funny;
     if (!en) throw new Error("empty");
-  } catch {
+  } catch (err) {
+    // [修复 2026-09-07] chat 路径 LLM 失败必须留痕 —— 之前 catch 静默吞错，
+    // DJ 一路 fallback 模板池，Render log 看不到任何线索，bug 无法定位。
+    console.warn(`[DJ-chat] LLM ${llm.name} chat 失败 → fallback:`, err instanceof Error ? err.message : String(err));
     return await fallbackDJLine(ctx);
   }
 
@@ -687,6 +697,27 @@ async function fallbackDJLine(ctx: DJContext): Promise<DJOutput> {
   } else if (ctx.scene === "chat") {
     // 对话 fallback：回应式俏皮话（多样池 10 条，避免重复）
     const msg = ctx.userMessage ?? "";
+    const song = ctx.song;
+    const profile = ctx.songProfile;
+
+    // [修复 2026-09-07] 问歌问题 + 有档案 → fallback 也用档案真回答，不再冷场。
+    // LLM 偶尔挂 / parseBilingual 失败时，这是 DJ 唯一能"真懂歌"的兜底路径。
+    // 命中：用户问句含"这首歌/这歌/歌的背景/这首/谁唱的/创作/灵感" + 当前歌有档案
+    const isSongQuestion = /(这首歌|这首|这歌|歌的背景|歌曲|什么歌|谁唱的|哪首|讲讲|聊聊|介绍|说说|背景|故事|灵感|来历|趣闻|发行|哪年|原唱|翻唱|唱|feat)/i.test(msg);
+    if (profile && song && isSongQuestion) {
+      // 档案 3 字段随机抽一条 + 简评（不直译字段名），有人味而非档案堆砌
+      const bits = [profile.era, profile.story, profile.funFact].filter(Boolean);
+      const picked = bits[Math.floor(Math.random() * bits.length)] || "这歌确实有它的味道";
+      const variants = [
+        { en: `On "${song.name}": ${picked}. Take it or as it — that's the short of it.`, zh: `《${song.name}》：${picked}。信不信由你，反正我话就到这儿。` },
+        { en: `Quick take on "${song.name}" — ${picked}. Make of it what you will.`, zh: `简单说《${song.name}》：${picked}。剩下的你自己品。` },
+        { en: `About "${song.name}": ${picked}. That's the bit worth chewing on.`, zh: `聊《${song.name}》：${picked}。这事儿值得琢磨琢磨。` },
+        { en: `"${song.name}" — here's the thing: ${picked}. Up to you where you go from there.`, zh: `《${song.name}》这事儿吧——${picked}。往后怎么想，看你。` },
+      ];
+      const pick = variants[Math.floor(Math.random() * variants.length)];
+      en = pick.en;
+      zh = pick.zh;
+    } else {
     en = pick([
       `Interesting question — "${msg.slice(0, 40)}". If I had a heart, it'd be playing something smooth right now.`,
       `You're asking me? I'm just the guy who picks the records. But that's a good question — filed under "things I think about between songs".`,
@@ -711,6 +742,7 @@ async function fallbackDJLine(ctx: DJContext): Promise<DJOutput> {
       `两首歌之间的空隙我或许能抒怀。现在？下首歌在叫我。`,
       `聪明的提问。坦白说，我更想听你的版本——你说给我听，我用一首歌来配。`,
     ]);
+    }
   } else {
     en = pick([
       "AI Radio, on the air.",
