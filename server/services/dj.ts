@@ -527,7 +527,11 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
           lastDjEn = fromBank.en;
           // 切歌过渡语多为冷笑话性质 → 播完配罐头笑声
           return { en: fromBank.en, zh: fromBank.zh, audioUrl: audio.url, provider: "phraseBank", funny: true };
-        } catch {
+        } catch (err) {
+          // [修复 2026-09-07] 之前 catch 静默吞错 → 退回老预合成音频（混读），
+          // 跟 chat 单语回复听感完全两个声音。Render log 现在能看到 TTS 真死因。
+          console.warn(`[DJ-transition] phraseBank 重合成失败 → 退回预合成音频(可能混读):`,
+            err instanceof Error ? err.message : String(err));
           /* 重新合成失败 → 退回预合成音频（至少能播） */
         }
       }

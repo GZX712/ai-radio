@@ -39,6 +39,7 @@ const SCENE_TARGETS: Record<PhraseScene, number> = {
 };
 
 const DB_PATH = path.resolve(__dirname, "../../data/phrase-bank.json");
+const DEFAULT_PHRASE_VOICE = process.env.TTS_VOICE || "en-US-GuyNeural";
 const STYLE_DESC: Record<PhraseStyle, string> = {
   financial: "用金融/股票术语包装日常（K线、回调、仓位、蓝筹股、止损、软着陆），冷面幽默",
   medical: "用医学/诊断术语包装日常（处方、诊断、CT、康复、临床），一本正经",
@@ -104,9 +105,14 @@ async function generateBatch(scene: PhraseScene, style: PhraseStyle, count: numb
             maxTokens: 60,
           });
           const zh = zhRaw.trim().replace(/^["']|["']$/g, "") || clean;
-          // 预合成用默认音色（undefined）；取话术时若用户选了其他音色会实时重新合成
-          const audio = await ttsService.synthesize(`${clean} ${zh}`, "dj", undefined, "");
-          out.push({ scene, style, en: clean, zh, audioUrl: audio.url, voice: undefined });
+          // [修复 2026-09-07] 预合成只读 en 单语：之前把 `${clean} ${zh}` 整段拼一起送 TTS
+          // 听感是英中混读，跟 chat/transition 单语回复完全两个声音。
+          // 现在只读 clean：与默认音色 Edge Guy (en) 一致；用户切中文音色 → 切歌播放路径
+          // 会重新合成读 zh，跟 chat 一致。
+          // voice 字段存 DEFAULT_PHRASE_VOICE：切歌播放时 wantVoice === fromBank.voice
+          // 可跳过重合成（保留秒回优化）。
+          const audio = await ttsService.synthesize(clean, "dj", DEFAULT_PHRASE_VOICE, "");
+          out.push({ scene, style, en: clean, zh, audioUrl: audio.url, voice: DEFAULT_PHRASE_VOICE });
         } catch {
           /* 单条失败跳过 */
         }
@@ -151,15 +157,31 @@ async function saveToDisk(): Promise<void> {
   }
 }
 
+/** [2026-09-07] 老 phraseBank 数据迁移：2026-09-07 之前的话术是英中混读音频（不一致 bug），
+ *  所有 items 都没 voice 字段 → 加载后强制后台重生成。期间切歌走重合成路径（单语），
+ *  仍能保证一致性。
+ */
+const STALE_BANK_BEFORE = "2026-09-07T00:00:00Z";
+
 async function loadFromDisk(): Promise<void> {
   if (bankLoaded) return;
   bankLoaded = true;
   try {
     const raw = await fs.readFile(DB_PATH, "utf8");
-    const j = JSON.parse(raw) as { items?: PhraseItem[] };
+    const j = JSON.parse(raw) as { items?: PhraseItem[]; generatedAt?: string };
     if (Array.isArray(j.items) && j.items.length > 0) {
       bank = j.items;
-      console.log(`[phraseBank] 已从磁盘加载 ${bank.length} 条话术`);
+      const isStale = !j.generatedAt || j.generatedAt < STALE_BANK_BEFORE
+        || bank.every((p) => !p.voice);
+      if (isStale) {
+        console.log(`[phraseBank] 检测到旧数据 (generatedAt=${j.generatedAt || "未知"}) → 后台异步重生成`);
+        bank = []; // 清空：旧混读音频不再暴露给切歌（重合成路径仍可用）
+        regeneratePhraseBank().catch((err) =>
+          console.warn("[phraseBank] 自动重生成失败:", err instanceof Error ? err.message : err)
+        );
+        return;
+      }
+      console.log(`[phraseBank] 已从磁盘加载 ${bank.length} 条话术 (${j.generatedAt})`);
       return;
     }
   } catch {
