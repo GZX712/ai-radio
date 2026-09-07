@@ -160,7 +160,7 @@ class NeteaseSource implements MusicSource {
       name: s.name,
       artist: (s.artists ?? []).map((a) => a.name).join(" / "),
       url: "", // 需要单独调 getSongUrl
-      picUrl: s.album?.picUrl,
+      picUrl: s.album?.picUrl ?? undefined,
     }));
   }
 
@@ -187,7 +187,7 @@ class NeteaseSource implements MusicSource {
       name: s.name,
       artist: s.ar.map((a) => a.name).join(" / "),
       url: "",
-      picUrl: s.al?.picUrl,
+      picUrl: s.al?.picUrl ?? undefined,
     }));
   }
 
@@ -229,7 +229,7 @@ class NeteaseSource implements MusicSource {
       name: detail.name,
       artist: detail.artist,
       url,
-      picUrl: detail.picUrl,
+      picUrl: detail.picUrl ?? undefined,
       lyric,
     };
   }
@@ -312,7 +312,7 @@ class CosLibrarySource implements MusicSource {
       name: s.name,
       artist: s.artist,
       url: this.fileUrl(s.file),
-      picUrl: "",
+      picUrl: undefined,
     }));
   }
 
@@ -337,7 +337,7 @@ class CosLibrarySource implements MusicSource {
           name: s.name,
           artist: s.artist,
           url: "",
-          picUrl: "", // COS 无封面，前端走默认封面
+          picUrl: undefined, // COS 无封面，前端走默认封面
         });
       }
     }
@@ -367,7 +367,7 @@ class CosLibrarySource implements MusicSource {
       name: detail.name,
       artist: detail.artist,
       url,
-      picUrl: detail.picUrl,
+      picUrl: detail.picUrl ?? undefined,
       lyric,
     };
   }

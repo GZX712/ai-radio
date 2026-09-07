@@ -5,8 +5,10 @@ export const NowPlayingSchema = z.object({
   name: z.string(),
   artist: z.string(),
   url: z.string().url(),
-  picUrl: z.string().url().optional(),
-  lyric: z.string().optional(),
+  // COS 模式无封面 picUrl 为 ""，网易云个别歌 picUrl 为 null —— 都要放行，
+  // 否则 zod 校验失败 → parseResponse 返回 null → 前端拿不到歌 → 音乐不加载（"播放不了"）
+  picUrl: z.union([z.string().url(), z.literal("")]).nullable().optional(),
+  lyric: z.string().nullable().optional(),
 });
 
 export type NowPlaying = z.infer<typeof NowPlayingSchema>;
