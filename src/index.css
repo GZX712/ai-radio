@@ -1540,6 +1540,25 @@ body::after {
   animation: msg-in 0.3s ease-out;
 }
 
+/* 成功/失败提示配色（主人绑定等反馈） */
+.toast-ok { border-color: #2ecc71; box-shadow: 0 0 14px rgba(46, 204, 113, 0.35); }
+.toast-bad { border-color: #e74c3c; box-shadow: 0 0 14px rgba(231, 76, 60, 0.35); }
+
+/* 设备身份徽标（主人 🏠 / 访客 👤），自带宽色底，任何壁纸下都清晰 */
+.role-badge {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.role-badge.owner { color: #ffd76a; background: rgba(255, 183, 0, 0.12); border: 1px solid rgba(255, 183, 0, 0.45); }
+.role-badge.guest { color: #7ee7ff; background: rgba(0, 220, 255, 0.1); border: 1px solid rgba(0, 220, 255, 0.4); }
+
 /* =========================================================
  * 赛博朋克电台 UI × 矩阵像素美学（覆写层）
  * ========================================================= */

@@ -10,6 +10,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
+import { buildWsUrl, tryClaimFromUrl } from "@/lib/deviceIdentity";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -23,6 +24,7 @@ export default function App() {
   const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
   const djAvatar = useRadioStore((s) => s.djAvatar);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [deviceRole, setDeviceRole] = useState<string>(""); // owner | guest-new | guest-known | no-id（hello 下发）
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
@@ -149,6 +151,19 @@ export default function App() {
     );
   }, []);
 
+  // 主人绑定：/?claim=<口令> 访问一次 → 绑定本设备（此后自动识别，无需再带参）
+  useEffect(() => {
+    tryClaimFromUrl().then((r) => {
+      if (r === "claimed") {
+        setError("✅ 已将本设备绑定为电台主人，正在刷新生效…");
+        window.setTimeout(() => location.reload(), 1200);
+      } else if (r === "failed") {
+        setError("❌ 主人绑定失败：口令无效或服务未就绪");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 自动开播：页面加载即尝试一次（无手势会被 iOS 拒，用户点"开始电台"时再重试）。
   // 注意：不再挂 document 全局 click 重试——之前它会和播放按钮的 onToggle 竞态，
   // 首次播放失败时"点暂停 → document 监听又自动调 handlePlay"导致暂停无效/播放异常。
@@ -160,12 +175,18 @@ export default function App() {
   // WebSocket 接收 DJ 串场（双语）
   useEffect(() => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new ReconnectingWS(`${proto}://${location.host}/ws`);
+    const ws = new ReconnectingWS(buildWsUrl(`${proto}://${location.host}/ws`));
     setWs(ws);
     ws.connect();
 
     const off = ws.onMessage((msg) => {
-      const m = msg as { en?: string; zh?: string; audioUrl?: string; type?: string; song?: NowPlaying; funny?: boolean };
+      const m = msg as { en?: string; zh?: string; audioUrl?: string; type?: string; song?: NowPlaying; funny?: boolean; role?: string; isOwner?: boolean };
+      if (m.type === "hello") {
+        // 后端告知本设备身份（主人 / 客人）——界面徽标 + 控制台可查
+        setDeviceRole(m.role ?? "");
+        console.info(`[DEVICE] 本设备身份: ${m.role ?? "unknown"}${m.isOwner ? "（主人）" : ""}`);
+        return;
+      }
       if (m.type === "dj" || m.type === "chat-reply") {
         useRadioStore.getState().setDjThinking(false);
         // 去掉"到达就随机播卡通音效"——改成：dj 类型自动播语音，
@@ -207,7 +228,13 @@ export default function App() {
           </div>
           <div>
             <div className="header-name">AI Radio</div>
-            <div className="header-status">{isPlaying ? "Speaking" : "Online"}</div>
+            <div className="header-status">
+              {isPlaying ? "Speaking" : "Online"}
+              {deviceRole === "owner" && <span className="role-badge owner" title="本设备是电台主人">🏠 主人</span>}
+              {(deviceRole === "guest-new" || deviceRole === "guest-known") && (
+                <span className="role-badge guest" title="本设备是访客（DJ 会语音欢迎）">👤 访客</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="header-right">

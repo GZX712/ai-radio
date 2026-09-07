@@ -6,7 +6,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { musicQueue } from "./services/musicQueue";
-import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir } from "./services/dj";
+import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting } from "./services/dj";
+import {
+  CLAIM_TOKEN,
+  signBond,
+  resolveRole,
+  noteGuestDevice,
+  classifyDevice,
+  guestCount,
+  loadGuests,
+  shouldGreetAgain,
+  markGreeted,
+} from "./services/deviceIdentity";
 import { getSongProfile, getCachedSongProfile, warmSongProfile } from "./services/songKnowledge";
 import { ttsService } from "./services/tts";
 import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/scheduler";
@@ -20,6 +31,9 @@ import { loadEnv } from "./services/env";
 
 // ============== .env 加载（必须在读取任何 process.env 之前）==============
 loadEnv();
+
+// ============== 设备客人档案加载（主人身份无状态验签，不依赖此文件） ==============
+loadGuests().catch(() => {});
 
 // ============== Netease 服务保活 ==============
 // Render 免费版 15 分钟无请求会自动 spin down；保活定时任务每 5 分钟 ping 一次
@@ -555,6 +569,69 @@ function broadcast(message: unknown) {
   });
 }
 
+// ============== 设备身份：主人绑定 / 在线概览 / 客人彩蛋 ==============
+
+/** 主人绑定：/?claim=<口令> 换长期 bond（前端存 localStorage，此后自动识别） */
+app.post("/api/device/claim", (req, res) => {
+  const { token, deviceId } = (req.body ?? {}) as { token?: unknown; deviceId?: unknown };
+  if (typeof deviceId !== "string" || deviceId.length < 8 || deviceId.length > 80) {
+    res.status(400).json({ code: 400, message: "deviceId 非法" });
+    return;
+  }
+  if (token !== CLAIM_TOKEN) {
+    res.status(403).json({ code: 403, message: "口令错误" });
+    return;
+  }
+  res.json({ code: 0, data: { deviceId, bond: signBond(deviceId), isOwner: true } });
+});
+
+/** 在线设备概览（供主人查看：现在谁在听，是主人还是客人） */
+app.get("/api/device/now", (_req, res) => {
+  const online: { kind: string; role: string; deviceId?: string; connectedAt?: number }[] = [];
+  wss.clients.forEach((client) => {
+    const meta = client as unknown as { _deviceId?: string; _kind?: string; _role?: string; _connectedAt?: number };
+    if (meta._deviceId) {
+      online.push({
+        kind: meta._kind ?? "未知设备",
+        role: meta._role ?? "unknown",
+        deviceId: meta._deviceId.slice(0, 8),
+        connectedAt: meta._connectedAt,
+      });
+    }
+  });
+  res.json({ code: 0, data: { online, guestTotal: guestCount() } });
+});
+
+/**
+ * 客人彩蛋：DJ 语音欢迎（首次隆重 / 再来低调）。
+ * 带 DJ 互斥锁避免与开播/切歌话术抢播；锁忙则 1.5s 后补一次，仍忙就放弃（下回接入再说）。
+ */
+function fireGuestGreeting(isNew: boolean, deviceId: string): void {
+  const doGreet = (): Promise<boolean> =>
+    withDjLock(async () => {
+      try {
+        const dj = await generateGuestGreeting(isNew);
+        if (dj.audioUrl) {
+          broadcast({ type: "dj", ...dj, timestamp: Date.now(), guest: true });
+          markGreeted(deviceId);
+          console.log(`[DEVICE] 🎙️ 客人${isNew ? "隆重欢迎" : "低调问候"}已播报`);
+        } else {
+          console.warn("[DEVICE] 欢迎语音合成失败(无音频)，跳过播报");
+        }
+      } catch (err) {
+        console.warn("[DEVICE] 客人欢迎异常:", err instanceof Error ? err.message : String(err));
+      }
+    });
+  doGreet().then((ok) => {
+    if (!ok) {
+      console.log("[DEVICE] DJ 忙，1.5s 后补发客人欢迎…");
+      setTimeout(() => {
+        doGreet().catch(() => {});
+      }, 1500);
+    }
+  });
+}
+
 /**
  * 播放控制命令识别（语音/文字均可）
  * 命中返回 { action, en, zh }；闲聊返回 null
@@ -705,9 +782,51 @@ async function handleSongRequest(ws: { send: (d: string) => void }, keyword: str
   }
 }
 
-wss.on("connection", (ws) => {
-  console.log("[WS] client connected");
-  ws.send(JSON.stringify({ type: "hello", text: "AI 电台 WS 已连接" }));
+wss.on("connection", (ws, req) => {
+  // —— 设备身份识别：主人 / 客人（彩蛋依据） ——
+  const ua = req.headers["user-agent"];
+  let devUrl: URL | null = null;
+  try {
+    devUrl = new URL(req.url ?? "", "http://localhost");
+  } catch {
+    devUrl = null;
+  }
+  const deviceId = devUrl?.searchParams.get("deviceId") || undefined;
+  const bond = devUrl?.searchParams.get("bond") || undefined;
+  const { role, isNewGuest } = resolveRole(deviceId, bond);
+  const kind = classifyDevice(ua);
+  noteGuestDevice(deviceId, ua);
+
+  // 挂到 socket 上，供 /api/device/now 统计当前在线角色
+  const wsMeta = ws as unknown as { _deviceId?: string; _kind?: string; _role?: string; _connectedAt?: number };
+  wsMeta._deviceId = deviceId;
+  wsMeta._kind = kind;
+  wsMeta._role = role;
+  wsMeta._connectedAt = Date.now();
+
+  if (role === "owner") {
+    console.log(`[DEVICE] 🏠 主人接入：${kind} (${deviceId?.slice(0, 8)}…)`);
+  } else if (role === "guest-new") {
+    console.log(`[DEVICE] 👋 新客人接入：${kind} (${deviceId?.slice(0, 8)}…) → 触发隆重欢迎`);
+    if (deviceId) fireGuestGreeting(true, deviceId);
+  } else if (role === "guest-known") {
+    console.log(`[DEVICE] 🔁 熟客接入：${kind} (${deviceId?.slice(0, 8)}…)`);
+    if (deviceId && shouldGreetAgain(deviceId)) {
+      console.log("[DEVICE] 距上次欢迎 ≥10 分钟 → 低调问候");
+      fireGuestGreeting(false, deviceId);
+    }
+  } else {
+    console.log(`[DEVICE] 📡 无标识设备接入：${kind}`);
+  }
+
+  ws.send(JSON.stringify({
+    type: "hello",
+    text: "AI 电台 WS 已连接",
+    role,
+    isOwner: role === "owner",
+    isNewGuest,
+    deviceId: deviceId?.slice(0, 8),
+  }));
 
   ws.on("message", async (raw) => {
     try {
@@ -786,7 +905,7 @@ wss.on("connection", (ws) => {
     } catch {}
   });
 
-  ws.on("close", () => console.log("[WS] client disconnected"));
+  ws.on("close", () => console.log(`[WS] client disconnected (${role})`));
 });
 
 // ============== 静态资源（始终服务 dist，让 iPhone/微信直接访问 8787） ==============

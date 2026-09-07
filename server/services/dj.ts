@@ -497,6 +497,46 @@ async function generateSongSpecificTransition(ctx: DJContext): Promise<DJOutput 
   }
 }
 
+/**
+ * [2026-09-07] 客人彩蛋：新客人接入电台 → DJ 语音欢迎（首次隆重 / 再来低调）。
+ * 不走 LLM（彩蛋必须"一定能响"，LLM 挂了不能哑）——固定文案池 + 当前音色 TTS 合成，
+ * 双语字幕随广播下发，前端所有设备同步听到 DJ 欢迎（电台逻辑：来宾是所有人的来宾）。
+ * TTS 失败降级返回无 audioUrl 的文本（调用侧跳过播报，不炸连接）。
+ */
+const GUEST_WELCOME_LINES: ReadonlyArray<{ en: string; zh: string }> = [
+  {
+    en: "Well, well — a fresh face in the house! Welcome to the AI Radio, stranger. Grab a seat, the music's just getting good. I'm your host — try not to fall in love with the playlist.",
+    zh: "哎呀，来新朋友了！欢迎光临 AI 电台，随便坐，音乐正到精彩处。我是你们的主播——小心别爱上这份歌单。",
+  },
+  {
+    en: "Hold on — did the door just open? Welcome in, newcomer! You've tuned into the finest little AI Radio on the planet. Music's on me, jokes are questionable, enjoy the ride.",
+    zh: "等等——是门开了吗？欢迎新来的朋友！你收听的是全宇宙最棒的小电台。音乐我来放，段子质量随缘，enjoy。",
+  },
+];
+const GUEST_RETURN_LINES: ReadonlyArray<{ en: string; zh: string }> = [
+  {
+    en: "Welcome back, friend. You know the drill — good music, questionable commentary. Enjoy the show.",
+    zh: "欢迎回来，朋友。老规矩——好音乐，烂点评。Enjoy。",
+  },
+];
+
+export async function generateGuestGreeting(isNew: boolean): Promise<DJOutput> {
+  const pool = isNew ? GUEST_WELCOME_LINES : GUEST_RETURN_LINES;
+  const line = pool[Math.floor(Math.random() * pool.length)]!;
+  try {
+    const audio = await ttsService.synthesize(
+      currentSpeakText(line.en, line.zh),
+      "dj",
+      currentPersonality.voice,
+      currentPersonality.traits,
+    );
+    return { en: line.en, zh: line.zh, audioUrl: audio.url, provider: "guest-greeting" };
+  } catch (err) {
+    console.warn("[DJ-guest] 欢迎语音合成失败(跳过播报):", err instanceof Error ? err.message : String(err));
+    return { en: line.en, zh: line.zh, provider: "guest-greeting-text" };
+  }
+}
+
 export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   // 记住最新 personality（音色/性格全场景生效）
   if (ctx.personality) currentPersonality = ctx.personality;
