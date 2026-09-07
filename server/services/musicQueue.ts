@@ -214,8 +214,20 @@ export class MusicQueue {
     }
 
     // 优先用当前预取池（零等待）
-    if (this.prefetchPool.length > 0) {
+    // [铁壁 2026-09-07] 理论上 fillPool 会避开 cursor，但 cursor 可能在填充期间被
+    // loadAt 失败 splice / prev 回退改掉 → 池里混入"当前正在播的歌"。
+    // 实测（快进 ended 场景）出现过 /api/next 返回当前歌 L0071 —— 前端拿它 loadAndPlay
+    // 会形成"同一首反复播放"的观感。这里消费时再做一次守卫：取到当前歌就跳过重取。
+    while (this.prefetchPool.length > 0) {
       const cached = this.prefetchPool.shift()!;
+      const isCurrent =
+        this.currentSong?.songmid === cached.song.songmid ||
+        cached.index === this.cursor;
+      if (isCurrent) {
+        console.warn(`[musicQueue] 预取池混入当前歌 ${cached.song.songmid}，跳过防循环`);
+        if (this.prefetchPool.length > 0) continue; // 池里还有别的 → 换一首
+        break; // 池已空且只此一首 → 跳出走 nextPool / 随机兜底（严格避开当前歌）
+      }
       this.currentSong = cached.song;
       this.cursor = cached.index;
       this.poolUsed++;
