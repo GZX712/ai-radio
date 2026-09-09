@@ -8,202 +8,254 @@ interface PixelCoverProps {
 
 const GRID = 12;          // 12×12 = 144 像素块
 const REVEAL_RADIUS = 3;  // 鼠标周围扩散半径
+const REVEAL_MS = 150;    // 每格"显影"展开动画时长
 
 /**
- * 像素翻转变形封面（双面 3D）：
- * - 背面（初始朝上）：该区域主色的像素色块 → 显示为 12×12 马赛克像素点
- * - 正面（翻正后朝上）：原图清晰切片 → 拼合成完整封面
- * - mousemove：从鼠标位置向半径 3 扩散翻转（方块一个个翻正，图像逐渐清晰）
- * - click：全部方块一次翻正
- * - 切歌：重置回像素点状态
+ * 封面组件 v3（2026-09-09）—— 桌面 / 触摸双实现，彻底分离、互不牵连。
  *
- * 实现：加载原图 → Canvas 降采样到 12×12 → getImageData 取每格平均色作为背面色；
- * 每块 div 含双面（face-front 原图切片 / face-back 纯色），rotateY 3D 翻转切换。
+ * 【为什么重构】此前 PC 与手机共用同一套 12×12 双面 3D DOM 网格
+ * （.pixel-grid 144 × .pixel-flipper + preserve-3d + 每格一份 backgroundImage 大图）：
+ *   - 移动 GPU：合成层/纹理内存直接爆 → 整页崩溃（60146f1 已把手机降级为整图）
+ *   - 桌面 GPU：144 个 3D 合成层 + 大图重复引用，在核显 / 高 DPI / 特定驱动下
+ *     同样 GPU 进程 OOM → PC 端崩溃（辛老师本轮复测复现）
+ *
+ * 【v3 架构】
+ *   - 触摸设备（pointer: coarse，手机/平板）：直接渲染单张完整封面 <img>，
+ *     零合成层、零解码成本 —— 已是最稳形态，永不回归 3D 网格。
+ *   - 桌面（精细指针）：改用【single-canvas 像素显影】—— 整块封面只用
+ *     一个 <canvas> 自绘：
+ *        初始态 = 12×12 纯色格 + LED 圆点（马赛克）
+ *        鼠标扫过 → 该格圆心展开"显影"出原图清晰切片（rAF 驱动，150ms）
+ *        点击   → 全格显影 = 完整封面
+ *     单 canvas 只有一个合成层 + 一次原图解码，没有 144 层 3D 压力，
+ *     无论怎么扫 / 什么显卡都不会再打爆 GPU。视觉语义与原翻正一致
+ *     （扫哪儿哪儿清晰、点一下全清晰、切歌回到马赛克）。
  */
 export function PixelCover({ src, alt }: PixelCoverProps) {
-  // [2026-09-09 手机崩溃修复] 触摸设备（手机/平板, pointer: coarse）不渲染 12×12
-  // 双面 3D 网格：144 个 flipper + preserve-3d + 每格一张 backgroundImage 会让移动 GPU
-  // 合成层/内存爆掉 → 整页崩溃（辛老师手机实测）。且触摸无 hover，只剩"整点翻正"，
-  // 交互收益≈0 → 直接渲染单张完整封面（等同翻正态 full-cover，切歌 key 重挂带淡入）。
-  // 桌面（精细指针）保留完整像素翻转交互。
   const [isCoarse] = useState<boolean>(() =>
     typeof window !== "undefined" && typeof window.matchMedia === "function"
       ? window.matchMedia("(pointer: coarse)").matches
       : false,
   );
-  const [revealed, setRevealed] = useState<Set<number>>(() => new Set());
-  const [pixelColors, setPixelColors] = useState<string[]>([]);
-  const lastCellRef = useRef<number>(-1);
-  const rafRef = useRef<number>(0);
-  const pendingRevealRef = useRef<Set<number>>(new Set());
 
-  // 切歌：清空已翻转 + 像素色，重新加载（触摸端已降级为整图 → 无需解码像素色）
+  // ============ 触摸端：单张整图（最稳，永不重建 3D 网格） ============
+  if (isCoarse) {
+    return <img key={src} className="full-cover" src={src} alt={alt} />;
+  }
+
+  // ============ 桌面端：single-canvas 像素显影 ============
+  // key={src} → 切歌整组件重挂（清显影态 + 触发淡入动画）
+  return <PixelRevealCanvas key={src} src={src} alt={alt} />;
+}
+
+/** 桌面端单 canvas「像素显影」实现（无任何 DOM 3D 合成层） */
+function PixelRevealCanvas({ src, alt }: { src: string; alt: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const imgOkRef = useRef(false);
+  const colorsRef = useRef<string[]>([]); // 144 格平均色（RGB 串）
+  const coverRef = useRef<{ sx: number; sy: number; s: number } | null>(null); // 源图居中裁方
+  const revealStartRef = useRef<number[]>([]); // 每格显影开始时间戳（undefined = 未显影）
+  const pendingRef = useRef<Set<number>>(new Set());
+  const lastCellRef = useRef(-1);
+  const rafRef = useRef(0);
+  const sizeRef = useRef({ w: 0, h: 0, dpr: 1 });
+
+  // 加载原图 + 降采样 12×12 平均色（只读像素画底，不依赖 CSS background）
   useEffect(() => {
-    if (isCoarse) return;
-    setRevealed(new Set());
-    setPixelColors([]);
-    lastCellRef.current = -1;
-
     let cancelled = false;
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    img.crossOrigin = "anonymous"; // COS 允许 CORS → 可取色
     img.onload = () => {
       if (cancelled) return;
-      // 降采样到 GRID×GRID，取每格平均色（关闭平滑 → 硬像素）
-      const off = document.createElement("canvas");
-      off.width = GRID;
-      off.height = GRID;
-      const ctx = off.getContext("2d");
-      if (!ctx) return;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, 0, 0, GRID, GRID);
-      const data = ctx.getImageData(0, 0, GRID, GRID).data;
-      const colors: string[] = [];
-      for (let i = 0; i < GRID * GRID; i++) {
-        const r = data[i * 4];
-        const g = data[i * 4 + 1];
-        const b = data[i * 4 + 2];
-        colors.push(`rgb(${r},${g},${b})`);
+      imgRef.current = img;
+      imgOkRef.current = true;
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      const s = Math.max(nw, nh);
+      coverRef.current = { sx: (nw - s) / 2, sy: (nh - s) / 2, s };
+      try {
+        const off = document.createElement("canvas");
+        off.width = GRID;
+        off.height = GRID;
+        const octx = off.getContext("2d", { willReadFrequently: true });
+        if (octx) {
+          octx.imageSmoothingEnabled = false;
+          octx.drawImage(img, 0, 0, GRID, GRID);
+          const data = octx.getImageData(0, 0, GRID, GRID).data;
+          const colors: string[] = [];
+          for (let i = 0; i < GRID * GRID; i++) {
+            colors.push(`rgb(${data[i * 4]},${data[i * 4 + 1]},${data[i * 4 + 2]})`);
+          }
+          colorsRef.current = colors;
+        }
+      } catch {
+        /* CORS 禁读时退化为深色格，显影仍可工作 */
       }
-      if (!cancelled) setPixelColors(colors);
+      ensureLoop();
     };
     img.src = src;
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, isCoarse]);
+  }, [src]);
 
-  // rAF 批量提交 mousemove 待翻集合
-  // [防频闪] prev 已是 super set 时直接 return prev → React 跳过组件更新
-  // 不加这个：鼠标 hover cover 时每 16ms setRevealed 都返回新 Set 实例，
-  // React 判为变化 → 每帧 re-render 144 个 cell → paint thrashing 频闪
-  useEffect(() => {
-    if (isCoarse) return; // 触摸端已降级整图，无需翻转动画循环
-    const flush = () => {
-      if (pendingRevealRef.current.size === 0) return;
-      const toAdd: number[] = [];
-      pendingRevealRef.current.forEach((i) => toAdd.push(i));
-      pendingRevealRef.current.clear();
-      setRevealed((prev) => {
-        let changed = false;
-        const next = new Set(prev);
-        for (const i of toAdd) {
-          if (!next.has(i)) {
-            next.add(i);
-            changed = true;
-          }
-        }
-        return changed ? next : prev; // prev 直接回归，React 跳过整个子树 reconcile
-      });
-    };
-    const loop = () => {
-      flush();
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [isCoarse]);
-
-  const handleClick = () => {
-    // 点击：全部翻正（一次拼合完整封面）
-    const all = new Set<number>();
-    for (let i = 0; i < GRID * GRID; i++) all.add(i);
-    setRevealed(all);
-    lastCellRef.current = -1;
+  /** 是否有事要画（有未处理悬停 / 有显影动画进行中 / 图还没就绪） */
+  const needsMore = (): boolean => {
+    if (pendingRef.current.size > 0 || !imgOkRef.current) return true;
+    const now = performance.now();
+    for (const st of revealStartRef.current) {
+      if (st >= 0 && now - st < REVEAL_MS) return true;
+    }
+    return false;
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const col = Math.max(0, Math.min(GRID - 1, Math.floor((x / rect.width) * GRID)));
-    const row = Math.max(0, Math.min(GRID - 1, Math.floor((y / rect.height) * GRID)));
-    const centerIdx = row * GRID + col;
-    if (centerIdx === lastCellRef.current) return;
-    lastCellRef.current = centerIdx;
+  const ensureLoop = () => {
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(loop);
+    }
+  };
 
-    // 圆形扩散：半径 REVEAL_RADIUS（曼哈顿距离）
-    for (let dr = -REVEAL_RADIUS; dr <= REVEAL_RADIUS; dr++) {
-      for (let dc = -REVEAL_RADIUS; dc <= REVEAL_RADIUS; dc++) {
-        const r = row + dr;
-        const c = col + dc;
-        if (r < 0 || r >= GRID || c < 0 || c >= GRID) continue;
-        if (Math.abs(dr) + Math.abs(dc) > REVEAL_RADIUS) continue;
-        pendingRevealRef.current.add(r * GRID + c);
+  const draw = () => {
+    const cvs = canvasRef.current;
+    if (!cvs) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = cvs.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    const sz = sizeRef.current;
+    if (sz.w !== w || sz.h !== h || sz.dpr !== dpr) {
+      sizeRef.current = { w, h, dpr };
+      cvs.width = Math.round(w * dpr);
+      cvs.height = Math.round(h * dpr);
+    }
+    const ctx = cvs.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true; // 显影区放大保持平滑清晰
+    ctx.clearRect(0, 0, w, h);
+
+    const img = imgRef.current;
+    const cover = coverRef.current;
+    const colors = colorsRef.current;
+    const now = performance.now();
+    const cellW = w / GRID;
+    const cellH = h / GRID;
+    const reveal = revealStartRef.current;
+
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const i = r * GRID + c;
+        const x = c * cellW;
+        const y = r * cellH;
+        const st = reveal[i] ?? -1;
+        // 底色格（始终先铺满，防 sub-pixel 缝隙透背景）
+        ctx.fillStyle = colors[i] ?? "#0a0a0f";
+        ctx.fillRect(x, y, cellW + 0.5, cellH + 0.5);
+        if (st < 0) {
+          // 未显影：中心 LED 圆点
+          ctx.fillStyle = "rgba(0,0,0,0.38)";
+          ctx.beginPath();
+          ctx.arc(x + cellW / 2, y + cellH / 2, Math.min(cellW, cellH) * 0.22, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (img && cover) {
+          // 显影：画源图该格切片；150ms 内以圆心扩散动画淡入
+          const t = Math.min(1, (now - st) / REVEAL_MS);
+          const tileS = cover.s / GRID;
+          const sx = cover.sx + c * tileS;
+          const sy = cover.sy + r * tileS;
+          if (t >= 1) {
+            ctx.drawImage(img, sx, sy, tileS, tileS, x, y, cellW + 0.5, cellH + 0.5);
+          } else {
+            ctx.save();
+            ctx.beginPath();
+            const rad = Math.max(cellW, cellH) * 0.8 * (1 - Math.pow(1 - t, 3));
+            ctx.arc(x + cellW / 2, y + cellH / 2, rad, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(img, sx, sy, tileS, tileS, x, y, cellW + 0.5, cellH + 0.5);
+            ctx.restore();
+          }
+        }
       }
     }
   };
 
-  const handleMouseLeave = () => {
+  const loop = () => {
+    rafRef.current = 0;
+    // flush 悬停待显影格
+    if (pendingRef.current.size > 0) {
+      const now = performance.now();
+      pendingRef.current.forEach((i) => {
+        if ((revealStartRef.current[i] ?? -1) < 0) revealStartRef.current[i] = now;
+      });
+      pendingRef.current.clear();
+    }
+    draw();
+    if (needsMore()) ensureLoop();
+  };
+
+  useEffect(() => {
+    ensureLoop();
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cellFromEvent = (e: React.MouseEvent<HTMLCanvasElement>): { r: number; c: number; i: number } | null => {
+    const cvs = canvasRef.current;
+    if (!cvs) return null;
+    const rect = cvs.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const c = Math.max(0, Math.min(GRID - 1, Math.floor((x / rect.width) * GRID)));
+    const r = Math.max(0, Math.min(GRID - 1, Math.floor((y / rect.height) * GRID)));
+    return { r, c, i: r * GRID + c };
+  };
+
+  const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const hit = cellFromEvent(e);
+    if (!hit) return;
+    if (hit.i === lastCellRef.current) return;
+    lastCellRef.current = hit.i;
+    // 曼哈顿半径扩散
+    for (let dr = -REVEAL_RADIUS; dr <= REVEAL_RADIUS; dr++) {
+      for (let dc = -REVEAL_RADIUS; dc <= REVEAL_RADIUS; dc++) {
+        const r = hit.r + dr;
+        const c = hit.c + dc;
+        if (r < 0 || r >= GRID || c < 0 || c >= GRID) continue;
+        if (Math.abs(dr) + Math.abs(dc) > REVEAL_RADIUS) continue;
+        pendingRef.current.add(r * GRID + c);
+      }
+    }
+    ensureLoop();
+  };
+
+  const handleClick = () => {
+    // 点击：全格显影 = 完整封面
+    const now = performance.now();
+    for (let i = 0; i < GRID * GRID; i++) {
+      if ((revealStartRef.current[i] ?? -1) < 0) revealStartRef.current[i] = now;
+    }
+    lastCellRef.current = -1;
+    ensureLoop();
+  };
+
+  const handleLeave = () => {
     lastCellRef.current = -1;
   };
 
-  // 渲染双面方块
-  const cells = [];
-  const loading = pixelColors.length === 0;
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < GRID; col++) {
-      const i = row * GRID + col;
-      const posX = (col / (GRID - 1)) * 100;
-      const posY = (row / (GRID - 1)) * 100;
-      cells.push(
-        <div key={i} className="pixel-cell">
-          {/* 关键：3D 旋转放在 .pixel-flipper 子层，.pixel-cell 自己做 2D layout，
-              .pixel-flipper 用 inset: -2px 覆盖相邻 cell 间隙（GPU compositing
-              在 Retina 上会产生 1px gap，这里靠 -2px 让相邻 flipper overlap 4px
-              彻底盖住）。flipper 内部 preserve-3d 保留 3D 翻转动效。 */}
-          <div className={`pixel-flipper ${revealed.has(i) ? "revealed" : ""}`}>
-            {/* 背面：圆形 LED 像素点（初始朝上 = 马赛克圆点阵） */}
-            <div
-              className="face face-back"
-              style={{ background: loading ? "#0a0a0f" : pixelColors[i] }}
-            >
-              <span className="dot" />
-            </div>
-            {/* 正面：原图清晰切片（翻正后朝上 = 完整无缝封面） */}
-            <div
-              className="face face-front"
-              style={{
-                backgroundImage: `url(${src})`,
-                backgroundSize: `${GRID * 100}% ${GRID * 100}%`,
-                backgroundPosition: `${posX}% ${posY}%`,
-                backgroundRepeat: "no-repeat",
-              }}
-            />
-          </div>
-        </div>
-      );
-    }
-  }
-
-  // [2026-09-07 修复] 翻正黑屏根因：原实现用 144 cell 各设 backgroundImage + 1200% backgroundSize
-  // 拼合，浏览器对 inline-style backgroundImage 在 GPU 合成层下偶发渲染失败 → face-front 透明 →
-  // 露出 cover-wrapper #000 黑底（辛老师截图"反转后黑屏"）。
-  // 修法：当所有 cell 翻正（revealed.size === GRID²）→ 切到单张完整原图（object-fit: cover 满铺），
-  // 既彻底解决黑块，又让翻正后视觉更清晰（无需 144 cell 拼接）。
-  const allRevealed = revealed.size === GRID * GRID && !loading;
-
-  // 触摸设备：直接给完整封面，跳过整个 3D 网格渲染树（防移动 GPU 崩溃）
-  if (isCoarse) {
-    return <img key={src} className="full-cover" src={src} alt={alt} />;
-  }
-
   return (
-    <div
-      key={src}
-      className="pixel-grid"
-      onClick={handleClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+    <canvas
+      ref={canvasRef}
+      className="pixel-canvas"
       role="img"
       aria-label={alt}
-    >
-      {allRevealed ? (
-        <img className="full-cover" src={src} alt={alt} />
-      ) : (
-        cells
-      )}
-    </div>
+      onClick={handleClick}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+    />
   );
 }

@@ -1,0 +1,26 @@
+fix(cover): PC 端封面崩溃 → 桌面改 single-canvas 像素显影，与手机彻底分离
+
+背景（辛老师复测）：手机封面崩溃修完（60146f1 coarse→整图）后，PC 端也崩。
+根因指向同一套 12×12 双面 3D DOM 网格（.pixel-flipper ×144 + preserve-3d +
+每格 backgroundImage 大图）—— 桌面核显 / 高 DPI / 部分 GPU 驱动下，144 个
+3D 合成层 + 大图纹理反复合成会 GPU 进程 OOM → 整页崩溃。
+
+v3 架构（电脑 / 手机两套实现，彻底分开）：
+- 手机（pointer: coarse）：维持单张 <img class="full-cover">，零合成层（不变）
+- 电脑（精细指针）：删除整个 DOM 3D 网格，改为 single-canvas「像素显影」：
+  · 一块 <canvas> 自绘：初始 12×12 平均色块 + LED 圆点（马赛克）
+  · 鼠标扫过 → 该格圆心展开 150ms 显影出原图清晰切片（rAF，曼哈顿半径 3）
+  · 点击 → 全格显影 = 完整封面；切歌 key 重挂回马赛克（保留淡入）
+  · 单 canvas 只有一个合成层 + 一次原图解码，无 144 层 3D 压力 → 不会再崩
+- CSS：新增 .pixel-canvas（absolute 铺满 cover-wrapper，cursor: crosshair），
+  旧 .pixel-grid/.pixel-cell/.pixel-flipper 样式保留但不再被渲染引用
+
+端到端验证（stub 后端 + 真实 COS 封面，像素级断言全过）：
+- mosaic 初始：144 格方差 ≈ 0（同色马赛克）
+- hover 中心：43 格出现原图细节；扫过后 107 格显影
+- click：124 格显影（剩余为原图纯色区域），pageErrors=0
+- 手机：img.full-cover 渲染、无 canvas/无 3D grid、无 JS error
+
+tools/_stub_cover_server.cjs（stub 后端供回归）、tools/_shot_cover_v3_desktop.cjs
+（桌面显影像素回归）、tools/_shot_cover_v3_e2e.cjs（双端结构断言）
+shots/cover_v3/ 三态截图
