@@ -21,14 +21,25 @@ const REVEAL_RADIUS = 3;  // 鼠标周围扩散半径
  * 每块 div 含双面（face-front 原图切片 / face-back 纯色），rotateY 3D 翻转切换。
  */
 export function PixelCover({ src, alt }: PixelCoverProps) {
+  // [2026-09-09 手机崩溃修复] 触摸设备（手机/平板, pointer: coarse）不渲染 12×12
+  // 双面 3D 网格：144 个 flipper + preserve-3d + 每格一张 backgroundImage 会让移动 GPU
+  // 合成层/内存爆掉 → 整页崩溃（辛老师手机实测）。且触摸无 hover，只剩"整点翻正"，
+  // 交互收益≈0 → 直接渲染单张完整封面（等同翻正态 full-cover，切歌 key 重挂带淡入）。
+  // 桌面（精细指针）保留完整像素翻转交互。
+  const [isCoarse] = useState<boolean>(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(pointer: coarse)").matches
+      : false,
+  );
   const [revealed, setRevealed] = useState<Set<number>>(() => new Set());
   const [pixelColors, setPixelColors] = useState<string[]>([]);
   const lastCellRef = useRef<number>(-1);
   const rafRef = useRef<number>(0);
   const pendingRevealRef = useRef<Set<number>>(new Set());
 
-  // 切歌：清空已翻转 + 像素色，重新加载
+  // 切歌：清空已翻转 + 像素色，重新加载（触摸端已降级为整图 → 无需解码像素色）
   useEffect(() => {
+    if (isCoarse) return;
     setRevealed(new Set());
     setPixelColors([]);
     lastCellRef.current = -1;
@@ -60,13 +71,15 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
     return () => {
       cancelled = true;
     };
-  }, [src]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, isCoarse]);
 
   // rAF 批量提交 mousemove 待翻集合
   // [防频闪] prev 已是 super set 时直接 return prev → React 跳过组件更新
   // 不加这个：鼠标 hover cover 时每 16ms setRevealed 都返回新 Set 实例，
   // React 判为变化 → 每帧 re-render 144 个 cell → paint thrashing 频闪
   useEffect(() => {
+    if (isCoarse) return; // 触摸端已降级整图，无需翻转动画循环
     const flush = () => {
       if (pendingRevealRef.current.size === 0) return;
       const toAdd: number[] = [];
@@ -90,7 +103,7 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [isCoarse]);
 
   const handleClick = () => {
     // 点击：全部翻正（一次拼合完整封面）
@@ -170,6 +183,11 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
   // 修法：当所有 cell 翻正（revealed.size === GRID²）→ 切到单张完整原图（object-fit: cover 满铺），
   // 既彻底解决黑块，又让翻正后视觉更清晰（无需 144 cell 拼接）。
   const allRevealed = revealed.size === GRID * GRID && !loading;
+
+  // 触摸设备：直接给完整封面，跳过整个 3D 网格渲染树（防移动 GPU 崩溃）
+  if (isCoarse) {
+    return <img key={src} className="full-cover" src={src} alt={alt} />;
+  }
 
   return (
     <div
