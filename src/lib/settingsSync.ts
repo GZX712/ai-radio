@@ -120,6 +120,8 @@ export async function pushSettings(): Promise<number> {
 
 /**
  * 启动同步（主人设备）：
+ * - 云端无档案（从未建 / Render Deploy 重置丢失）→ 本端有设置则无条件种子推送
+ *   （权威自愈：meta 无论新旧都补推，杜绝"云端空了但本端以为同步过 → 永不推"的僵死）
  * - meta=0 从未同步过 → 本端作权威，种子推送（覆盖云端旧脏数据）→ 首次拥有者赢
  * - meta=0 但本端无任何配置（手机全新首次打开）→ 反向从远端拉（PC 已配过的跟过来）
  * - meta>0 已同步过：
@@ -134,25 +136,29 @@ export async function pullSettings(): Promise<boolean> {
   const remote = await fetchRemote();
   const meta = readMeta();
 
+  // —— 云端无档案（从未建过 / Deploy 重置丢档）——
+  // 本端只要有任何设置就无条件重新种子推送：这是"云端被重置后自愈"的唯一入口，
+  // 否则 meta>0 会让本端误以为"同步过了"而永不补推 → 两端永久僵死（辛老师遇到的正是这个）
+  if (!remote || typeof remote.updatedAt !== "number") {
+    if (hasLocalSettings()) await pushSettings();
+    return false;
+  }
+
   // —— 首次同步：meta=0 —— 本端作权威（避免被任何旧脏数据蒙骗）
   if (meta.lastModified === 0) {
     if (hasLocalSettings()) {
       // 本端有配（PC 已精心调好壁纸头像）→ 推一次作为权威
-      const pushed = await pushSettings();
+      await pushSettings();
       return false;
     }
     // 本端没任何配置（手机全新首次打开）→ 远端有就拉过来
-    if (remote && typeof remote.updatedAt === "number") {
-      applyRemote(remote);
-      writeMeta(remote.updatedAt);
-      setTimeout(() => location.reload(), 60);
-      return true;
-    }
-    return false;
+    applyRemote(remote);
+    writeMeta(remote.updatedAt);
+    setTimeout(() => location.reload(), 60);
+    return true;
   }
 
-  // —— 已同步过：双向比对 ——
-  if (!remote || typeof remote.updatedAt !== "number") return false;
+  // —— 已同步过：双向比对（last-write-wins）——
   const R = remote.updatedAt;
   const L = meta.lastModified;
   if (R > L) {

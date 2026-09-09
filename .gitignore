@@ -84,3 +84,6 @@ data/owner-settings.json
 
 # 主人聊天档案（运行时个人历史对话，不入库）
 data/owner-chat.json
+
+# 设备识别运行时记录（guest 设备 UA/首见时间，不入库）
+data/devices.json

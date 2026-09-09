@@ -12,7 +12,7 @@ import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
 import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner, isOwnerDevice } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
-import { pullChat, pushChat, mergeChat } from "@/lib/chatSync";
+import { pullChat, pushChat, mergeChat, filterChatItems } from "@/lib/chatSync";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -195,10 +195,15 @@ export default function App() {
     void pullSettings();
     void (async () => {
       if (!isOwnerDevice()) return; // 客人设备不碰聊天档案（隐私：仅主人可见）
-      const remote = await pullChat();
-      if (!remote) return;
       const store = useRadioStore.getState();
       const local = store.chatHistory ?? [];
+      const remote = await pullChat();
+      if (!remote) {
+        // 云端不可达/异常 → 本地有历史也尝试补偿推送（幂等无害，恢复后自动上云）
+        const clean = filterChatItems(local);
+        if (clean.length > 0) void pushChat(clean);
+        return;
+      }
       const merged = mergeChat(local, remote.items);
       if (JSON.stringify(merged) !== JSON.stringify(local)) store.saveChatHistory(merged);
       void pushChat(merged); // 断网补偿：本地有而云端缺的会在这里补上
