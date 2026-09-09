@@ -6,9 +6,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { musicQueue } from "./services/musicQueue";
-import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting, getCurrentPersonality, pickSpeakText } from "./services/dj";
+import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting, getCurrentPersonality, pickSpeakText, restoreOnAir } from "./services/dj";
 import { buildTransitionScript } from "./services/djScripts";
 import { djThrottleCanSpeak, djThrottleMarkSpoke } from "./services/djThrottle";
+import { initHistoryDb, recordEvent, recentEvents, recentChatTurns } from "./services/historyDb";
 import {
   CLAIM_TOKEN,
   signBond,
@@ -36,6 +37,15 @@ loadEnv();
 
 // ============== 设备客人档案加载（主人身份无状态验签，不依赖此文件） ==============
 loadGuests().catch(() => {});
+
+// ============== 历史持久化初始化（SQLite：播出记忆 + 对话，重启回填不失忆） ==============
+initHistoryDb();
+try {
+  const seed = recentEvents(["song", "dj"], 10);
+  if (seed.length > 0) restoreOnAir(seed.map((e) => ({ kind: e.kind as "song" | "dj", text: e.text, ts: e.ts })));
+} catch {
+  /* 回填失败不影响启动 */
+}
 
 // ============== Netease 服务保活 ==============
 // Render 免费版 15 分钟无请求会自动 spin down；保活定时任务每 5 分钟 ping 一次
@@ -872,6 +882,8 @@ wss.on("connection", (ws, req) => {
 
         // 3. 闲聊：DJ 直接回应话题（不跑题）
         try {
+          // [2026-09-09] 历史库：#3 SQLite —— 用户问题落库(跨会话记忆的"问"半边)
+          recordEvent("chat_user", String(msg.text).slice(0, 500));
           const personality = (msg.personality && typeof msg.personality === "object")
             ? msg.personality as { gender: "male" | "female" | "neutral"; voice?: string; traits: string }
             : undefined;
@@ -879,7 +891,9 @@ wss.on("connection", (ws, req) => {
           if (personality) setCurrentPersonality(personality);
           // 前端 send chat 时会带历史对话 (history: [{role, content}])
           // 交给 LLM 让 DJ 看到上文，避免"答非所问"
-          const history = Array.isArray(msg.history)
+          // [2026-09-09] 前端没带 history(新会话/刷新后首次) → 从 SQLite 兜底注入最近对话,
+          //   DJ 记得"上一会话"聊过什么(不再刷新即失忆)。
+          const sessionHistory = Array.isArray(msg.history)
             ? (msg.history as { role?: unknown; content?: unknown }[])
                 .filter((x) =>
                   (x.role === "user" || x.role === "assistant") &&
@@ -888,7 +902,8 @@ wss.on("connection", (ws, req) => {
                 )
                 .slice(-10)
                 .map((x) => ({ role: x.role as "user" | "assistant", content: x.content as string }))
-            : undefined;
+            : [];
+          const history = sessionHistory.length > 0 ? sessionHistory : recentChatTurns(8);
           const dj = await (async () => {
             // [2026-09-07] 聊天上下文升级：让 DJ 知道此刻在放什么歌 + 歌的背景档案。
             // 之前 chat 完全不传当前歌 → 用户问"这歌什么背景/谁唱的"DJ 无从答起（结构性答非所问）。
@@ -914,6 +929,8 @@ wss.on("connection", (ws, req) => {
             });
           })();
           ws.send(JSON.stringify({ type: "chat-reply", ...dj }));
+          // [2026-09-09] 历史库：DJ 回复落库(跨会话记忆的"答"半边)
+          try { recordEvent("chat_dj", (dj.zh || dj.en || "").slice(0, 500)); } catch { /* noop */ }
         } catch (err) {
           ws.send(JSON.stringify({
             type: "chat-reply",
@@ -921,6 +938,7 @@ wss.on("connection", (ws, req) => {
             zh: "抱歉，DJ 出去抽烟了——换个话题试试？",
             provider: "fallback",
           }));
+          try { recordEvent("chat_dj", "抱歉，DJ 出去抽烟了——换个话题试试？"); } catch { /* noop */ }
           console.error("[WS-chat] 失败:", err);
         }
       }

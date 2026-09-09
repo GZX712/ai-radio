@@ -72,3 +72,9 @@ docs/_shot/
 library/
 library_test/
 tools/ncmdump/
+
+# SQLite 运行时历史库（重启回填用，二进制运行时产物不入库）
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal

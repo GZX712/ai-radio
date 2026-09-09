@@ -6,6 +6,7 @@ import type { SongProfile } from "./songKnowledge";
 import type { WeatherResult } from "./weather";
 import type { Trivia } from "./trivia";
 import { pickPhrase } from "./phraseBank";
+import { recordEvent } from "./historyDb";
 
 /**
  * DJ 串场服务（v4 · 英文双语 + 可定制性格/音色）
@@ -400,13 +401,31 @@ export interface OnAirEvent {
 const ON_AIR_MAX = 10;
 let onAirLog: OnAirEvent[] = [];
 
-/** 记录一条播出事件（切歌 / DJ 台词），超限滚动淘汰 */
+/** 记录一条播出事件（切歌 / DJ 台词），超限滚动淘汰。
+ *  [2026-09-09] 双写 SQLite(historyDb):重启后可由 restoreOnAir 回填 → DJ 不失忆。 */
 export function pushOnAir(kind: OnAirEvent["kind"], text: string): void {
   const d = new Date();
   const hh = d.getHours().toString().padStart(2, "0");
   const mm = d.getMinutes().toString().padStart(2, "0");
   onAirLog.push({ kind, time: `${hh}:${mm}`, text: String(text).slice(0, 160) });
   if (onAirLog.length > ON_AIR_MAX) onAirLog = onAirLog.slice(-ON_AIR_MAX);
+  try {
+    recordEvent(kind, text);
+  } catch {
+    /* 历史库故障不影响播出主流程 */
+  }
+}
+
+/** [2026-09-09] 启动回填:服务重启后把 SQLite 里最近的播出事件灌回内存 onAirLog */
+export function restoreOnAir(events: Array<{ kind: OnAirEvent["kind"]; text: string; ts?: number }>): void {
+  if (!Array.isArray(events) || events.length === 0) return;
+  onAirLog = events.map((e) => {
+    const d = e.ts ? new Date(e.ts) : new Date();
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    return { kind: e.kind, time: `${hh}:${mm}`, text: String(e.text).slice(0, 160) };
+  }).slice(-ON_AIR_MAX);
+  console.log(`[historyDb] 播出记忆回填 ${onAirLog.length} 条(重启不失忆)`);
 }
 
 /** 取最近播出内容摘要（注入聊天 prompt，让 DJ 记得自己刚说过什么） */
