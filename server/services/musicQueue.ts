@@ -265,6 +265,21 @@ export class MusicQueue {
       return this.next();
     }
 
+    // [refill 2026-09-09] 池空但填充仍在跑 → 先等 in-flight 补货(最多 ~1.5s)，再走 loadAt。
+    // 背景:fillPool 是后台自愈式(2 并发慢填),切歌瞬间恰好池空+prefetching 中时,
+    // 原逻辑直接 loadAt 现场拉 → 与 fillPool 并发抢同一批歌的 URL(重复请求更慢+更乱)。
+    // 现在:给填充 3×500ms 窗口,补到货就走正常消费路径(零现场拉取),真真空才 loadAt。
+    if (this.prefetching || this.nextPrefetching) {
+      for (let wait = 0; wait < 3; wait++) {
+        await new Promise((r) => setTimeout(r, 500));
+        if (this.prefetchPool.length > 0 || this.nextPool.length > 0) break;
+      }
+      if (this.prefetchPool.length > 0 || this.nextPool.length > 0) {
+        return this.next(); // 递归一次走正常消费(池已补货,不会再次空转)
+      }
+      console.warn("[musicQueue] refill 等待 1.5s 后池仍空，走 loadAt 兜底(冷启动/网易云风控窗口)");
+    }
+
     // 池子空了（刚启动/全部预取失败）→ 先尝试从池子没有的其他歌 loadAt，若失败再清 failedIds 重试一次
     const nextIndex = this.pickRandomIndex();
     this.cursor = nextIndex;
