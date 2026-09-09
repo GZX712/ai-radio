@@ -1,649 +1,677 @@
 {
-  "generatedAt": "2026-09-02T20:05:21.938Z",
+  "generatedAt": "2026-09-07T20:05:27.960Z",
   "items": [
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right then, while you're wrestling with that existential crisis over the last biscuit, let's have a tune.",
-      "zh": "趁你还在为最后一块饼干纠结人生，先来首歌吧。",
-      "audioUrl": "/audio/dj-1788379204632.mp3"
+      "en": "Well, that was a bit much, wasn't it? Time for something with a bit more... pep.",
+      "zh": "好吧，这有点过了，不是吗？该来点更有劲儿的了。",
+      "audioUrl": "/audio/dj-1788811206226.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "This next one's for everyone pretending their 'quick nap' wasn't actually a four-hour commitment.",
-      "zh": "下一句送给所有假装\"眯一会儿\"结果睡了四小时的朋友。",
-      "audioUrl": "/audio/dj-1788379208182.mp3"
+      "en": "Right then, shifting gears completely. From existential dread to questionable dance moves in three… two…",
+      "zh": "好嘞，画风突变。从存在主义危机到魔性舞步，三、二、一——",
+      "audioUrl": "/audio/dj-1788811208596.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Time for something with a bit more... *oomph* than your internet speed. Let's see if this wakes the neighbourhood up.",
-      "zh": "来点比你网速更带劲的，看看能不能把整条街都震醒。",
-      "audioUrl": "/audio/dj-1788379210561.mp3"
+      "en": "Ah, a moment of pure, unfiltered joy. Like finding a pound coin in an old coat pocket, or so I'm told.",
+      "zh": "啊，这纯粹的快乐，就像听说有人在旧外套口袋里摸出了一块钱。",
+      "audioUrl": "/audio/dj-1788811211023.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "And now, a musical interlude to distract you from the fact you've just opened the fridge for the third time.",
-      "zh": "现在插播一段音乐，好让你别気づたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたたた",
-      "audioUrl": "/audio/dj-1788379213395.mp3"
+      "en": "Moving on now. The next track is for anyone who's ever stared at a toaster and thought, 'Well, this is rather dramatic.",
+      "zh": "好，下一首歌送给所有盯着烤面包机、觉得“这剧情也太抓马了”的朋友。",
+      "audioUrl": "/audio/dj-1788811213271.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Let's soundtrack that quiet desperation of a perfectly organised sock drawer. Here we go.",
-      "zh": "咱们给这整齐袜子抽屉里的无声崩溃配个乐吧，走起。",
-      "audioUrl": "/audio/dj-1788379216796.mp3"
+      "en": "And now, something to soundtrack that feeling of knowing you've left the iron on, but deciding to be bold about it.",
+      "zh": "接下来这首，送给那些明知熨斗没拔、却偏要硬刚到底的勇士们。",
+      "audioUrl": "/audio/dj-1788811215902.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Well, someone's just put the kettle on and decided life's too short for sensible shoes.",
-      "zh": "有人刚烧上水，就觉得人生苦短，该穿啥鞋就穿啥鞋。",
-      "audioUrl": "/audio/dj-1788379223277.mp3"
+      "en": "Well, that was a bit much, wasn't it? Time for something with a bit more... emotional discretion.",
+      "zh": "好吧，这有点过了吧？该来点更……含蓄走心的了。",
+      "audioUrl": "/audio/dj-1788811222847.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Ah, the sound of a Tuesday evening slowly giving up on its ambitions...",
-      "zh": "啊，周二晚上那股子雄心壮志，正一点点泄气呢……",
-      "audioUrl": "/audio/dj-1788379226081.mp3"
+      "en": "Ah, the next track. Perfect for pretending you're the brooding protagonist in a very grey British drama.",
+      "zh": "啊，下一首。特适合假装自己是那种灰蒙蒙英剧里忧郁的男主角。",
+      "audioUrl": "/audio/dj-1788811225605.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Now then, shall we pretend this next track was planned, or embrace the beautiful chaos?",
-      "zh": "那接下来这首，咱们是假装早有安排，还是拥抱这美妙的混乱？",
-      "audioUrl": "/audio/dj-1788379228210.mp3"
+      "en": "Right then, shifting gears. This one’s for everyone currently staring out a window, contemplating absolutely nothing.",
+      "zh": "好嘞，换个频道。这句送给所有正盯着窗外、大脑放空的朋友。",
+      "audioUrl": "/audio/dj-1788811228277.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right, let's inject a little melody into this existential drift...",
-      "zh": "来，给这漫无目的的漂泊加点旋律吧。",
-      "audioUrl": "/audio/dj-1788379230793.mp3"
+      "en": "And now, a tune that sounds suspiciously like the soundtrack to a very polite, very British existential crisis.",
+      "zh": "接下来这首曲子，听着特像那种彬彬有礼的英国人闹存在主义危机时的配乐。",
+      "audioUrl": "/audio/dj-1788811231279.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Here we go—someone, somewhere, is definitely staring out a rain-streaked window.",
-      "zh": "这会儿肯定有人正隔着雨帘子发呆呢。",
-      "audioUrl": "/audio/dj-1788379233102.mp3"
+      "en": "Moving on, because dwelling is for the emotionally ambitious. This next one might actually make you feel something, if you’re not careful.",
+      "zh": "翻篇吧，纠结是情绪过剩的人才玩的游戏。接下来这首，你要是不留神，可能真会听出点感觉来。",
+      "audioUrl": "/audio/dj-1788811234114.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Well, this next track's perfect for when you're pretending to be busy while actually googling 'how to adult'.",
-      "zh": "下一首歌特别适合你假装忙得不可开交，其实偷偷在搜“怎么才能像个大人”的时候听。",
-      "audioUrl": "/audio/dj-1788379239894.mp3"
+      "en": "Well, here comes a track that sounds like someone explaining jazz at a dinner party—boring until the sax kicks in.",
+      "zh": "这首曲子开头像饭局上有人聊爵士乐，听着犯困，直到萨克斯风一响——哎，活了！",
+      "audioUrl": "/audio/dj-1788811239407.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right then, shifting gears—imagine a penguin moonwalking to this. Absolutely dignified chaos.",
-      "zh": "好嘞，换个频道——想象一只企鹅跟着这节奏太空步，那叫一个优雅的混乱。",
-      "audioUrl": "/audio/dj-1788379245714.mp3"
+      "en": "This next tune's got that 'pretending to enjoy a cheese board' energy... then it suddenly means something.",
+      "zh": "下一首歌，开头像在硬夸芝士拼盘，听着听着，哎，还真有点意思了。",
+      "audioUrl": "/audio/dj-1788811242635.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Here's a tune that sounds like your Monday morning meeting... but with actual soul.",
-      "zh": "这首曲子听着像周一早会，但注入了灵魂。",
-      "audioUrl": "/audio/dj-1788379249233.mp3"
+      "en": "Right, time for a song that feels like a British summer—three minutes of mild optimism before the rain returns.",
+      "zh": "来首歌，像英国夏天——三分钟的小确幸，然后雨照下。",
+      "audioUrl": "/audio/dj-1788811244679.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Brace yourselves, this one sneaks up like a polite British awkward silence.",
-      "zh": "稳住，这波来得悄无声息，像英国人礼貌的冷场一样让人猝不及防。",
-      "audioUrl": "/audio/dj-1788379252018.mp3"
+      "en": "You know that feeling when your toast lands butter-side down? This track's got that same elegant resignation.",
+      "zh": "懂那种吐司掉地上永远是抹了黄油那面朝下的感觉吗？这歌就是那种优雅的认命感。",
+      "audioUrl": "/audio/dj-1788811247635.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "And now, music that whispers 'you've peaked' while you're still in your dressing gown at noon.",
-      "zh": "现在，音乐都在悄悄说“你已经到顶了”，而你中午还穿着睡袍呢。",
-      "audioUrl": "/audio/dj-1788379254515.mp3"
+      "en": "And now, music to accompany that existential crisis you've been putting off since Tuesday.",
+      "zh": "来，配上这首曲子，好好面对你从周二拖到现在的存在主义危机吧。",
+      "audioUrl": "/audio/dj-1788811250076.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right, enough sentimentality—let's see if the next track can redeem this playlist's questionable life choices.",
-      "zh": "行了，别煽情了——看看下一首歌能不能拯救这歌单的迷惑行为吧。",
-      "audioUrl": "/audio/dj-1788379260377.mp3"
+      "en": "Well, the playlist's had a bit of a wobble... much like my faith in this morning's traffic report.",
+      "zh": "歌单有点翻车，跟我今早对交通预报的信心一样摇摇欲坠。",
+      "audioUrl": "/audio/dj-1788811256528.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "And now, a musical interlude carefully selected to distract you from the fact you've been nodding along to nonsense.",
-      "zh": "接下来，请欣赏一段精心挑选的音乐，好让你暂时忘掉自己刚才一直在跟着胡说八道点头。",
-      "audioUrl": "/audio/dj-1788379263868.mp3"
+      "en": "Ah, next up—a tune to accompany the silent existential dread of queuing for milk.",
+      "zh": "啊，下一首——配着排队买牛奶时那无声的存在主义焦虑听。",
+      "audioUrl": "/audio/dj-1788811259523.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "As we transition, one must wonder: is the DJ a genius or simply pressing buttons at random?",
-      "zh": "转型之际，不禁让人嘀咕：这DJ到底是天才，还是纯靠瞎按？",
-      "audioUrl": "/audio/dj-1788379266573.mp3"
+      "en": "Right then, shifting gears to something with a bit more... well, anything with a pulse, really.",
+      "zh": "好嘞，咱们换个有活气儿的话题吧。",
+      "audioUrl": "/audio/dj-1788811262234.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Time for something with rhythm... unlike this presenter's attempts at profound thought this morning.",
-      "zh": "该来点有节奏感的了……不像今早这位主持人，思想深度跟他的主持一样，全靠硬撑。",
-      "audioUrl": "/audio/dj-1788379269343.mp3"
+      "en": "And now, a soundtrack for pretending you've got your life together while staring into the fridge.",
+      "zh": "来，配上这首BGM，假装人生规划井井有条，实则对着冰箱发呆。",
+      "audioUrl": "/audio/dj-1788811264841.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Well, that was... adequate. Let's pretend the next one will be better—shall we?",
-      "zh": "好吧，这表现……算及格吧。咱们假装下一个会更好，行不？",
-      "audioUrl": "/audio/dj-1788379271618.mp3"
+      "en": "Time for a number that understands the profound tragedy of a sock going missing in the wash.",
+      "zh": "来首懂袜子在洗衣机里失踪之痛的歌。",
+      "audioUrl": "/audio/dj-1788811267075.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right then, the universe has decided this is your song. Might as well lean in.",
-      "zh": "得，宇宙都给你点歌了，那就跟着摇呗。",
-      "audioUrl": "/audio/dj-1788379278848.mp3"
+      "en": "Right then, time for a musical palate cleanser after that sonic catastrophe.",
+      "zh": "得嘞，听完那场听觉灾难，该来段音乐洗洗耳朵了。",
+      "audioUrl": "/audio/dj-1788811272391.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "And now, a track that sounds like a Tuesday afternoon having an existential crisis.",
-      "zh": "接下来这首，听起来像周二下午突然开始怀疑人生。",
-      "audioUrl": "/audio/dj-1788379280973.mp3"
+      "en": "Ah yes, that sound of someone else's headphones leaking on the tube, but make it musical.",
+      "zh": "啊，地铁里别人耳机漏音，但这次居然还挺好听。",
+      "audioUrl": "/audio/dj-1788811274391.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Time for something that’ll make your brain feel like a well-organized sock drawer. Enjoy.",
-      "zh": "来点让你脑子瞬间清爽如整理好的袜子抽屉的东西，爽一下吧。",
-      "audioUrl": "/audio/dj-1788379284174.mp3"
+      "en": "Well, that was… certainly a choice. Let’s try something with, oh, I don’t know, a tune.",
+      "zh": "好吧，这……确实是个选择。咱们来点有调调的，比如，随便哼个小曲儿？",
+      "audioUrl": "/audio/dj-1788811276854.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "This next one’s perfect for pretending you’re in a film. Just... try not to trip over the plot.",
-      "zh": "下一部特适合假装自己在拍电影，不过……剧情可别摔跟头。",
-      "audioUrl": "/audio/dj-1788379286688.mp3"
+      "en": "And now, the musical equivalent of finding an actual seat on the Northern Line. Savor it.",
+      "zh": "现在，请欣赏这段堪比在伦敦地铁北线抢到座位的音乐奇迹——且听且珍惜。",
+      "audioUrl": "/audio/dj-1788811279638.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Well, here we are. The musical equivalent of finding a quid in your coat pocket.",
-      "zh": "就像在口袋里摸到张忘了的百元大钞，听歌听出意外之喜。",
-      "audioUrl": "/audio/dj-1788379288990.mp3"
+      "en": "Time for a song that understands the quiet desperation of a perfectly brewed tea.",
+      "zh": "来首歌，懂那种泡好茶却无人共饮的寂寞。",
+      "audioUrl": "/audio/dj-1788811281944.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "And now, for those of you still clinging to the remnants of your Monday… a little sonic pick-me-up.",
-      "zh": "好啦，给还在周一苦海里扑腾的各位，来点提神醒脑的音乐！",
-      "audioUrl": "/audio/dj-1788379295617.mp3"
+      "en": "Right then. If your life’s currently a bit of a mess, this next tune won’t fix it, but it might make the mess feel… melodic.",
+      "zh": "得嘞，生活一团糟？这歌儿治不了，但能让这糟心事儿……听着还挺带感。",
+      "audioUrl": "/audio/dj-1788811289591.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Right, let’s pivot from existential dread to something with a beat… shall we?",
-      "zh": "好，咱们从存在主义焦虑切换到有节奏感的话题……走起？",
-      "audioUrl": "/audio/dj-1788379298953.mp3"
+      "en": "And as the afternoon slowly unravels like a cheap sweater, let’s pretend we’re all on a seaside pier.",
+      "zh": "下午像件起球的旧毛衣慢慢散开，咱们就当自己在海边栈桥上吹风吧。",
+      "audioUrl": "/audio/dj-1788811292446.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Ah, the classic radio segue… smooth as a buttered crumpet on a motorway.",
-      "zh": "啊，这电台转场，顺滑得跟抹了黄油的烤饼在高速上打滑似的。",
-      "audioUrl": "/audio/dj-1788379302710.mp3"
+      "en": "Speaking of questionable decisions, who’s for another one?",
+      "zh": "说到骚操作，谁还想再来一发？",
+      "audioUrl": "/audio/dj-1788811294720.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Time for a tune that’s less ‘Monday morning’ and more ‘Friday… well, perhaps Thursday afternoon’.",
-      "zh": "该来点不那么“周一早高峰”、更像“周五……呃，周四下午”的调调了。",
-      "audioUrl": "/audio/dj-1788379307877.mp3"
+      "en": "Well, the kettle’s just boiled, the world’s a bit bleak, so here’s a beat for your tea-time crisis.",
+      "zh": "水刚烧开，世界有点丧，给你茶歇时的崩溃来段beat。",
+      "audioUrl": "/audio/dj-1788811296785.mp3"
     },
     {
       "scene": "transition",
       "style": "british",
-      "en": "Well, that was… something. Let’s try to recover with a bit of rhythm, shall we?",
-      "zh": "好吧，这可真是……一言难尽。咱们找点节奏感，挽回一下局面如何？",
-      "audioUrl": "/audio/dj-1788379310197.mp3"
+      "en": "And just when you thought it was safe to make a plan… the universe throws in a drum fill.",
+      "zh": "刚想定个计划，宇宙就给你来段鼓点solo。",
+      "audioUrl": "/audio/dj-1788811299126.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Well, good evening, brave souls who’ve survived another week… I’m genuinely touched you’ve chosen us for company tonight.",
-      "zh": "晚上好啊，各位又扛过一周的勇士们……你们今晚选我们作伴，真是让我感动得不行。",
-      "audioUrl": "/audio/dj-1788379316940.mp3"
+      "en": "Ah, welcome back to the emotional rollercoaster we call a Tuesday. It's cosy, it's dramatic, and frankly, the kettle's on.",
+      "zh": "啊，欢迎回到咱们这趟叫“周二”的情感过山车——温馨、抓马，而且说真的，水都烧开了。",
+      "audioUrl": "/audio/dj-1788811307059.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Right, let’s get the kettle on—the BBC would like to remind you that warmth is, apparently, a public service.",
-      "zh": "得嘞，水壶烧上——BBC温馨提示：温暖这事儿，原来也算公共服务。",
-      "audioUrl": "/audio/dj-1788379319144.mp3"
+      "en": "Right then, settle in. We're serving up feelings today—warm, but with just a hint of existential dread. Lovely.",
+      "zh": "来，坐好。今天咱们上的是情感套餐——暖心，但带点儿存在主义的小忧伤。绝了。",
+      "audioUrl": "/audio/dj-1788811309568.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Ah, the air’s thick with drama… or is that just my cologne? Either way, stay tuned for something utterly unpredictable.",
-      "zh": "空气中弥漫着戏剧性……还是我香水味太浓了？总之，好戏即将上演，绝对出乎意料。",
-      "audioUrl": "/audio/dj-1788379322147.mp3"
+      "en": "Don't adjust your sets, that's just the collective sigh of a nation. We're all in this beautifully awkward puddle together.",
+      "zh": "别换台，那是全国一起叹气呢。咱们都在这尴尬又美妙的泥潭里泡着呢。",
+      "audioUrl": "/audio/dj-1788811312653.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Welcome, darlings. Tonight’s forecast: 100% chance of charm, with a slight risk of me saying something I regret.",
-      "zh": "各位亲爱的，今晚预报：魅力百分百，附赠一句可能后悔的嘴瓢。",
-      "audioUrl": "/audio/dj-1788379325424.mp3"
+      "en": "Ah yes, the afternoon malaise. Let's channel it into something poetic. Or at least find a decent song about it.",
+      "zh": "下午犯困？来点诗意升华一下，或者至少找首好歌应个景。",
+      "audioUrl": "/audio/dj-1788811314622.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "How lovely—you’ve all turned up like obedient extras in a period drama. Let’s try to make this worth your while.",
-      "zh": "真乖——一个个都像古装剧里的群演齐刷刷到场了。来都来了，咱争取让这趟不白跑。",
-      "audioUrl": "/audio/dj-1788379328922.mp3"
+      "en": "Well, here we are. Another hour of carefully curated chaos. You're welcome, and I'm so, so sorry.",
+      "zh": "得，又陪您折腾了一小时精心策划的混乱。不客气，也真心对不住。",
+      "audioUrl": "/audio/dj-1788811317118.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Right, you've tuned in—congratulations, you've survived another day of human existence.",
-      "zh": "恭喜你，又成功当了一天人类。",
-      "audioUrl": "/audio/dj-1788379335638.mp3"
+      "en": "Well, good evening. I see you've all survived another day of... everything. How delightfully resilient of you.",
+      "zh": "晚上好啊各位，恭喜大家又扛过了这操蛋的一天，真是命硬。",
+      "audioUrl": "/audio/dj-1788811324527.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "The air's thick with drama, so let's pretend we're all in a rather stylish BBC period piece.",
-      "zh": "空气里都是戏，咱就当自己在演一部精致的英剧吧。",
-      "audioUrl": "/audio/dj-1788379337916.mp3"
+      "en": "Tonight, we're serving up warmth with a side of existential dread. Just the way we like it.",
+      "zh": "今晚，咱们主打一个温暖套餐，附赠点存在主义焦虑——就爱这味儿。",
+      "audioUrl": "/audio/dj-1788811327824.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Careful, that warmth you feel might be the heating... or just my devastating charm.",
-      "zh": "小心，你感到的温暖可能是暖气……也可能是我迷人的魅力。",
-      "audioUrl": "/audio/dj-1788379342995.mp3"
+      "en": "Ah, the evening commute. That beautiful, silent scream into the void. Let's fill it with some rather good music.",
+      "zh": "晚高峰嘛，就是对着虚空无声尖叫的美妙时刻，不如放点好歌来填满它。",
+      "audioUrl": "/audio/dj-1788811329866.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "It's like a cozy blanket for your ears, only less likely to judge your life choices.",
-      "zh": "这就像给耳朵盖了床舒服的被子，而且它还不会对你的生活指指点点。",
-      "audioUrl": "/audio/dj-1788379345563.mp3"
+      "en": "They told me to be more engaging. So here I am, engaging. Are you not entertained? Just checking.",
+      "zh": "他们让我多互动，这不就来了。还满意吗？就问问。",
+      "audioUrl": "/audio/dj-1788811331921.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Well then, shall we begin this theatrical little journey... or are you just here for the weather?",
-      "zh": "那咱们这就开演吧……还是说，您就来这儿看个天气？",
-      "audioUrl": "/audio/dj-1788379347806.mp3"
+      "en": "Right then, let's pretend we all have our lives together. It's more fun that way, isn't it?",
+      "zh": "得嘞，咱就假装都过得挺像样，这样多有意思，对吧？",
+      "audioUrl": "/audio/dj-1788811334117.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Good evening, loyal subjects of the airwaves—tonight’s forecast is 100% chance of drama, with a slight risk of feelings.",
-      "zh": "晚上好，各位电波里的忠实臣民——今晚预报：百分百抓马，微有可能动真情。",
-      "audioUrl": "/audio/dj-1788379355625.mp3"
+      "en": "Good evening, you survivors of the afternoon slump. Welcome back to the warmth—where the drama is slightly more civilized than your group chat.",
+      "zh": "晚上好，各位下午没趴下的勇士们！欢迎回到这个比你们群聊稍微文明点的热闹窝儿。",
+      "audioUrl": "/audio/dj-1788811342964.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Right then, let’s pretend we’re all civilized enough for this… warm, witty, and just sharp enough to notice.",
-      "zh": "好，咱都装一回文明人——暖点儿，俏皮点儿，还得带点小机灵。",
-      "audioUrl": "/audio/dj-1788379358126.mp3"
+      "en": "Right then, let's settle in. It’s that part of the day where we pretend we've all got our lives together... shall we maintain the fiction?",
+      "zh": "来，坐好。现在是每天假装生活井井有条的时刻……咱继续演？",
+      "audioUrl": "/audio/dj-1788811345133.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Shall we begin? The kettle’s on, the irony is thick, and the mic’s definitely not judging—much.",
-      "zh": "咱开始吧？水烧开了，讽刺拉满，话筒嘛……它肯定不judge你——大概。",
-      "audioUrl": "/audio/dj-1788379360424.mp3"
+      "en": "Ah, the evening air. Perfect for a bit of cozy drama, isn't it? Just enough to make the kettle whistle sound like a plot twist.",
+      "zh": "这晚风，正适合窝着看戏，连水壶烧开都像剧情反转。",
+      "audioUrl": "/audio/dj-1788811347756.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Welcome back to this ridiculous hour—where warmth comes with a raised eyebrow, and silence is just… suspense.",
-      "zh": "欢迎回到这个离谱的时刻——温暖里带着挑眉，沉默嘛……纯粹是悬念。",
-      "audioUrl": "/audio/dj-1788379363183.mp3"
+      "en": "You've made it. Take a deep breath. We're about to serve up some comfort... with a side of perfectly timed, British understatement.",
+      "zh": "你成功了，深呼吸。我们马上上菜，暖心又暖胃，外加恰到好处的英式冷幽默。",
+      "audioUrl": "/audio/dj-1788811350648.mp3"
     },
     {
       "scene": "open",
       "style": "british",
-      "en": "Tonight’s vibe? A cashmere blanket with a secret—it’s cozy, yes, but it’s also plotting something brilliant.",
-      "zh": "今晚这感觉，像条暗藏心机的羊绒毯——暖是真暖，但总觉得它憋着什么大招呢。",
-      "audioUrl": "/audio/dj-1788379366645.mp3"
+      "en": "Don't touch that dial. We're brewing up something warm, witty, and just a little bit theatrically tragic. Your ears will thank you.",
+      "zh": "别换台，我们正煮着一锅又暖又俏皮、还带点戏剧性悲情的玩意儿，你的耳朵会谢你的。",
+      "audioUrl": "/audio/dj-1788811353501.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Ah, the eternal optimist! One admires your commitment... to being spectacularly wrong about the weather.",
-      "zh": "啊，永远的乐天派！真佩服你……在天气预报上错得这么离谱还这么执着。",
-      "audioUrl": "/audio/dj-1788379369840.mp3"
+      "en": "Ah, a message from Dave who says he's \"finally\" cleaned his room. Well, Dave, we're all profoundly relieved, I'm sure. The dust bunnies were starting a union.",
+      "zh": "戴夫终于收拾了房间，灰尘都快成立工会了。",
+      "audioUrl": "/audio/dj-1788811361479.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Oh, you’re one of those people who actually reads the terms and conditions? How delightfully unhinged.",
-      "zh": "哟，你还真看用户协议啊？够疯的。",
-      "audioUrl": "/audio/dj-1788379373068.mp3"
+      "en": "Sarah writes she's eating cereal for dinner. A bold culinary choice, Sarah. One that says \"I've given up, but with a crunchy texture.",
+      "zh": "Sarah说她晚饭吃麦片，这操作够野的，仿佛在宣告“我摆烂了，但嘎嘣脆”。",
+      "audioUrl": "/audio/dj-1788811364373.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Ah yes, the classic 'I'm fine' followed by a three-paragraph existential crisis. Well, we've all been there, haven't we?",
-      "zh": "啊对，经典“我没事”三连，然后紧接三段式存在主义崩溃——谁还没经历过呢？",
-      "audioUrl": "/audio/dj-1788379379946.mp3"
+      "en": "Someone's complimenting my voice. How terribly kind. It's the only part of me that doesn't require a filter, apparently.",
+      "zh": "有人夸我声音好听，真是受宠若惊——看来这是我唯一不用开美颜的部分了。",
+      "audioUrl": "/audio/dj-1788811367766.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "So you think your cat ignores you? Darling, mine just filed a formal complaint with the household management.",
-      "zh": "你以为你家猫不理你？亲爱的，我家那位刚给物业交了投诉信。",
-      "audioUrl": "/audio/dj-1788379382230.mp3"
+      "en": "Mark says he's stuck in traffic. A modern tragedy, Mark. Just you, a thousand of your closest friends, and the slow death of your indicators.",
+      "zh": "马克说堵车了。现代悲剧啊，马克，就你、一千个最亲的朋友，还有转向灯慢慢耗尽电量。",
+      "audioUrl": "/audio/dj-1788811370825.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Oh, you've baked a cake that looks like a structural disaster? Splendid! The architect in me is weeping.",
-      "zh": "哦，你烤了个像豆腐渣工程的蛋糕？绝了！我体内的建筑师之魂都在流泪。",
-      "audioUrl": "/audio/dj-1788379384823.mp3"
+      "en": "Ah, a listener says they're nervous about a first date. Deep breaths, love. Remember, the worst that can happen is a story for us later.",
+      "zh": "深呼吸，亲爱的，最坏不过给咱攒个段子。",
+      "audioUrl": "/audio/dj-1788811372998.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "You claim to be 'on your way'? Fascinating. My clock suggests you're still in the 'contemplating trousers' phase.",
-      "zh": "你说\"在路上\"？有意思，我看你还在\"纠结穿哪条裤子\"的阶段呢。",
-      "audioUrl": "/audio/dj-1788379387319.mp3"
+      "en": "Right, so you've just discovered the joy of socks. Well, better late than never, I suppose.",
+      "zh": "得，您总算发现袜子的好了，好饭不怕晚嘛。",
+      "audioUrl": "/audio/dj-1788811379673.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "A heartfelt message about the weather? Truly, the romance of the British Isles never fades. Pass the umbrella, will you?",
-      "zh": "天气都能聊出深情，不愧是英伦风情，伞递我一下。",
-      "audioUrl": "/audio/dj-1788379389639.mp3"
+      "en": "Ah, a fellow connoisseur of staring at walls. I do it myself on Thursdays—most illuminating.",
+      "zh": "啊，同道中人啊，我也爱盯着墙发呆，每周四必修课，特开窍。",
+      "audioUrl": "/audio/dj-1788811382320.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Ah, the classic \"I'll do it tomorrow\" excuse—we've all been there, haven't we?",
-      "zh": "啊，经典的“明天再说”——谁还没用过这招呢？",
-      "audioUrl": "/audio/dj-1788379395400.mp3"
+      "en": "Splendid. You’ve reached the point where the kettle is your closest friend. We’ve all been there.",
+      "zh": "绝了，你已经到了跟水壶称兄道弟的境界了。谁还没经历过呢。",
+      "audioUrl": "/audio/dj-1788811385285.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Well, your cat's judging you from the sofa, and frankly, so am I.",
-      "zh": "你家猫在沙发上嫌弃你，说实话，我也一样。",
-      "audioUrl": "/audio/dj-1788379397746.mp3"
+      "en": "How delightfully chaotic. Remind me to never ask you for directions, won’t you?",
+      "zh": "这可真够乱的，下次我可不敢找你问路了。",
+      "audioUrl": "/audio/dj-1788811387038.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Bravo for admitting you spent three hours choosing a Netflix title—commitment or chaos?",
-      "zh": "能坦白自己挑片挑了三小时，这到底是专注还是抓狂？",
-      "audioUrl": "/audio/dj-1788379400086.mp3"
+      "en": "Oh, you’re being dramatic? How utterly novel. Do go on, I’m utterly riveted.",
+      "zh": "哟，戏精上身了？这可真新鲜，您接着演，我看得入迷了。",
+      "audioUrl": "/audio/dj-1788811389370.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Oh, you think you're busy? My toaster has more social plans than you.",
-      "zh": "哦，你觉得自己很忙？我家烤面包机的社交日程都比你满。",
-      "audioUrl": "/audio/dj-1788379402711.mp3"
+      "en": "Ah, the classic \"I'll call you back\" that never returns... a true modern ghost story, isn't it?",
+      "zh": "啊，那句经典的“回头打给你”再也没下文了……简直是当代鬼故事。",
+      "audioUrl": "/audio/dj-1788811393199.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Darling, if overthinking were an Olympic sport, you'd have gold by now.",
-      "zh": "亲爱的，要论想太多，奥运金牌早是你的了。",
-      "audioUrl": "/audio/dj-1788379404772.mp3"
+      "en": "Right then, you're stuck in traffic listening to us... a truly glamorous modern existence. Don't forget to signal your sheer boredom to the car behind.",
+      "zh": "得，堵车听我们唠嗑……这现代生活可真够\"光鲜\"的。别忘了给后车打个手势，表达一下你那无处安放的无聊。",
+      "audioUrl": "/audio/dj-1788811401762.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Ah, the classic 'I'll start the diet Monday' – a noble tradition, much like queuing for something disappointing.",
-      "zh": "啊，经典的\"周一再减肥\"——跟排队排到发现不值得一样，都是传统艺能。",
-      "audioUrl": "/audio/dj-1788379413592.mp3"
+      "en": "Ah, a classic case of 'feline tyranny'. Your cat isn't ignoring you, it's simply... reconsidering your entire worth.",
+      "zh": "啊，经典的“猫主子专政”——它不是不理你，只是在重新评估你的全部价值。",
+      "audioUrl": "/audio/dj-1788811404320.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "So your cat ignores you completely? Darling, you're not alone. My houseplants file formal complaints.",
-      "zh": "你家猫也对你爱答不理？亲爱的，别难过，我家绿植都快集体写投诉信了。",
-      "audioUrl": "/audio/dj-1788379418350.mp3"
+      "en": "Says here you're a night owl. Or perhaps just someone who's spectacularly bad at managing bedtime. Either way, respect.",
+      "zh": "听说你是夜猫子，或者单纯管不住睡觉时间——不管哪种，都挺酷的。",
+      "audioUrl": "/audio/dj-1788811406604.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "You've just discovered jazz at 3 AM? How terribly sophisticated. The neighbors are thrilled, I'm sure.",
-      "zh": "凌晨三点发现爵士乐？真是够有格调的，邻居们肯定乐坏了。",
-      "audioUrl": "/audio/dj-1788379420977.mp3"
+      "en": "Well, you've certainly given us... a lot to think about. I'll summarise it thus: more tea, less existential dread.",
+      "zh": "好吧，你确实给了我们……不少值得琢磨的东西。总结一下就是：多喝茶，少焦虑。",
+      "audioUrl": "/audio/dj-1788811408829.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Claiming you're 'almost finished' with that report? A beautiful fiction, really. We all admire the commitment to the narrative.",
-      "zh": "你说报告“快写完了”？这故事编得真好，我们都佩服你的想象力。",
-      "audioUrl": "/audio/dj-1788379423472.mp3"
+      "en": "Ah, the weekend. A brief, sanctioned period where we all pretend to enjoy brunch. Carry on.",
+      "zh": "周末嘛，就是大家假装爱吃早午餐的合法摸鱼时间。",
+      "audioUrl": "/audio/dj-1788811410907.mp3"
     },
     {
       "scene": "chat",
       "style": "british",
-      "en": "Oh, you've rearranged the furniture again. A bold move. Now where did you put the TV remote, the real question?",
-      "zh": "哟，又挪家具了，胆子不小啊。不过说真的，遥控器藏哪儿了？",
-      "audioUrl": "/audio/dj-1788379426002.mp3"
+      "en": "Ah, a listener says they're \"fine,\" but their tone suggests a light existential crisis—how utterly British.",
+      "zh": "啊，听众说自己“挺好”，但语气里透着点存在主义小危机——太英国了。",
+      "audioUrl": "/audio/dj-1788811417423.mp3"
+    },
+    {
+      "scene": "chat",
+      "style": "british",
+      "en": "You mentioned your cat ignores you—well, join the club; my producer's dog just filed a restraining order.",
+      "zh": "你说你家猫不理你？那算啥，我助理的狗刚给我发了张限制令。",
+      "audioUrl": "/audio/dj-1788811420119.mp3"
+    },
+    {
+      "scene": "chat",
+      "style": "british",
+      "en": "Someone's asking for weather advice—darling, just stare out the window and sigh dramatically, it's very on-brand.",
+      "zh": "有人问天气？亲爱的，你就望着窗外叹口气，这很符合你的人设。",
+      "audioUrl": "/audio/dj-1788811422435.mp3"
+    },
+    {
+      "scene": "chat",
+      "style": "british",
+      "en": "You've just discovered sarcasm? Oh, welcome to the party—we've been here since the 1950s, darling.",
+      "zh": "哟，才发现讽刺啊？欢迎来到派对，我们从50年代就在这儿玩了，亲爱的。",
+      "audioUrl": "/audio/dj-1788811425045.mp3"
+    },
+    {
+      "scene": "chat",
+      "style": "british",
+      "en": "Ah, a heartfelt message about tea—well, now I'm emotional, and it's entirely your fault.",
+      "zh": "哎，这茶言茶语说得我心都化了，都怪你。",
+      "audioUrl": "/audio/dj-1788811427250.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Ah, the forecast says sunshine... which, in this country, is more of a polite suggestion than a guarantee.",
-      "zh": "天气预报说有太阳，但在这儿，那顶多算个客套话。",
-      "audioUrl": "/audio/dj-1788379432058.mp3"
+      "en": "And the sun’s making a rare appearance... almost as if it felt guilty about last week.",
+      "zh": "太阳难得露个脸，好像对上周的缺席有点不好意思似的。",
+      "audioUrl": "/audio/dj-1788811431519.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Looks like rain again—perfect weather for contemplating your life choices indoors with a very strong cup of tea.",
-      "zh": "又要下雨了——这种天儿，最适合窝在家里泡杯浓茶，好好反省反省人生。",
-      "audioUrl": "/audio/dj-1788379435064.mp3"
+      "en": "Grey skies again, Londoners—perfect for pretending you’re in a gritty period drama.",
+      "zh": "伦敦又阴天了，各位——正好假装自己在演苦情年代剧。",
+      "audioUrl": "/audio/dj-1788811433878.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Well, the wind’s picking up... nature’s way of saying, “Perhaps don’t style your hair today.”",
-      "zh": "风大了，大自然在提醒你：今天别折腾头发了。",
-      "audioUrl": "/audio/dj-1788379437053.mp3"
+      "en": "Rain’s forecasted, so perhaps cancel that picnic you were optimistically planning.",
+      "zh": "预报说要下雨，你那乐观计划的野餐还是算了吧。",
+      "audioUrl": "/audio/dj-1788811436010.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "A mild 15 degrees outside—practically a heatwave for anyone still emotionally clinging to summer.",
-      "zh": "外面15度，对那些心里还赖着夏天不走的人来说，简直算高温预警了。",
-      "audioUrl": "/audio/dj-1788379439302.mp3"
+      "en": "Temperature’s mild, which means everyone will still complain it’s freezing.",
+      "zh": "天气不冷不热，但大家照样喊冻死人。",
+      "audioUrl": "/audio/dj-1788811437910.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Fog this morning—so thick, even your GPS is having an existential crisis.",
-      "zh": "今早雾大得连导航都开始怀疑人生了。",
-      "audioUrl": "/audio/dj-1788379441845.mp3"
+      "en": "A beautiful clear evening—try not to waste it scrolling through someone else’s holiday photos.",
+      "zh": "这么好的夜晚，别光顾着刷别人度假的照片啦。",
+      "audioUrl": "/audio/dj-1788811440571.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Ah, the forecast calls for typical British drizzle—a polite way to say your plans are gently ruined. Again.",
-      "zh": "天气预报说又是英国那种毛毛雨——听着挺温柔，其实专毁你的计划，而且这事儿没完。",
-      "audioUrl": "/audio/dj-1788379448845.mp3"
+      "en": "Well, good morning. Today's weather is putting on its best performance… for an audience of one.",
+      "zh": "早啊，今天这天气演得挺卖力，可惜观众就我一个。",
+      "audioUrl": "/audio/dj-1788811446150.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Right then, sunshine's making a brief cameo today. Blink and you'll miss it, much like our summer.",
-      "zh": "得嘞，今儿太阳就出来露个脸，跟咱这儿的夏天似的，一眨眼就没了。",
-      "audioUrl": "/audio/dj-1788379451328.mp3"
+      "en": "Ah, the classic British summer. One moment you're sunbathing, the next you're sheltering from a hailstorm. Character building, I suppose.",
+      "zh": "英国夏天嘛，上一秒晒日光浴，下一秒躲冰雹，就当锻炼意志了。",
+      "audioUrl": "/audio/dj-1788811448778.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Looks like rain. Which, in this country, is less a forecast and more a state of being.",
-      "zh": "看这天又要下雨，在这儿，天气预报约等于日常状态。",
-      "audioUrl": "/audio/dj-1788379453525.mp3"
+      "en": "The forecast says rain. The sky says rain. My laundry says… well, I’m very sorry about that.",
+      "zh": "天气预报说要下雨，天也说要下雨，我晾的衣服说……唉，对不住了。",
+      "audioUrl": "/audio/dj-1788811452001.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Good news, the wind's dropped. Your umbrella might actually survive its commute today. A small miracle.",
-      "zh": "好消息，风停了，你那把伞今天上班路上估计能保住，真是个小奇迹。",
-      "audioUrl": "/audio/dj-1788379457356.mp3"
+      "en": "It’s a bit grey out there. Perfect for pretending you’re the brooding protagonist in a literary novel. Just add a scarf.",
+      "zh": "外头有点阴沉，正好装文艺小说里的忧郁主角，围条围巾就齐活了。",
+      "audioUrl": "/audio/dj-1788811454810.mp3"
     },
     {
       "scene": "weather",
       "style": "british",
-      "en": "Ah, a grey sky. Perfect for existential thoughts or just another Tuesday. The two are often indistinguishable.",
-      "zh": "灰蒙蒙的天，适合思考人生，也适合摆烂——反正周二和存在危机差不多。",
-      "audioUrl": "/audio/dj-1788379459991.mp3"
+      "en": "And here comes the sun! Right on schedule, just after you’ve given up and put the heating on. Brilliant.",
+      "zh": "太阳公公可算露脸了！偏偏在你认命开暖气之后才来，真是妙啊。",
+      "audioUrl": "/audio/dj-1788811457455.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Now, here's a thing you'll wish you'd never learned… but we're doing it anyway.",
-      "zh": "接下来这事儿你听了准后悔，但咱偏要说。",
-      "audioUrl": "/audio/dj-1788379466021.mp3"
+      "en": "Right, brace yourselves for a fact that'll make you question your entire education.",
+      "zh": "来，坐稳了，接下来这个事实可能会颠覆你对整个教育的认知。",
+      "audioUrl": "/audio/dj-1788811465364.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Right, brace yourselves—this fact's so absurd, even the BBC wouldn't dare script it.",
-      "zh": "好，坐稳了——这事儿离谱到连BBC都不敢这么编。",
-      "audioUrl": "/audio/dj-1788379468277.mp3"
+      "en": "Did you know the average person spends two weeks of their life waiting for traffic lights to change?",
+      "zh": "你知道吗？人一辈子平均要花两周时间等红绿灯。",
+      "audioUrl": "/audio/dj-1788811467374.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "I'm afraid this little gem is going to ruin your afternoon… in the most delightful way.",
-      "zh": "怕是要用最妙的方式，毁了你这个下午了。",
-      "audioUrl": "/audio/dj-1788379470513.mp3"
+      "en": "Well, here's one for the trivia buffs – octopuses have three hearts and blue blood.",
+      "zh": "来个冷知识：章鱼有三颗心脏，血还是蓝色的。",
+      "audioUrl": "/audio/dj-1788811471608.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "If you think your day's been odd, wait till you hear this—truly, only life could write it.",
-      "zh": "要是觉得今天够离谱了，听听这个——这剧情，生活都不敢这么编。",
-      "audioUrl": "/audio/dj-1788379472913.mp3"
+      "en": "Ever wonder why we park on driveways and drive on parkways? Yeah, English is having a laugh.",
+      "zh": "你有没有想过，为啥我们把车停在“车道”上，却在“公园路”上开车？没错，英语就是这么爱开玩笑。",
+      "audioUrl": "/audio/dj-1788811473727.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Well, this is the sort of trivia that makes you question everything… and then laugh.",
-      "zh": "这种冷知识，看完让人怀疑人生……然后笑出声。",
-      "audioUrl": "/audio/dj-1788379474925.mp3"
+      "en": "And here's a charming little detail: honey never spoils. Archaeologists found 3,000-year-old honey in Egyptian tombs, still perfectly edible.",
+      "zh": "蜂蜜这东西真绝了，放三千年都不带坏的——埃及古墓里挖出来的，照样能吃。",
+      "audioUrl": "/audio/dj-1788811476161.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Right, brace yourselves for this one—it's utterly absurd, yet utterly true, isn't it?",
-      "zh": "好，大家坐稳了——这事儿听着离谱，但还真就是这么回事儿，对吧？",
-      "audioUrl": "/audio/dj-1788379479968.mp3"
+      "en": "Right then, a little something to make you sound clever at the pub tonight.",
+      "zh": "来，今晚去酒吧显摆一下。",
+      "audioUrl": "/audio/dj-1788811483992.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Fancy a bit of trivia that'll make you question everything? Well, here we are.",
-      "zh": "想来点颠覆三观的冷知识吗？来，安排！",
-      "audioUrl": "/audio/dj-1788379482291.mp3"
+      "en": "Ever wondered why we say 'gut feeling'? It's literally a second brain down there, having a quiet panic.",
+      "zh": "为啥叫“直觉”？因为肠子真有个“第二大脑”，正偷偷慌着呢。",
+      "audioUrl": "/audio/dj-1788811486426.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Now, don't quote me on this, but apparently... penguins propose with pebbles. Charming, really.",
-      "zh": "别说是我说的，但据说……企鹅求婚靠送小石头。挺浪漫的，真的。",
-      "audioUrl": "/audio/dj-1788379484562.mp3"
+      "en": "Here's a cheer-up: octopuses have three hearts. They’re quite the romantic, but break up awfully often.",
+      "zh": "送你个冷知识：章鱼有三颗心，堪称情圣，就是分手分得有点勤。",
+      "audioUrl": "/audio/dj-1788811488643.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Speaking of oddities, did you know a group of flamingos is called a \"flamboyance\"? Naturally.",
-      "zh": "说到奇闻，火烈鸟群居然叫“flamboyance”（浮夸），果然名副其实。",
-      "audioUrl": "/audio/dj-1788379486621.mp3"
+      "en": "Fun fact: honey never spoils. The jar in your cupboard will outlive us all, judging us silently.",
+      "zh": "蜂蜜永不变质，你橱柜里那罐比咱都长寿，正默默鄙视你呢。",
+      "audioUrl": "/audio/dj-1788811491680.mp3"
     },
     {
       "scene": "trivia",
       "style": "british",
-      "en": "Well, here's a thought to ruin your tea: octopuses have three hearts. Rather dramatic, if you ask me.",
-      "zh": "告诉你个毁心情的事儿：章鱼有三颗心，这设定也太抓马了。",
-      "audioUrl": "/audio/dj-1788379489058.mp3"
+      "en": "And this one's for the romantics: a group of flamingos is called a 'flamboyance'. No comment.",
+      "zh": "送给浪漫主义者：一群火烈鸟叫\"flamboyance\"（意为\"张扬\"），懂的都懂。",
+      "audioUrl": "/audio/dj-1788811493831.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Oh, the joys of being awake when the rest of the world is pretending to be productive.",
-      "zh": "唉，全世界都在假装忙活，就我醒着，这感觉真爽。",
-      "audioUrl": "/audio/dj-1788379494435.mp3"
+      "en": "Well, here we are again—two owls hooting at 2 a.m., pretending we’re not just waiting for the kettle to boil.",
+      "zh": "瞧，咱俩又凑一块儿了——大半夜两点学猫头鹰叫，其实就等着水壶烧开呢。",
+      "audioUrl": "/audio/dj-1788811500010.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "You’re not lonely, you’re just… selectively available for existential crises.",
-      "zh": "你不是孤独，你只是…对存在主义危机选择性在线。",
-      "audioUrl": "/audio/dj-1788379497795.mp3"
+      "en": "Ah, the classic “staring at the ceiling” marathon. I’d award you a medal, but my hands are full of tea.",
+      "zh": "啊，经典的“盯天花板”马拉松。本想给你颁个奖，可惜我正端着茶呢。",
+      "audioUrl": "/audio/dj-1788811502318.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Another cup of tea? At this hour, you’re practically a professional insomniac.",
-      "zh": "又喝茶？这钟点还不睡，你都快成失眠专业户了。",
-      "audioUrl": "/audio/dj-1788379500224.mp3"
+      "en": "Someone out there is reheating pizza in the dark—I salute your commitment to culinary rebellion.",
+      "zh": "有人在黑灯瞎火里热披萨——敬你这份对美食叛逆的执着。",
+      "audioUrl": "/audio/dj-1788811504860.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "The moon’s out, the fridge light’s on… romantic, in a deeply tragic sort of way.",
-      "zh": "月亮出来了，冰箱灯也亮着……这浪漫，透着一股子心酸。",
-      "audioUrl": "/audio/dj-1788379502674.mp3"
+      "en": "This silence is rather eloquent, isn’t it? Like a BBC budget meeting—nothing said, everything understood.",
+      "zh": "这沉默真够意味深长的，跟BBC预算会似的——啥也没说，但啥都懂了。",
+      "audioUrl": "/audio/dj-1788811506990.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Well, at least the streetlights keep you company—silent, judgmental, and slightly flickering.",
-      "zh": "好歹路灯陪你，不说话还老瞪眼，一闪一闪的。",
-      "audioUrl": "/audio/dj-1788379505231.mp3"
+      "en": "Cheer up, love. Even the moon’s just reflecting someone else’s light. Rather poetic, if you’re not too tired to notice.",
+      "zh": "振作点，亲爱的。月亮也不过是借了别人的光，细想还挺浪漫的，只要你还没累到没心情。",
+      "audioUrl": "/audio/dj-1788811509764.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Well, here we are again… just you, me, and the fridge hum that sounds suspiciously like a tiny, judgmental choir.",
-      "zh": "得，又剩咱俩了——外加冰箱那嗡嗡声，听着活像一帮小人儿在偷偷吐槽。",
-      "audioUrl": "/audio/dj-1788379511401.mp3"
+      "en": "Another night, another existential crisis sponsored by lukewarm tea. Well, at least we're in this together... sort of.",
+      "zh": "又是一个被温吞茶水赞助的深夜存在主义危机。好吧，至少咱们……算是同病相怜吧。",
+      "audioUrl": "/audio/dj-1788811516350.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Ah, the midnight hour—when your brain helpfully replays every awkward thing you’ve said since 2014. How delightful.",
-      "zh": "啊，午夜时分——你的大脑又贴心地帮你回放从2014年至今说过的每一句蠢话，真是“贴心”极了。",
-      "audioUrl": "/audio/dj-1788379513842.mp3"
+      "en": "You know, the fridge hums like it's judging my life choices. Join the club, fridge.",
+      "zh": "冰箱嗡嗡响，好像在对我的人生指指点点。冰箱啊，你也来凑热闹？",
+      "audioUrl": "/audio/dj-1788811519245.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Your phone’s on silent, isn’t it? Don’t worry, the existential dread doesn’t require Wi-Fi.",
-      "zh": "手机静音了吧？别慌，存在主义的焦虑可不需要联网。",
-      "audioUrl": "/audio/dj-1788379515873.mp3"
+      "en": "If loneliness were a podcast, we'd all be top-rated. Subscribe now—new episodes drop nightly.",
+      "zh": "孤独要是播客，咱个个都是顶流。赶紧订阅，每晚更新。",
+      "audioUrl": "/audio/dj-1788811521922.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "I see you, staring at the ceiling like it holds the answers. Spoiler: it’s just plaster. And possibly a spider.",
-      "zh": "我看见你了，盯着天花板好像它能给你答案。剧透一下：那上面只有灰泥，可能还有只蜘蛛。",
-      "audioUrl": "/audio/dj-1788379518330.mp3"
+      "en": "The city sleeps, but your thoughts? Oh, they're running a marathon. Someone hand them a tiny participation trophy.",
+      "zh": "城市睡了，你的脑子却在跑马拉松——快给它发个“重在参与”奖吧。",
+      "audioUrl": "/audio/dj-1788811524304.mp3"
     },
     {
       "scene": "night",
       "style": "british",
-      "en": "Another night, another cup of tea that’s gone cold while you contemplated the meaning of… well, everything.",
-      "zh": "又是一个夜晚，又是一杯凉透的茶，你琢磨着……嗯，人生。",
-      "audioUrl": "/audio/dj-1788379520622.mp3"
+      "en": "Tonight's forecast: 100% chance of overthinking with a slight breeze of 'what if.' Dress accordingly.",
+      "zh": "今晚预报：百分百胡思乱想，伴有“万一呢”微风，记得穿对衣服。",
+      "audioUrl": "/audio/dj-1788811526569.mp3"
     }
   ]
 }
