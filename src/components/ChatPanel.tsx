@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
+import { pushSettings } from "@/lib/settingsSync";
 
 interface ChatMessage {
   id: number;
@@ -317,6 +318,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
       } catch {
         /* localStorage 可能因 dataURL 过大失败，忽略 */
       }
+      void pushSettings(); // 我的头像 → 同步上云
     };
     reader.readAsDataURL(file);
     // 重置 input value 允许重复选同一文件
@@ -356,6 +358,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     try {
       localStorage.removeItem("ai-radio-dj-avatar");
     } catch { /* ignore */ }
+    void pushSettings();
   };
 
   // 手动播放/暂停一条 chat-reply（▶ / ⏸）

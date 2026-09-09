@@ -11,6 +11,7 @@ import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
 import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner } from "@/lib/deviceIdentity";
+import { pullSettings, pushSettings } from "@/lib/settingsSync";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -184,6 +185,13 @@ export default function App() {
     );
   }, []);
 
+  // 主人云端档案同步：启动时拉取（PC 配置 → 手机自动跟随）。
+  // - 非主人设备（客人）直接跳过
+  // - 远端比本端新 → pullSettings 内部会应用并 reload（本地所有 state 重建生效）
+  useEffect(() => {
+    void pullSettings();
+  }, []);
+
   // 主人绑定：/?claim=<口令> 访问一次 → 绑定本设备（此后自动识别，无需再带参）
   useEffect(() => {
     tryClaimFromUrl().then((r) => {
@@ -327,8 +335,15 @@ export default function App() {
         <WallpaperPicker
           current={wallpaperId}
           playerBgImage={playerBgImage}
-          onPick={(id: WallpaperId) => { setWallpaper(id); }}
-          onPlayerBgImage={(url) => setPlayerBgImage(url)}
+          onPick={(id: WallpaperId) => {
+            setWallpaper(id);
+            void pushSettings(); // 主人改壁纸 → 同步上云，手机下次打开自动跟随
+          }}
+          onPlayerBgImage={(url) => {
+            const r = setPlayerBgImage(url);
+            void pushSettings(); // 自定义播放器背景 → 同步上云
+            return r;
+          }}
           onClose={() => setPickerOpen(false)}
         />
       )}

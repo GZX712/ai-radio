@@ -13,6 +13,7 @@ import { initHistoryDb, recordEvent, recentEvents, recentChatTurns } from "./ser
 import {
   CLAIM_TOKEN,
   signBond,
+  verifyBond,
   resolveRole,
   noteGuestDevice,
   classifyDevice,
@@ -21,6 +22,7 @@ import {
   shouldGreetAgain,
   markGreeted,
 } from "./services/deviceIdentity";
+import { getOwnerSettings, saveOwnerSettings } from "./services/ownerStore";
 import { getSongProfile, getCachedSongProfile, warmSongProfile } from "./services/songKnowledge";
 import { ttsService } from "./services/tts";
 import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/scheduler";
@@ -72,7 +74,8 @@ const NETEASE_PORT = 3000;
 const IS_DEPLOYED = !!process.env.NETEASE_BASE;
 
 app.use(cors());
-app.use(express.json());
+// limit 放宽：主人云端档案含 dataURL 头像（数百 KB），默认 100kb 会 413
+app.use(express.json({ limit: "15mb" }));
 
 // 静态文件：TTS 生成的 mp3（前端 /audio/dj-xxx.mp3 拉取）
 const AUDIO_DIR = ttsService.getAudioDir();
@@ -615,6 +618,51 @@ app.post("/api/device/claim", (req, res) => {
     return;
   }
   res.json({ code: 0, data: { deviceId, bond: signBond(deviceId), isOwner: true } });
+});
+
+// ============== 主人云端档案：跨设备同步个性化设置（壁纸/DJ头像/DJ性格） ==============
+
+/** 读云端档案：?deviceId=&bond= → { settings } | { settings: null }（无档案时前端做种子推送） */
+app.get("/api/owner/settings", async (req, res) => {
+  const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId : "";
+  const bond = typeof req.query.bond === "string" ? req.query.bond : "";
+  if (!verifyBond(deviceId, bond)) {
+    res.status(403).json({ code: 403, message: "仅主人可访问云端档案" });
+    return;
+  }
+  try {
+    const s = await getOwnerSettings();
+    res.json({ code: 0, data: { settings: s && s.updatedAt ? s : null } });
+  } catch (err) {
+    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "读取档案失败" });
+  }
+});
+
+/** 写云端档案：body { deviceId, bond, settings } → 全量合并快照，返回最新 updatedAt */
+app.put("/api/owner/settings", async (req, res) => {
+  const { deviceId, bond, settings } = (req.body ?? {}) as {
+    deviceId?: unknown;
+    bond?: unknown;
+    settings?: Record<string, unknown>;
+  };
+  const did = typeof deviceId === "string" ? deviceId : "";
+  const bd = typeof bond === "string" ? bond : null;
+  if (!verifyBond(did, bd)) {
+    res.status(403).json({ code: 403, message: "仅主人可写云端档案" });
+    return;
+  }
+  // 白名单字段；显式 null 视为清除，undefined/非白名单键丢弃
+  const patch: Record<string, unknown> = {};
+  for (const k of ["wallpaper", "personality", "djAvatar", "userAvatar", "playerBg"] as const) {
+    const v = settings?.[k];
+    if (v !== undefined && (typeof v === "string" || v === null)) patch[k] = v;
+  }
+  try {
+    const s = await saveOwnerSettings(patch as Parameters<typeof saveOwnerSettings>[0]);
+    res.json({ code: 0, data: { settings: s } });
+  } catch (err) {
+    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "写入档案失败" });
+  }
 });
 
 /** 在线设备概览（供主人查看：现在谁在听，是主人还是客人） */

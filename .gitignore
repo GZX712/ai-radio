@@ -78,3 +78,6 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 data/*.db-journal
+
+# 主人云端档案（运行时个人同步配置，不入库）
+data/owner-settings.json
