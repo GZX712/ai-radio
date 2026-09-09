@@ -1524,6 +1524,57 @@ body::after {
 .start-btn:hover { transform: scale(1.04); }
 .start-btn:active { transform: scale(0.96); }
 
+/* 主人设备绑定按钮（开始电台引导页用）——和开始电台按钮视觉分层：次重要 */
+.start-bind-row {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+}
+
+.start-bind-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.start-bind-btn:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-1px); }
+.start-bind-btn:active { transform: translateY(0); }
+.start-bind-btn:disabled { cursor: default; opacity: 0.85; }
+
+/* 绑定成功的视觉强调：绿色 chip 形态，按钮变禁用态 */
+.start-bind-btn.owner-bound {
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #74ffa9;
+}
+
+.start-bind-chip.owner-chip {
+  background: rgba(74, 222, 128, 0.16);
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  color: #74ffa9;
+  padding: 8px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.start-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.75;
+  max-width: 320px;
+  line-height: 1.45;
+}
+
 /* ============== Toast ============== */
 .toast {
   position: fixed;

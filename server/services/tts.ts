@@ -35,7 +35,9 @@ export const EDGE_VOICES: EdgeVoice[] = [
   { id: "zh-CN-XiaoxiaoNeural", name: "晓晓 (中文女)", lang: "zh", gender: "female", desc: "温暖女声 · 自然" },
 ];
 
-const DEFAULT_VOICE = process.env.TTS_VOICE || "en-US-GuyNeural";
+/** 全局默认音色：优先 env (TTS_VOICE)，否则 MiMo 默认 — 配置了 MIMO_API_KEY 自动用小米的；
+ *  未配置时 MiMo 默认→ fallback 到 en-US-GuyNeural（中性男声），与历史音色体验一致。 */
+const DEFAULT_VOICE = process.env.TTS_VOICE || "mimo_default";
 const OUTPUT_DIR = path.resolve(__dirname, "../../public/audio");
 
 /** 无 MIMO_API_KEY 时：MiMo 音色 → 对应语言/性别的 Edge 音色兜底（保证选不同音色真的会变声） */

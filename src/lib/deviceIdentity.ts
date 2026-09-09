@@ -32,11 +32,36 @@ export function getOwnerBond(): string | null {
   }
 }
 
-function saveOwnerBond(bond: string): void {
+export function saveOwnerBond(bond: string): void {
   try {
     localStorage.setItem(BOND_KEY, bond);
   } catch {
     /* 隐私模式等写不进去 → 本次会话内仍有效（内存变量兜底已由调用方处理） */
+  }
+}
+
+/** UI 一键「标记本设备为主人」用：调 /api/device/claim 拿 bond → 写 localStorage。
+ *  CLAIM_TOKEN 默认值与 server/services/deviceIdentity.ts 同步（公开口令，本来就能 ?claim= 用）。
+ *  返回 bond 后由 UI 自行决定 reload / 提示。 */
+export async function bindCurrentDeviceAsOwner(): Promise<{ ok: boolean; bond?: string; already?: boolean }> {
+  // 已经绑定过就不再走 claim
+  const existing = getOwnerBond();
+  if (existing) return { ok: true, bond: existing, already: true };
+  const CLAIM_TOKEN_DEFAULT = "xradio-master-2026";
+  try {
+    const res = await fetch("/api/device/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: CLAIM_TOKEN_DEFAULT, deviceId: getDeviceId() }),
+    });
+    const j = (await res.json()) as { code?: number; data?: { bond?: string } };
+    if (res.ok && j.code === 0 && j.data?.bond) {
+      saveOwnerBond(j.data.bond);
+      return { ok: true, bond: j.data.bond };
+    }
+    return { ok: false };
+  } catch {
+    return { ok: false };
   }
 }
 

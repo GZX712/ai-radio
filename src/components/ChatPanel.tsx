@@ -81,7 +81,7 @@ const GENDER_DEFAULT_VOICE: Record<DjGender, string> = {
   female: "en-US-JennyNeural",
   neutral: "en-US-GuyNeural",
 };
-const DEFAULT_PERSONALITY: Personality = { gender: "male", voice: "en-US-GuyNeural", traits: "", humorStyle: "british" };
+const DEFAULT_PERSONALITY: Personality = { gender: "female", voice: "mimo_default", traits: "", humorStyle: "british" };
 
 function loadPersonality(): Personality {
   if (typeof localStorage === "undefined") return DEFAULT_PERSONALITY;
@@ -806,7 +806,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                 例「金融」风格：聊失恋 → DJ 回「您的情绪正在破发，建议长线持有」；
                 例「医学」风格：聊失眠 → DJ 回「建议暂停摄入午夜碳水，先做一次基础 CT」
               </div>
-            </div>
+
+              </div>
             <footer className="modal-actions">
               <button type="button" className="modal-btn-secondary" onClick={() => setShowSettings(false)}>取消</button>
               <button type="button" className="modal-btn-primary" onClick={saveSettings}>保存</button>
