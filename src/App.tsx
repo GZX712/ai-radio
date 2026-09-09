@@ -10,8 +10,9 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
-import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner } from "@/lib/deviceIdentity";
+import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner, isOwnerDevice } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
+import { pullChat, pushChat, mergeChat } from "@/lib/chatSync";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -188,8 +189,20 @@ export default function App() {
   // 主人云端档案同步：启动时拉取（PC 配置 → 手机自动跟随）。
   // - 非主人设备（客人）直接跳过
   // - 远端比本端新 → pullSettings 内部会应用并 reload（本地所有 state 重建生效）
+  // - 聊天卷：并集合并本地与云端「我与 DJ 的历史对话」→ 写回 store →
+  //   ChatPanel 自动 hydrate 显示；再推一次补偿断网期未上云的消息（幂等无害）
   useEffect(() => {
     void pullSettings();
+    void (async () => {
+      if (!isOwnerDevice()) return; // 客人设备不碰聊天档案（隐私：仅主人可见）
+      const remote = await pullChat();
+      if (!remote) return;
+      const store = useRadioStore.getState();
+      const local = store.chatHistory ?? [];
+      const merged = mergeChat(local, remote.items);
+      if (JSON.stringify(merged) !== JSON.stringify(local)) store.saveChatHistory(merged);
+      void pushChat(merged); // 断网补偿：本地有而云端缺的会在这里补上
+    })();
   }, []);
 
   // 主人绑定：/?claim=<口令> 访问一次 → 绑定本设备（此后自动识别，无需再带参）

@@ -23,6 +23,7 @@ import {
   markGreeted,
 } from "./services/deviceIdentity";
 import { getOwnerSettings, saveOwnerSettings } from "./services/ownerStore";
+import { getOwnerChat, appendOwnerChat } from "./services/ownerChat";
 import { getSongProfile, getCachedSongProfile, warmSongProfile } from "./services/songKnowledge";
 import { ttsService } from "./services/tts";
 import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/scheduler";
@@ -665,6 +666,48 @@ app.put("/api/owner/settings", async (req, res) => {
   }
 });
 
+// ============== 主人云端档案 · 聊天卷：跨设备同步「我与 DJ 的历史对话」 ==============
+// 隐私边界：以下两个接口与设置卷同验签 —— 只有主人设备能读写；客人一律 403。
+
+/** 读聊天历史：?deviceId=&bond= → { items[], updatedAt }（仅主人可读，客人不可见） */
+app.get("/api/owner/chat", (req, res) => {
+  const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId : "";
+  const bond = typeof req.query.bond === "string" ? req.query.bond : "";
+  if (!verifyBond(deviceId, bond)) {
+    res.status(403).json({ code: 403, message: "仅主人可访问历史对话" });
+    return;
+  }
+  try {
+    const { items, updatedAt } = getOwnerChat();
+    res.json({ code: 0, data: { items, updatedAt } });
+  } catch (err) {
+    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "读取历史对话失败" });
+  }
+});
+
+/** 追加聊天历史：body { deviceId, bond, items[] } → 指纹幂等合并，重复推送无害 */
+app.post("/api/owner/chat", (req, res) => {
+  const { deviceId, bond, items } = (req.body ?? {}) as {
+    deviceId?: unknown;
+    bond?: unknown;
+    items?: unknown;
+  };
+  const did = typeof deviceId === "string" ? deviceId : "";
+  const bd = typeof bond === "string" ? bond : null;
+  if (!verifyBond(did, bd)) {
+    res.status(403).json({ code: 403, message: "仅主人可写入历史对话" });
+    return;
+  }
+  try {
+    const list = Array.isArray(items) ? items : [];
+    if (list.length > 50) list.length = 50; // 单次最多 50 条，防异常客户端撑爆
+    const r = appendOwnerChat(list);
+    res.json({ code: 0, data: { updatedAt: r.updatedAt, total: r.total } });
+  } catch (err) {
+    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "写入历史对话失败" });
+  }
+});
+
 /** 在线设备概览（供主人查看：现在谁在听，是主人还是客人） */
 app.get("/api/device/now", (_req, res) => {
   const online: { kind: string; role: string; deviceId?: string; connectedAt?: number }[] = [];
@@ -941,6 +984,8 @@ wss.on("connection", (ws, req) => {
           // 交给 LLM 让 DJ 看到上文，避免"答非所问"
           // [2026-09-09] 前端没带 history(新会话/刷新后首次) → 从 SQLite 兜底注入最近对话,
           //   DJ 记得"上一会话"聊过什么(不再刷新即失忆)。
+          // [2026-09-09·隐私] 主人聊天史只回填给主人连接 —— 客人会话不带主人跨会话历史，
+          //   避免"客人在 DJ 面前看到主人聊过什么"(辛老师：历史对话仅主人设备可见)。
           const sessionHistory = Array.isArray(msg.history)
             ? (msg.history as { role?: unknown; content?: unknown }[])
                 .filter((x) =>
@@ -951,7 +996,9 @@ wss.on("connection", (ws, req) => {
                 .slice(-10)
                 .map((x) => ({ role: x.role as "user" | "assistant", content: x.content as string }))
             : [];
-          const history = sessionHistory.length > 0 ? sessionHistory : recentChatTurns(8);
+          const history = sessionHistory.length > 0
+            ? sessionHistory
+            : (role === "owner" ? recentChatTurns(8) : []);
           const dj = await (async () => {
             // [2026-09-07] 聊天上下文升级：让 DJ 知道此刻在放什么歌 + 歌的背景档案。
             // 之前 chat 完全不传当前歌 → 用户问"这歌什么背景/谁唱的"DJ 无从答起（结构性答非所问）。

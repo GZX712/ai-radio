@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 import { pushSettings } from "@/lib/settingsSync";
+import { pushChat } from "@/lib/chatSync";
+import { isOwnerDevice } from "@/lib/deviceIdentity";
 
 interface ChatMessage {
   id: number;
@@ -129,7 +131,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     } catch { /* ignore */ }
     return [];
   });
-  // 启动时把持久化历史里的 user/reply 灌入 messages（首次挂载）
+  // 启动时把持久化历史里的 user/reply 灌入 messages（首次挂载；云端聊天档案
+  // 拉取完成后 store.chatHistory 更新也会再次触发本段 → 自动 hydrate 显示）
   const historyHydrated = useRef(false);
   if (!historyHydrated.current && persistedChat.length > 0) {
     historyHydrated.current = true;
@@ -144,8 +147,11 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
         zh: it.zh,
         time: it.time,
       }));
-      // 用 setTimeout 0 避在 render 期间 setState
-      setTimeout(() => setMessages(hydrated), 0);
+      // 用 setTimeout 0 避在 render 期间 setState；id 重新分配自增，
+      // 避免旧会话历史 id(1,2,3…) 与当前会话 nextId 从 1 起撞车(React key 冲突)
+      setTimeout(() => {
+        setMessages(hydrated.map((h) => ({ ...h, id: nextId.current++ })));
+      }, 0);
     }
   }
   const [input, setInput] = useState("");
@@ -283,6 +289,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   // - DJ 真回复（role==="dj" && kind==="reply"）— 保存
   // - DJ 自动话术（kind==="auto"）— 不保存（辛老师要的："切歌话术不需要保存"）
   // 上限 100 条（store loadChatHistory 同样限制）
+  // [2026-09-09] 主人设备：同步并入主人云端档案·聊天卷（服务端指纹幂等去重，
+  //   重复全量推送无害；内容没变时跳过避免无意义请求）。客人设备不推送。
+  const lastPushedRef = useRef("");
   useEffect(() => {
     const t = window.setTimeout(() => {
       const persisted = messages
@@ -297,6 +306,11 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
           time: m.time,
         }));
       saveChatHistory(persisted);
+      const sig = JSON.stringify(persisted);
+      if (isOwnerDevice() && sig !== lastPushedRef.current) {
+        lastPushedRef.current = sig;
+        void pushChat(persisted);
+      }
     }, 500);
     return () => window.clearTimeout(t);
   }, [messages, saveChatHistory]);

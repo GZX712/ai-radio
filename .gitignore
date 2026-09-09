@@ -81,3 +81,6 @@ data/*.db-journal
 
 # 主人云端档案（运行时个人同步配置，不入库）
 data/owner-settings.json
+
+# 主人聊天档案（运行时个人历史对话，不入库）
+data/owner-chat.json

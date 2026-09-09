@@ -233,6 +233,8 @@ export const useRadioStore = create<RadioState>((set, get) => ({
   chatHistory: loadChatHistory(),
   saveChatHistory: (items) => {
     try { localStorage.setItem("ai-radio-chat-history", JSON.stringify(items)); } catch { /* ignore */ }
+    // 同时更新 state —— 主人聊天档案云端 pull 合并后需要触发 ChatPanel hydrate 显示
+    set({ chatHistory: items });
   },
   clearChatHistory: () => {
     try { localStorage.removeItem("ai-radio-chat-history"); } catch { /* ignore */ }
