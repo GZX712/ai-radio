@@ -3801,10 +3801,10 @@ body::after {
   background: linear-gradient(180deg, #f3f6fc, #dde1ec);
   color: #4a5068;
 }
-.settings-card[data-wallpaper="cream"] .modal-title { color: #2a304a; }
-.settings-card[data-wallpaper="cream"] .modal-label { color: rgba(74,80,104,0.8); }
-.settings-card[data-wallpaper="cream"] .modal-hint { color: rgba(74,80,104,0.65); }
-.settings-card[data-wallpaper="cream"] .modal-close { color: rgba(74,80,104,0.65); }
+.settings-card[data-wallpaper="cream"] .modal-title { color: #1a2238; font-weight: 800; }
+.settings-card[data-wallpaper="cream"] .modal-label { color: rgba(26,34,56,0.92); }
+.settings-card[data-wallpaper="cream"] .modal-hint { color: rgba(26,34,56,0.82); }
+.settings-card[data-wallpaper="cream"] .modal-close { color: #1a2238; }
 .settings-card[data-wallpaper="cream"] .modal-textarea {
   background: #e6e9f2;
   color: #4a5068;
@@ -3814,7 +3814,7 @@ body::after {
 .settings-card[data-wallpaper="cream"] .gender-chip,
 .settings-card[data-wallpaper="cream"] .humor-chip {
   background: #eef1f8;
-  color: #4a5068;
+  color: #1a2238;
   border-color: rgba(163,173,200,0.45);
 }
 .settings-card[data-wallpaper="cream"] .gender-chip.active,
@@ -3825,16 +3825,18 @@ body::after {
 }
 .settings-card[data-wallpaper="cream"] .voice-item {
   background: rgba(108,124,255,0.06);
-  color: #2a304a;
+  color: #1a2238;
   border-color: rgba(163,173,200,0.35);
 }
 .settings-card[data-wallpaper="cream"] .voice-item.active {
   background: rgba(108,124,255,0.15);
   border-color: #6c7cff;
 }
+.settings-card[data-wallpaper="cream"] .voice-item-desc { color: rgba(26,34,56,0.78); font-weight: 500; }
+.settings-card[data-wallpaper="cream"] .voice-item-name { color: #1a2238; font-weight: 800; }
 .settings-card[data-wallpaper="cream"] .modal-avatar-tile {
   background: linear-gradient(145deg, #eef1f8, #dde1ec);
-  color: #4a5068;
+  color: #1a2238;
   box-shadow:
     5px 5px 12px rgba(163,173,200,0.55),
     -5px -5px 12px rgba(255,255,255,0.9);
@@ -3847,7 +3849,7 @@ body::after {
 }
 .settings-card[data-wallpaper="cream"] .modal-btn-secondary {
   background: #eef1f8;
-  color: #4a5068;
+  color: #1a2238;
   border: 1px solid rgba(163,173,200,0.45);
 }
 
@@ -3856,9 +3858,15 @@ body::after {
   background: linear-gradient(180deg, #ff8ac6, #ff66b3);
   color: #1a0533;
 }
-.settings-card[data-wallpaper="pop"] .modal-title { color: #1a0533; font-family: "JetBrains Mono", monospace; }
-.settings-card[data-wallpaper="pop"] .modal-label { color: rgba(26,5,51,0.85); }
-.settings-card[data-wallpaper="pop"] .modal-hint { color: rgba(26,5,51,0.7); }
+.settings-card[data-wallpaper="pop"] .modal-title {
+  color: #000033;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+.settings-card[data-wallpaper="pop"] .modal-label { color: #1a0533; }
+.settings-card[data-wallpaper="pop"] .modal-hint { color: #1a0533; opacity: 0.85; }
 .settings-card[data-wallpaper="pop"] .modal-close { color: #1a0533; }
 .settings-card[data-wallpaper="pop"] .modal-textarea {
   background: #fff;
@@ -3888,6 +3896,20 @@ body::after {
 .settings-card[data-wallpaper="pop"] .voice-item.active {
   background: #00d4d4;
   color: #1a0533;
+}
+.settings-card[data-wallpaper="pop"] .voice-item-name { color: #000033; font-weight: 800; }
+.settings-card[data-wallpaper="pop"] .voice-item-desc { color: #1a0533; font-weight: 500; opacity: 0.92; }
+.settings-card[data-wallpaper="pop"] .voice-badge-mimo {
+  background: rgba(255, 159, 28, 0.18);
+  color: #b8660a;
+  font-weight: 800;
+}
+.settings-card[data-wallpaper="pop"] .voice-preview {
+  background: #1a0533;
+  color: #ffd93d;
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
 }
 .settings-card[data-wallpaper="pop"] .modal-avatar-tile {
   background: #ffd93d;
