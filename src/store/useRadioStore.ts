@@ -229,11 +229,12 @@ export const useRadioStore = create<RadioState>((set, get) => ({
     } catch { return false; }
   },
 
-  // 聊天对话历史（最近 user + DJ reply；DJ auto 不存）；启动时从 localStorage 加载
+  // 聊天对话历史（最近 user + DJ reply；DJ auto 不存）；启动时从 localStorage 加载。
+  // [2026-09-09·设备隔离] 仅主人设备调用（本地档案，无云同步）；客人设备不落盘 → 无痕。
   chatHistory: loadChatHistory(),
   saveChatHistory: (items) => {
     try { localStorage.setItem("ai-radio-chat-history", JSON.stringify(items)); } catch { /* ignore */ }
-    // 同时更新 state —— 主人聊天档案云端 pull 合并后需要触发 ChatPanel hydrate 显示
+    // 同时更新 state → ChatPanel hydrate 显示
     set({ chatHistory: items });
   },
   clearChatHistory: () => {

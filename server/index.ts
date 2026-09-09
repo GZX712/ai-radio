@@ -9,7 +9,7 @@ import { musicQueue } from "./services/musicQueue";
 import { generateDJLine, setDjBroadcast, setCurrentPersonality, pushOnAir, generateGuestGreeting, getCurrentPersonality, pickSpeakText, restoreOnAir } from "./services/dj";
 import { buildTransitionScript } from "./services/djScripts";
 import { djThrottleCanSpeak, djThrottleMarkSpoke } from "./services/djThrottle";
-import { initHistoryDb, recordEvent, recentEvents, recentChatTurns } from "./services/historyDb";
+import { initHistoryDb, recentEvents } from "./services/historyDb";
 import {
   CLAIM_TOKEN,
   signBond,
@@ -23,7 +23,6 @@ import {
   markGreeted,
 } from "./services/deviceIdentity";
 import { getOwnerSettings, saveOwnerSettings } from "./services/ownerStore";
-import { getOwnerChat, appendOwnerChat } from "./services/ownerChat";
 import { getSongProfile, getCachedSongProfile, warmSongProfile } from "./services/songKnowledge";
 import { ttsService } from "./services/tts";
 import { scheduler, setBroadcast as setSchedulerBroadcast } from "./services/scheduler";
@@ -666,48 +665,6 @@ app.put("/api/owner/settings", async (req, res) => {
   }
 });
 
-// ============== 主人云端档案 · 聊天卷：跨设备同步「我与 DJ 的历史对话」 ==============
-// 隐私边界：以下两个接口与设置卷同验签 —— 只有主人设备能读写；客人一律 403。
-
-/** 读聊天历史：?deviceId=&bond= → { items[], updatedAt }（仅主人可读，客人不可见） */
-app.get("/api/owner/chat", (req, res) => {
-  const deviceId = typeof req.query.deviceId === "string" ? req.query.deviceId : "";
-  const bond = typeof req.query.bond === "string" ? req.query.bond : "";
-  if (!verifyBond(deviceId, bond)) {
-    res.status(403).json({ code: 403, message: "仅主人可访问历史对话" });
-    return;
-  }
-  try {
-    const { items, updatedAt } = getOwnerChat();
-    res.json({ code: 0, data: { items, updatedAt } });
-  } catch (err) {
-    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "读取历史对话失败" });
-  }
-});
-
-/** 追加聊天历史：body { deviceId, bond, items[] } → 指纹幂等合并，重复推送无害 */
-app.post("/api/owner/chat", (req, res) => {
-  const { deviceId, bond, items } = (req.body ?? {}) as {
-    deviceId?: unknown;
-    bond?: unknown;
-    items?: unknown;
-  };
-  const did = typeof deviceId === "string" ? deviceId : "";
-  const bd = typeof bond === "string" ? bond : null;
-  if (!verifyBond(did, bd)) {
-    res.status(403).json({ code: 403, message: "仅主人可写入历史对话" });
-    return;
-  }
-  try {
-    const list = Array.isArray(items) ? items : [];
-    if (list.length > 50) list.length = 50; // 单次最多 50 条，防异常客户端撑爆
-    const r = appendOwnerChat(list);
-    res.json({ code: 0, data: { updatedAt: r.updatedAt, total: r.total } });
-  } catch (err) {
-    res.status(500).json({ code: 500, message: err instanceof Error ? err.message : "写入历史对话失败" });
-  }
-});
-
 /** 在线设备概览（供主人查看：现在谁在听，是主人还是客人） */
 app.get("/api/device/now", (_req, res) => {
   const online: { kind: string; role: string; deviceId?: string; connectedAt?: number }[] = [];
@@ -973,20 +930,17 @@ wss.on("connection", (ws, req) => {
 
         // 3. 闲聊：DJ 直接回应话题（不跑题）
         try {
-          // [2026-09-09] 历史库：#3 SQLite —— 用户问题落库(跨会话记忆的"问"半边)
-          recordEvent("chat_user", String(msg.text).slice(0, 500));
           const personality = (msg.personality && typeof msg.personality === "object")
             ? msg.personality as { gender: "male" | "female" | "neutral"; voice?: string; traits: string }
             : undefined;
           // 记住用户音色/性格选择（所有场景的 TTS 都用它）
           if (personality) setCurrentPersonality(personality);
-          // 前端 send chat 时会带历史对话 (history: [{role, content}])
-          // 交给 LLM 让 DJ 看到上文，避免"答非所问"
-          // [2026-09-09] 前端没带 history(新会话/刷新后首次) → 从 SQLite 兜底注入最近对话,
-          //   DJ 记得"上一会话"聊过什么(不再刷新即失忆)。
-          // [2026-09-09·隐私] 主人聊天史只回填给主人连接 —— 客人会话不带主人跨会话历史，
-          //   避免"客人在 DJ 面前看到主人聊过什么"(辛老师：历史对话仅主人设备可见)。
-          const sessionHistory = Array.isArray(msg.history)
+          // 前端 send chat 时会带本设备的会话历史 (history: [{role, content}]) 交给 LLM，
+          // 让 DJ 看到上文、避免"答非所问"。
+          // [2026-09-09·设备隔离] 上下文只取该设备自己带过来的会话历史 —— 服务端不再
+          //   注入任何跨会话/跨设备聊天记忆。每个设备与 DJ 的对话彼此独立、不可见不共享：
+          //   新设备接入不会带上别的设备聊过什么；刷新后 DJ 只记得本设备最近聊过的 10 条。
+          const history = Array.isArray(msg.history)
             ? (msg.history as { role?: unknown; content?: unknown }[])
                 .filter((x) =>
                   (x.role === "user" || x.role === "assistant") &&
@@ -996,9 +950,6 @@ wss.on("connection", (ws, req) => {
                 .slice(-10)
                 .map((x) => ({ role: x.role as "user" | "assistant", content: x.content as string }))
             : [];
-          const history = sessionHistory.length > 0
-            ? sessionHistory
-            : (role === "owner" ? recentChatTurns(8) : []);
           const dj = await (async () => {
             // [2026-09-07] 聊天上下文升级：让 DJ 知道此刻在放什么歌 + 歌的背景档案。
             // 之前 chat 完全不传当前歌 → 用户问"这歌什么背景/谁唱的"DJ 无从答起（结构性答非所问）。
@@ -1024,8 +975,6 @@ wss.on("connection", (ws, req) => {
             });
           })();
           ws.send(JSON.stringify({ type: "chat-reply", ...dj }));
-          // [2026-09-09] 历史库：DJ 回复落库(跨会话记忆的"答"半边)
-          try { recordEvent("chat_dj", (dj.zh || dj.en || "").slice(0, 500)); } catch { /* noop */ }
         } catch (err) {
           ws.send(JSON.stringify({
             type: "chat-reply",
@@ -1033,7 +982,6 @@ wss.on("connection", (ws, req) => {
             zh: "抱歉，DJ 出去抽烟了——换个话题试试？",
             provider: "fallback",
           }));
-          try { recordEvent("chat_dj", "抱歉，DJ 出去抽烟了——换个话题试试？"); } catch { /* noop */ }
           console.error("[WS-chat] 失败:", err);
         }
       }

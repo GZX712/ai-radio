@@ -12,7 +12,6 @@ import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
 import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner, isOwnerDevice } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
-import { pullChat, pushChat, mergeChat, filterChatItems } from "@/lib/chatSync";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -32,7 +31,11 @@ export default function App() {
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
   const engine = useAudioEngine();
   const [ws, setWs] = useState<ReconnectingWS | null>(null);
-  const [started, setStarted] = useState(false); // 开始电台引导层
+  // 开始电台引导层：已认证的主人设备（手机/电脑）直接进电台，永不弹引导/绑定界面；
+  // 只有新接入的（客人/未绑定）设备第一次打开才看到 —— 与主人体验区分开。
+  const [started, setStarted] = useState<boolean>(() => {
+    try { return isOwnerDevice(); } catch { return false; }
+  });
   // 主人设备绑定：仅「开始电台」页用，单设备级一次性
   // - already：localStorage 已有 bond → 显示「✓ 本设备已为主人」，disable 按钮
   // - idle/binding/done/error：供首次打开的设备点击「一键绑定」走状态机
@@ -186,28 +189,16 @@ export default function App() {
     );
   }, []);
 
-  // 主人云端档案同步：启动时拉取（PC 配置 → 手机自动跟随）。
-  // - 非主人设备（客人）直接跳过
-  // - 远端比本端新 → pullSettings 内部会应用并 reload（本地所有 state 重建生效）
-  // - 聊天卷：并集合并本地与云端「我与 DJ 的历史对话」→ 写回 store →
-  //   ChatPanel 自动 hydrate 显示；再推一次补偿断网期未上云的消息（幂等无害）
+  // 主人设置云端档案同步：启动时拉取（壁纸 / DJ头像 / DJ性格 → 主人各设备自动跟随）。
+  // 聊天记录不做云同步：每个设备与 DJ 的对话彼此独立、不可见不共享。
+  // - 主人设备：历史保存在本机 localStorage（刷新/重开都在）
+  // - 其他新接入设备（客人）：无痕 —— 启动即清掉本机任何聊天残留，会话结束即消失
   useEffect(() => {
     void pullSettings();
-    void (async () => {
-      if (!isOwnerDevice()) return; // 客人设备不碰聊天档案（隐私：仅主人可见）
-      const store = useRadioStore.getState();
-      const local = store.chatHistory ?? [];
-      const remote = await pullChat();
-      if (!remote) {
-        // 云端不可达/异常 → 本地有历史也尝试补偿推送（幂等无害，恢复后自动上云）
-        const clean = filterChatItems(local);
-        if (clean.length > 0) void pushChat(clean);
-        return;
-      }
-      const merged = mergeChat(local, remote.items);
-      if (JSON.stringify(merged) !== JSON.stringify(local)) store.saveChatHistory(merged);
-      void pushChat(merged); // 断网补偿：本地有而云端缺的会在这里补上
-    })();
+    if (!isOwnerDevice()) {
+      try { localStorage.removeItem("ai-radio-chat-history"); } catch { /* ignore */ }
+      useRadioStore.getState().clearChatHistory();
+    }
   }, []);
 
   // 主人绑定：/?claim=<口令> 访问一次 → 绑定本设备（此后自动识别，无需再带参）

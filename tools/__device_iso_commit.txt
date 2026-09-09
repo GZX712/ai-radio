@@ -1,0 +1,23 @@
+设备隔离：主人直达电台 + 客人无痕
+
+需求（辛老师）：
+- 手机/电脑（已主人认证）不再显示「开始/绑定」引导页，直接进电台
+- 新接入设备（客人/未绑定）与主人体验区分开
+- 每个设备的聊天记录不可见不共享；客人不保存任何记录（无痕）
+- DJ 记忆按设备各自独立：新设备接入不会带上别的设备聊过什么
+
+实现：
+- src/App.tsx：started 初值由 isOwnerDevice() 决定（主人默认 true，跳过引导层）；
+  启动 effect 仅 pullSettings + 客人设备清掉本机 ai-radio-chat-history
+- src/components/ChatPanel.tsx：hydrate 与持久化均以 isOwnerDevice() 为前提；
+  客人只读会话内存、不写 localStorage、不回灌历史
+- src/store/useRadioStore.ts：更新过时注释（云端 pull 那条已不适用）
+- server/index.ts：删除 /api/owner/chat GET/POST 路由；ws 聊天不再注入
+  recentChatTurns 兜底（DJ 上下文只取本设备前端带过来的 10 条）；不再
+  recordEvent("chat_user"/"chat_dj") —— 全局聊天落库与设备隔离理念冲突
+- 删除废弃模块：server/services/ownerChat.ts + src/lib/chatSync.ts
+
+回归：tools/_shot_device_iso.cjs（4 截图：主人 desktop/mobile/客人 overlay/客人 after start）
+均通过：
+  owner noOverlay=true historyKept=true hydrated=true
+  guest hasOverlay=true hasBindBtn=true historyCleared=true notHydrated=true

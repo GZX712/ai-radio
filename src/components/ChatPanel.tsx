@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 import { pushSettings } from "@/lib/settingsSync";
-import { pushChat } from "@/lib/chatSync";
 import { isOwnerDevice } from "@/lib/deviceIdentity";
 
 interface ChatMessage {
@@ -131,10 +130,10 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     } catch { /* ignore */ }
     return [];
   });
-  // 启动时把持久化历史里的 user/reply 灌入 messages（首次挂载；云端聊天档案
-  // 拉取完成后 store.chatHistory 更新也会再次触发本段 → 自动 hydrate 显示）
+  // 启动时把本机持久化历史里的 user/reply 灌入 messages（首次挂载）。
+  // 仅主人设备 hydrate（客人设备无痕：启动时历史已被清空，也绝不回灌历史）
   const historyHydrated = useRef(false);
-  if (!historyHydrated.current && persistedChat.length > 0) {
+  if (!historyHydrated.current && persistedChat.length > 0 && isOwnerDevice()) {
     historyHydrated.current = true;
     // 仅在 messages 为空时才灌入（避免覆盖用户的当前会话）
     if (messages.length === 0) {
@@ -284,16 +283,17 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     });
   }, [ws, onAction]);
 
-  // 持久化：messages 变化时把 user + DJ reply 写入 localStorage（debounce 500ms）
-  // - 用户消息（role==="user"，kind 这里当成 "user"）— 全部保存
+  // 持久化：messages 变化时把 user + DJ reply 写入本机 localStorage（debounce 500ms）
+  // - 用户消息（role==="user"）— 全部保存
   // - DJ 真回复（role==="dj" && kind==="reply"）— 保存
   // - DJ 自动话术（kind==="auto"）— 不保存（辛老师要的："切歌话术不需要保存"）
   // 上限 100 条（store loadChatHistory 同样限制）
-  // [2026-09-09] 主人设备：同步并入主人云端档案·聊天卷（服务端指纹幂等去重，
-  //   重复全量推送无害；内容没变时跳过避免无意义请求）。客人设备不推送。
-  const lastPushedRef = useRef("");
+  // [2026-09-09·设备隔离] 只在本机保存、不做任何云同步 → 每台设备的对话彼此独立、
+  //   不可见不共享。仅主人设备落盘（刷新/重开历史还在）；
+  //   其他新接入设备（客人）不保存任何记录 → 无痕，刷新即消失。
   useEffect(() => {
     const t = window.setTimeout(() => {
+      if (!isOwnerDevice()) return; // 客人设备：聊天只在会话内存里，不留痕
       const persisted = messages
         .filter((m) => m.role === "user" || (m.role === "dj" && m.kind === "reply"))
         .slice(-100)
@@ -306,11 +306,6 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
           time: m.time,
         }));
       saveChatHistory(persisted);
-      const sig = JSON.stringify(persisted);
-      if (isOwnerDevice() && sig !== lastPushedRef.current) {
-        lastPushedRef.current = sig;
-        void pushChat(persisted);
-      }
     }, 500);
     return () => window.clearTimeout(t);
   }, [messages, saveChatHistory]);
