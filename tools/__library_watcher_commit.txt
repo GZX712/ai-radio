@@ -1,0 +1,18 @@
+feat(music): 曲库热刷新 — 往 COS 传新歌后无需重启服务即可生效
+
+背景：队列只在 musicQueue.init() 时构建一次，往 COS 传了新歌必须重启
+Render 才生效，加歌体验很差。
+
+改动：
+- musicQueue.startLibraryWatcher(intervalMs=5min)：定期比对云端歌单，
+  发现新 id 直接追加进队列。只做追加 —— 不动 cursor / 不清 recent /
+  不打断当前播放；同一批新歌只追加一次（幂等）。
+- server/index.ts：启动时调用 startLibraryWatcher()。
+- tools/_test_library_watcher.ts：回归测试（伪造音乐源，模拟云端新增 2 首
+  → 队列 40 → 42，重复检查一轮不再增长）。
+
+本轮曲库数据（2026-09-14）：D:\CloudMusic 去重后唯一曲目 107 首，原有 97，
+新增 10 首（Gareth.T×2 / 梁博×2 / 赵雷×5 / 忧郁小冻梨×1），已增量上传 COS，
+线上 manifest 107 首，公开 URL 验证 21/21 通过。
+
+验证：tsc -b 全绿；热刷新测试全部 PASS。

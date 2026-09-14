@@ -51,6 +51,8 @@ export class MusicQueue {
   private screening = false;
   // 本会话累计被版权拦截的歌曲数（聚合日志用，进程重启清零）
   private sessionBlockedCount = 0;
+  // 曲库热刷新定时器是否已启动（防重复启动）
+  private watcherStarted = false;
 
   constructor(musicSource?: MusicSource) {
     this.musicSource = musicSource ?? musicService;
@@ -492,6 +494,40 @@ export class MusicQueue {
   /** 已消费（切出播放）的歌曲总数——server 判断"是否首播"用 */
   getConsumedCount(): number {
     return this.consumed;
+  }
+
+  /**
+   * 曲库热刷新（主要给 COS 模式用）：每 N 分钟比对一次歌单，发现新歌直接追加进队列。
+   * 背景：队列只在 init 时构建一次，往 COS 传了新歌必须重启服务才生效 —— 太别扭。
+   * 行为：只做「追加」，不动 cursor / 不清 recent / 不打断当前播放；
+   *       队列是随机选歌，新歌追加后下一组就会被抽到，无需重启。
+   */
+  startLibraryWatcher(intervalMs = 5 * 60_000): void {
+    if (this.watcherStarted) return;
+    this.watcherStarted = true;
+    const timer = setInterval(() => {
+      void (async () => {
+        if (!this.initialized) return;
+        try {
+          const ids = await this.musicSource.getPlaylistTrackIds(USER_PLAYLIST_ID);
+          if (ids.length === 0) return;
+          const known = new Set(this.queue);
+          const fresh = ids.filter((id) => !known.has(id));
+          if (fresh.length === 0) return;
+          const before = this.queue.length;
+          this.queue.push(...fresh);
+          console.log(
+            `[musicQueue] 曲库热刷新：发现 ${fresh.length} 首新歌，队列 ${before} → ${this.queue.length} 首（无需重启）`,
+          );
+        } catch {
+          /* 静默：热刷新失败不影响播放，下个周期再试 */
+        }
+      })();
+    }, intervalMs);
+    timer.unref?.();
+    const human =
+      intervalMs >= 60_000 ? `${Math.round(intervalMs / 60_000)} 分钟` : `${Math.round(intervalMs / 1000)} 秒`;
+    console.log(`[musicQueue] 曲库热刷新已启动（每 ${human}比对一次歌单）`);
   }
 
   getQueueInfo() {

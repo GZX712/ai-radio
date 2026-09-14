@@ -1016,6 +1016,9 @@ server.listen(PORT, "0.0.0.0", () => {
   setTimeout(() => {
     musicQueue.init().catch(() => {});
   }, IS_DEPLOYED ? 5000 : 4000);
+
+  // 曲库热刷新：往 COS 传了新歌后，5 分钟内自动进队列，不必重启服务
+  musicQueue.startLibraryWatcher();
 });
 
 // 优雅退出
