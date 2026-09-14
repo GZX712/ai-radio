@@ -1,0 +1,14 @@
+tools(cos): 增量上传脚本支持 --from-file 密钥文件 + 友好报错
+
+- 新增 --from-file：第 1 行 SecretId、第 2 行 SecretKey，避免密钥出现在
+  命令行参数里（也就不会进入终端/会话历史）
+- bucket/region 提供默认值（ai-radio-library-1463614289 / ap-nanjing），
+  --from-file 模式下无需再传
+- COS 访问失败时输出人话提示（区分「密钥/权限问题」与「桶名/地域不匹配」），
+  不再直接甩 traceback
+- 修正抽样验证的 ID 范围（原 L1098..L1107 → L0098..L0107；此前恒为空，
+  一直走 last-10 fallback）
+
+docs: library-update-2026-09-14 补「密钥与执行方式」章节
+（方式 A 自己跑 / 方式 B 我代跑密钥不入对话 / 方式 C 直发不推荐，
+ 附 CAM 子账号最小权限建议 与 Windows 路径坑提示）
