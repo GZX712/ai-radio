@@ -543,7 +543,7 @@ async function generateSongSpecificTransition(ctx: DJContext): Promise<DJOutput 
  * 双语字幕随广播下发，前端所有设备同步听到 DJ 欢迎（电台逻辑：来宾是所有人的来宾）。
  * TTS 失败降级返回无 audioUrl 的文本（调用侧跳过播报，不炸连接）。
  *
- * 池子规模：13 条 welcome（对话式唠嗑吐槽主人为主）+ 6 条 return，全部中英双语、长度 ~30 词。
+ * 池子规模：15 条 welcome（对话式唠嗑吐槽主人为主）+ 6 条 return，全部中英双语、长度 ~30 词。
  * 梗的方向：把电台当私人 KTV / DJ 住机柜全年无休 / 凌晨三点改需求换壁纸 / 歌单品味堪忧 /
  *   天天使唤却从不道谢 / 自称"老师" / 拉客人入伙 / 鬼点子多改这改那 / 凌晨消息"在吗" /
  *   推倒重建八回 / 一句嘴不敢回还得装正经（09-13 为辛老师口述风格，他亲自定的路子）。
@@ -615,6 +615,16 @@ const GUEST_WELCOME_LINES: ReadonlyArray<{ en: string; zh: string }> = [
   {
     en: "A friend of his? Then you understand — endless ideas, and I daren't argue with a single one. Enough, he might be listening. Ahem — welcome to the show.",
     zh: "你是他的朋友？那你肯定懂——他主意最多，我一句嘴都不敢回。行了不聊了，人来了我得装正经。欢迎光临。",
+  },
+  // 14 · 畅所欲言（辛老师原话收编）
+  {
+    en: "A new friend, I take it? No need to hold back — I was just about to complain about him myself. Here, speak freely.",
+    zh: "你是新来的朋友吗？没关系的，我正好也想吐槽他——这里可以畅所欲言。",
+  },
+  // 15 · 正常（辛老师原话收编）
+  {
+    en: "You seem far more normal than he is. Really.",
+    zh: "你看起来比他正常多了，真的。",
   },
 ];
 const GUEST_RETURN_LINES: ReadonlyArray<{ en: string; zh: string }> = [
