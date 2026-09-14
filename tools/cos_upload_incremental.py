@@ -64,6 +64,24 @@ def _verify(url, timeout=30):
         return None, str(e)[:120]
 
 
+def _read_key_file(path):
+    """读密钥文件，容错各种编码/格式（记事本存 UTF-16/带 BOM 是常见坑）"""
+    with open(path, "rb") as f:
+        raw = f.read()
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        text = raw.decode("utf-16")            # 记事本「Unicode」/ 默认 UTF-16 LE
+    elif raw.startswith(b"\xef\xbb\xbf"):
+        text = raw.decode("utf-8-sig")         # UTF-8 with BOM
+    else:
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = raw.decode("utf-16", errors="ignore")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln.strip().strip('"').strip("'").strip() for ln in text.split("\n")]
+    return [ln for ln in lines if ln]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("secret_id", nargs="?", default="", help="SecretId（或用 --from-file）")
@@ -76,8 +94,11 @@ def main():
     args = ap.parse_args()
 
     if args.from_file:
-        with open(args.from_file, encoding="utf-8") as fp:
-            lines = [ln.strip() for ln in fp if ln.strip()]
+        if not os.path.isfile(args.from_file):
+            print(f"[ERR] 密钥文件不存在：{args.from_file}")
+            print("      （注意用 Windows 路径，例如 D:\\_cos_key.txt）")
+            sys.exit(2)
+        lines = _read_key_file(args.from_file)
         if len(lines) < 2:
             print(f"[ERR] 密钥文件需两行：第1行 SecretId，第2行 SecretKey（当前读到 {len(lines)} 行）")
             sys.exit(2)

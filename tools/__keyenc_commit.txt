@@ -1,0 +1,9 @@
+tools(cos): 密钥文件读取容错各种编码格式
+
+- 新增 _read_key_file()：自动识别 UTF-8 / UTF-8-BOM / UTF-16（记事本
+  「Unicode」另存为的默认编码）/ 无 BOM 的 UTF-16
+- 兼容 CRLF、行首行尾空白、值被引号包裹、中间夹杂空行
+- 密钥文件不存在时给明确提示（并提醒用 Windows 路径）
+
+背景：辛老师用记事本保存密钥文件，Windows 记事本「Unicode」选项写出的是
+UTF-16 LE，原脚本按 UTF-8 读会直接失败。
