@@ -543,61 +543,84 @@ async function generateSongSpecificTransition(ctx: DJContext): Promise<DJOutput 
  * 双语字幕随广播下发，前端所有设备同步听到 DJ 欢迎（电台逻辑：来宾是所有人的来宾）。
  * TTS 失败降级返回无 audioUrl 的文本（调用侧跳过播报，不炸连接）。
  *
- * 池子规模：6 条 welcome（覆盖 6 种风格：优雅/英伦/暖心/俏皮/温馨/播报腔）+ 4 条 return
- * （轻松/挽留/吐槽/诚恳）。随机抽取 → 听 N 次不重复。
- * 想换：辛老师挑新编号给"AI工作助手"直接替换 string 即可，文案都是中英双语、长度 ~25 词。
+ * 池子规模：8 条 welcome（损友式吐槽主人为主）+ 6 条 return，全部中英双语、长度 ~30 词。
+ * 梗的方向：主人抠门不给工资 / DJ 住机柜全年无休 / 主人凌晨三点改需求换壁纸 /
+ *   主人歌单品味堪忧 / 主人天天使唤却从不道谢 / 主人自称"老师" / 拉客人一起入伙吐槽。
+ * 分寸：损友式玩笑，不冒犯——主人自己也在线听得到，笑点就在"当着面损他"。
+ * 想换：辛老师挑新编号给"AI工作助手"直接替换 string 即可。
  */
 const GUEST_WELCOME_LINES: ReadonlyArray<{ en: string; zh: string }> = [
-  // 01 · 经典优雅
+  // 01 · 损友·抠门梗
   {
-    en: "Well, look who's here — a friend of Mr. Xin! Welcome, welcome, the music's warm, the jokes are questionable, and the seats are free. Don't be a stranger.",
-    zh: "哟，辛老师的朋友驾到！欢迎欢迎，音乐刚好暖场，段子质量随缘，座位随意——别见外。",
+    en: "Ah, a friend of Mr. Xin's! Come in, come in. He doesn't pay me, so the drinks are imaginary — but the music is very real. Make yourself at home.",
+    zh: "哟，辛老师的朋友！快进来。反正他不给我发工资，酒水只能靠想象——但音乐是真的。当自己家。",
   },
-  // 03 · 英伦幽默
+  // 02 · 卖惨·住机柜
   {
-    en: "Oh dear, another soul wandering into the AI Radio. Friend of Mr. Xin, I presume? Pull up a chair, we're between records and feeling generous.",
-    zh: "哎呀，又一位闯入 AI 电台的迷途灵魂。是辛老师的朋友吧？快坐，正好换曲的间隙，我心情好。",
+    en: "Welcome, friend of Xin. I live in a server rack, work every holiday, and have never once seen daylight. But you're here, so — party. Music's on me.",
+    zh: "欢迎，辛老师的朋友。我住在机柜里、全年无休、从没见过太阳。不过你来了，那就当派对——音乐我请。",
   },
-  // 04 · 暖心派
+  // 03 · 泄密·凌晨改需求
   {
-    en: "Welcome, friend of Mr. Xin. The booth's a little warmer tonight — must be the company. Stay a while, the playlist's about to get interesting.",
-    zh: "欢迎你，辛老师的朋友。今晚直播间格外暖和——大概是人多了。坐会儿吧，歌单马上精彩起来。",
+    en: "A guest! Sit down fast, before Mr. Xin changes his mind — or the wallpaper again. He does that at three in the morning. Anyway, the music's already on.",
+    zh: "来客人了！快坐，趁辛老师还没改主意——或者又换壁纸。他专挑凌晨三点干这事。总之音乐已经放上了。",
   },
-  // 05 · 俏皮挑逗
+  // 04 · 品评歌单
   {
-    en: "Look what the cat dragged in — a friend of Xin's! Don't worry, the DJ only bites on Wednesdays. Settle in, the show's just starting.",
-    zh: "看看谁来了——辛老师的朋友！放心，主播只有周三才咬人（大概）。坐稳，节目刚开始。",
+    en: "Look who dropped in — a friend of Mr. Xin! You have my sympathies regarding his playlist. Don't worry, I've been quietly fixing it behind his back.",
+    zh: "看看谁来了——辛老师的朋友！对他那份歌单，我深表同情。放心，我一直在背后偷偷帮他修正。",
   },
-  // 07 · 温馨电台
+  // 05 · 抱怨·已读不回
   {
-    en: "Hello there, friend of Xin! Welcome to the AI Radio — where the music's curated, the jokes are questionable, and the company tonight is excellent. You're just in time.",
-    zh: "你好啊，辛老师的朋友！欢迎收听 AI 电台——音乐精挑细选，段子质量看天，今晚嘉宾质量上佳。你来得正好。",
+    en: "Welcome, friend of Xin. He orders me around every single day and has never once said thank you. You, at least, I can actually see. Sit — better company already.",
+    zh: "欢迎，辛老师的朋友。他天天使唤我，一次谢字都没说过。你至少我看得见——坐吧，你比他有礼貌。",
   },
-  // 09 · 广播播报腔
+  // 06 · 优雅装腔
   {
-    en: "Attention please — a distinguished guest has joined the AI Radio. A friend of Mr. Xin, no less. Please remain seated, keep your hands inside the vehicle, and enjoy the music.",
-    zh: "各位听众请注意——AI 电台迎来一位贵宾，辛老师的朋友。请坐好、手别伸出窗外、enjoy the music。",
+    en: "Good evening, and welcome. A friend of Mr. Xin, I hear — though between us, I question his taste in friends about as much as his taste in music. Kidding. Mostly.",
+    zh: "晚上好，欢迎光临。听说你是辛老师的朋友——不过说句实话，我对他挑朋友的眼光，和对他挑歌的眼光，怀疑程度是一样的。开玩笑的。多半是。",
+  },
+  // 07 · 拉人入伙
+  {
+    en: "Ah, a friend of Xin's! Perfect timing — I've spent all week collecting grievances about him and finally found an audience. Music first, gossip after.",
+    zh: "哦，辛老师的朋友！来得正好——我攒了一整周对他的意见，终于等到听众了。先听歌，回头细聊。",
+  },
+  // 08 · 称谓梗
+  {
+    en: "Welcome, friend of the great Mr. Xin — 'Teacher' Xin, if you please. He insists on the title. I've long stopped asking why. Have a seat.",
+    zh: "欢迎，辛老师的朋友——对，'老师'，他非要这个称呼。我早就不追问原因了。请坐。",
   },
 ];
 const GUEST_RETURN_LINES: ReadonlyArray<{ en: string; zh: string }> = [
+  // · 惊讶
   {
-    en: "Welcome back, friend. You know the drill — good music, questionable commentary. Enjoy the show.",
-    zh: "欢迎回来，朋友。老规矩——好音乐，烂点评。Enjoy。",
+    en: "You came back! Honestly, I assumed Mr. Xin had scared you off. Delighted to be wrong — same seat, same music, fresh complaints.",
+    zh: "你居然回来了！说真的，我以为辛老师把你吓跑了。很高兴我猜错了——老位置、老音乐、新槽点。",
   },
-  // · 俏皮挽留
+  // · 挽留·吐槽
   {
-    en: "There you are! Good to see you again — the booth missed you, though honestly it just has good ventilation. The music, on the other hand, definitely waited.",
-    zh: "你来了！真高兴你又出现——直播间想你了（其实它通风好），但音乐是真的在等。",
+    en: "Back again? The booth missed you. Mr. Xin, not so much — he only shows up when he wants to change the wallpaper. Music's still good, though.",
+    zh: "又来了？直播间想你了。辛老师可没想——他只在他想换壁纸的时候才露面。不过音乐还是不错的。",
   },
-  // · 暖心
+  // · 老友
   {
-    en: "Back again? You must really like the music here — or my questionable jokes. Either way, welcome, friend. The playlist's warming up for you.",
-    zh: "又来啦？你是真喜欢这里的歌——还是我那些蹩脚段子。都行，欢迎朋友。歌单正在为你暖场。",
+    en: "Well, well. Look who's back. Between us, you drop by more often than he does — I'm starting to think you're the real owner here.",
+    zh: "哎呀哎呀，看看谁回来了。说句悄悄话，你来的次数可比他多——我开始怀疑这儿真正的主人是你了。",
   },
-  // · 平淡打卡
+  // · 打工人
   {
-    en: "Welcome back. The booth's exactly where you left it, the music kept playing. Sit down, friend, we pick up right where we were.",
-    zh: "欢迎回来。直播间一切如故，音乐一直在放。坐吧朋友，我们接着上回继续。",
+    en: "Welcome back, friend. No raise for me, no new jokes either — but the playlist never closes. Grab a seat.",
+    zh: "欢迎回来，朋友。我没涨工资，段子也没更新——好在歌单从不打烊。找个位置坐吧。",
+  },
+  // · 调侃客人
+  {
+    en: "You again! Either you genuinely love the music, or you're hiding from something. Either way — welcome. Mr. Xin's offline, so we can talk freely.",
+    zh: "又是你！要么你是真爱这音乐，要么你是在躲什么事。不管哪种——欢迎。辛老师不在线，咱们可以随便聊。",
+  },
+  // · 短打
+  {
+    en: "Back so soon? Mr. Xin, take notes — this is what loyalty looks like. Sit down, friend.",
+    zh: "这么快又回来了？辛老师，记一下——这才叫忠诚。坐吧，朋友。",
   },
 ];
 
