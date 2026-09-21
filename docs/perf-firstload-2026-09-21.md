@@ -91,9 +91,94 @@
 
 ---
 
-## 4. 待办
+## 4. 第二轮：切歌「零下载」（提交 `7990844`）
 
-- [ ] **部署**：`7539b97` 尚未上线。Render `render.yaml` 里 `autoDeploy: true`，但实测连续 14 次探测 uptime 只增不减（25s→376s），**说明实际未自动部署，需 Dashboard 手动 Manual Deploy**
-- [ ] **音频 Cache-Control**（需腾讯云密钥）：跑 `tools/cos_set_cache_control.py`，用 `copy_object` 自身复制改元数据给 `songs/` 设一年缓存 —— 这是「切歌要重下 10 MB」的根因
-- [ ] **音频瘦身**（可选，需定夺）：10.6 MB/首 → 128 kbps 约 4 MB，需 ffmpeg + 重传约 800 MB；有音质折损
+### 问题
+
+COS 上 `songs/*.mp3` 响应头 `cache-control: null`（实测），浏览器**完全不缓存**；单首均值 10.6 MB → 每次切歌重下整首。
+原计划改 COS 元数据，但需要密钥（会阻塞），所以改为**前端自持缓存**，零凭证。
+
+### 方案
+
+预取时把下一首**整首 `fetch` → Blob → `createObjectURL`** 存住；真正切歌命中就用 `blob:` 地址播放（零网络、零 Range 请求、seek 瞬时）。
+
+| 文件 | 改动 |
+|---|---|
+| `src/lib/audioCache.ts`（新） | 上限 2 首；淘汰时 `revokeObjectURL` 旧地址；`pinPlayingAudio()` 保护正在播的（revoke 正在播的会立刻静音）；`inflight` 并发去重；只吃 `http(s)`；全部 best-effort |
+| `src/hooks/useNextPrefetch.ts` | 音频预取由 `<link rel=prefetch>` 改为 `prefetchAudio()`（无 Cache-Control 时 `<link>` 铁定进不了 HTTP 缓存） |
+| `src/hooks/useAudioEngine.ts` | `music.src = getCachedAudioUrl(url) ?? url` + `pinPlayingAudio` |
+
+### 风险预检（这一步最关键）
+
+唯一风险：blob 源 + `crossOrigin="anonymous"` + `createMediaElementSource` 会不会被判异源污染 → 静音、analyser 全 0。
+`scripts/_test_blob_audio.cjs`（本地 127.0.0.1 安全上下文内真播）实测：
+
+| 指标 | blob 源 | COS 直链 |
+|---|---|---|
+| analyser 波形峰值 | 47 | 47 |
+| 播放 1.8 s 后 `currentTime` | 1.81 s | 1.88 s |
+| `readyState` | 4 | 4 |
+
+→ **无污染、不静音、analyser 正常取波**，方案可行。
+
+### 端到端验证（本地 COS 模式后端 + 全新无痕浏览器）
+
+| 时刻 | music 源 | 状态 |
+|---|---|---|
+| 10–80 s | `cos` 直链 | 正常播放，进度 10% → 83% |
+| 90 s | `cos` 直链 | **`blobCount = 1`** ← 85% 阈值触发 `/api/peek` + 整首下载完成 |
+| 100 s | **`blob:http://127.0.0.1:8787/5652af8…`** | 切歌后从本地 Blob 播放（`currentTime=4s`、`readyState=4`、未暂停） |
+
+mp3 网络请求统计：`fetch 杏里 - Last Summer Whisper` **1 次**（预取下载），
+**没有任何对应的 `media` 请求** → 切歌确实没有二次下载。零 pageerror、零 console error。
+
+单测 `scripts/_test_audio_cache.ts`：**13/13 PASS**（命中 / 并发去重 / 淘汰 / pin 保护 / 非法输入）。
+
+---
+
+## 5. 顺带发现并修复：LLM 通道没有故障切换（提交 `6a2d41d`）
+
+线上 `POST /api/dj/open` 返回 `provider: "fallback"` 引起注意，查后端日志拿到实锤：
+
+```
+[songKnowledge] 触不可及 档案生成失败: MiMo API 402: {"message": "Insufficient account balance"}
+[DJ-chat] LLM mimo chat 失败 → fallback: MiMo API 402 ...
+```
+
+**根因**：`server/services/llm/doubao.ts` 里 provider 是**导入时静态选一次**——
+
+```ts
+export const llm = mimo.isConfigured() ? mimo : deepseek.isConfigured() ? deepseek : doubao;
+```
+
+「配了 key」不等于「key 可用」。MiMo 账号余额为 0 → 每次调用 402 失败，
+而实测**完全可用的 DeepSeek（200 OK）从头到尾没被尝试过一次**。
+后果不只是串场词变素：曲目档案生成失败、DJ 对话与即兴串场整条链路降级成模板池
+—— 也就是辛老师要求的「天气/金融/科技/历史趣闻个性化解说」实际处于失效状态。
+
+**修复**：新增 `FailoverProvider`，按序尝试；谁成功就锁定谁（5 分钟冷却），期间直接走可用通道，
+冷却到期后重试首选 → MiMo 充值恢复后**自动切回，无需重启服务**。`/api/health` 暴露 `llm.{chain,active}` 便于线上观察。
+
+**验证**（本地 COS 模式）：
+
+| 检查项 | 结果 |
+|---|---|
+| `/api/health.llm` | `{"chain":["deepseek","mimo"],"active":"deepseek"}` |
+| `POST /api/dj/open` | `provider: "deepseek"`，3.9 s |
+| 文案质量 | 「晚上好啊——六点十九，打工人刚下班，咱这档「听歌续命」节目正式开门营业。」（LLM 生成，非模板池） |
+| 日志 | `[llm] mimo 失败，试下一个：MiMo API 402` → `[llm] 切换到 deepseek` |
+
+> ⚠️ 需要辛老师确认：**MiMo（小米）账号余额已耗尽**（402 Insufficient account balance）。TTS 侧目前仍能出声，但建议一并核对是否同一账户扣费。
+
+---
+
+## 6. 待办（更新）
+
+- [ ] **部署**：`7539b97`（封面瘦身 + 预取）、`7990844`（blob 音频缓存）、`6a2d41d`（LLM 故障切换）**三笔都还没上线**。
+      Render `render.yaml` 里 `autoDeploy: true` 实测不生效（后台盯 12 分钟、27 次探测，实例 uptime 25 s → 723 s 单调递增从未重启）
+      → **必须去 Dashboard 点 Manual Deploy → Deploy latest commit**
+- [ ] 部署后验证三件事：`GET /api/peek` 返回 200、`/api/now` 的 `picUrl` 带 `imageMogr2`、`/api/health.llm.active` 为 `deepseek`
+- [ ] MiMo 账户充值（或确认弃用该通道，链路会自动走 DeepSeek）
+- [ ] 音频 `Cache-Control`（可选，已有前端 blob 缓存替代，收益仅剩「二次访问免下载」）
+- [ ] 音频瘦身（可选）：10.6 MB/首 → 128 kbps 约 4 MB，需 ffmpeg + 重传约 800 MB，有音质折损
 - [ ] 腾讯云密钥轮换（承接上一轮建议）
