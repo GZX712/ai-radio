@@ -55,6 +55,17 @@ export default function App() {
     const t = window.setInterval(() => setAppTime((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // [2026-09-21 手机端延迟] 撤掉 index.html 里的静态首屏 splash（同色系占位，
+  // 让首帧就有反馈，弥补 Slow 4G 下引导层要 4~9 秒才画出来的空窗）。
+  // 淡出 260ms 再移除；元素不存在时静默跳过（本地 dev / 已被移除）。
+  useEffect(() => {
+    const el = document.getElementById("boot-splash");
+    if (!el) return;
+    el.classList.add("is-gone");
+    const t = window.setTimeout(() => el.remove(), 320);
+    return () => window.clearTimeout(t);
+  }, []);
   // 持久化 handlePlay 引用（避免 effect 重跑）
   const handlePlayRef = useRef(engine.handlePlay);
   handlePlayRef.current = engine.handlePlay;
@@ -144,13 +155,32 @@ export default function App() {
     }
   }, [engine]);
 
-  // 初始拉当前播放
+  // 初始拉当前播放 →（仅已认证主人设备）随后首次开播。
+  //
+  // [2026-09-21 手机端延迟修复] 由「getNow 与 handlePlay 各跑各的」改为**串行**：
+  // 并行时 handlePlay() 往往在 now 到位前就执行 → 走 /api/next 白推进一次队列，
+  // 慢网下还会与 getNow 回来的歌打架（同一首被两次设源 → 下载 abort、从 0 重来）。
+  // 客人 / 未绑定设备不自动播 —— 统一由「开始电台」按钮在手势内触发（iOS 需要）。
   useEffect(() => {
-    radioApi
+    void radioApi
       .getNow()
-      .then(setNow)
-      .catch((err) => setError(err instanceof Error ? err.message : "Init failed"));
-  }, [setNow, setError]);
+      .then((s) => {
+        setNow(s);
+        return s;
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Init failed");
+        return null;
+      })
+      .then(() => {
+        // 无手势会被 iOS 拒 → 交给用户点「开始电台」（handleStart 内会再调一次）。
+        // 注意：不挂 document 全局 click 重试——它会和播放按钮 onToggle 竞态，
+        // 造成"点暂停 → 全局监听又自动 play"，暂停失效。
+        if (!started) return;
+        handlePlayRef.current().catch(() => { /* 失败交给用户手势 */ });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 启动时恢复 DJ personality（localStorage → 后端），切歌等场景立即用用户音色
   useEffect(() => {
@@ -218,13 +248,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 自动开播：页面加载即尝试一次（无手势会被 iOS 拒，用户点"开始电台"时再重试）。
-  // 注意：不再挂 document 全局 click 重试——之前它会和播放按钮的 onToggle 竞态，
-  // 首次播放失败时"点暂停 → document 监听又自动调 handlePlay"导致暂停无效/播放异常。
-  useEffect(() => {
-    handlePlayRef.current().catch(() => { /* 失败交给用户手势（开始电台/播放按钮） */ });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 自动开播已合并进上面的「getNow → handlePlay」串行流程（见该 effect 注释：
+  // 两条异步并行会在慢网下造成同一首歌被两次设源、下载 abort 重来）。
 
   // WebSocket 接收 DJ 串场（双语）
   useEffect(() => {

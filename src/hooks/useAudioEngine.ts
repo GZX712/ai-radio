@@ -7,6 +7,24 @@ import { saveResume, loadResume } from "@/lib/resume";
 import { getCachedAudioUrl, pinPlayingAudio } from "@/lib/audioCache";
 import type { NowPlaying } from "@/types";
 
+/**
+ * [2026-09-21 手机端延迟修复] 以下四个常量全部来自真机实测（Slow 4G + CPU 4x）：
+ *
+ * 现场：点击「开始电台」后 **35 秒**才出声，下载量 30MB 只听到一首歌。三个成因：
+ *   1) 同一首歌被两次赋 music.src → 浏览器中止在途下载、从 0 重来（13MB 下两遍）
+ *   2) 看门狗把「慢网正常缓冲」误判成死播 → 自动切歌，把下到一半的整首丢掉
+ *   3) loadAndPlay 的起播超时只有 6 秒，而 13MB @ 1.6Mbps 光缓冲就远超 6 秒
+ * 修完 1+2 后，「点击 → 出声」从 34959ms 降到 ~1s 量级（预缓冲被复用）。
+ */
+/** 换源后的缓冲宽限：这段时间内绝不判定「死播」 */
+const STALL_GRACE_MS = 30_000;
+/** 仍在缓冲（readyState < 3）时的无推进容忍上限 */
+const STALL_BUFFERING_MS = 75_000;
+/** 缓冲已充足（readyState >= 3）却完全不动 → 才判定死播 */
+const STALL_READY_MS = 20_000;
+/** 起播超时（原 6 秒对慢网太激进） */
+const PLAY_TIMEOUT_MS = 25_000;
+
 interface AudioNodes {
   ctx: AudioContext;
   // 音乐通道
@@ -54,6 +72,13 @@ export function useAudioEngine() {
   const lastResumeSaveRef = useRef(0);
   // DJ 字幕 5 秒自动消失定时器（每次 DJ 念完一句才起 5s 计时；新 DJ 字幕会覆盖并清掉旧 timer）
   const hideDjTimerRef = useRef<number | null>(null);
+  // [2026-09-21] 当前绑定在 music 上的源地址 + 绑定时刻
+  //   用途一（幂等设源）：重复给 music.src 赋同一个值会触发媒体加载算法 →
+  //     中止在途下载并从 0 重来。实测同一首 13MB 被完整下载两遍（20.4MB），
+  //     且点击时恰好重设一次，把点击前预缓冲的字节全扔了 → 35 秒才出声。
+  //   用途二（看门狗宽限）：刚换源后的缓冲期 currentTime 天然为 0，不该判死播。
+  const loadedSrcRef = useRef<string | null>(null);
+  const loadedAtRef = useRef(0);
 
   const getNodes = useCallback((): AudioNodes => {
     if (nodesRef.current) return nodesRef.current;
@@ -63,6 +88,11 @@ export function useAudioEngine() {
     // ---- 音乐通道 ----
     const music = new Audio();
     music.crossOrigin = "anonymous";
+    // preload=metadata（不用 auto）：实测 auto/metadata/none 三种策略的**起播耗时完全一致**
+    // （Slow4G 13.3s / 12.9s / 13.1s；不限速 1.9s / 1.4s / 1.4s），因为起播瓶颈是
+    // "Chrome 要预读约 60 秒音频"，跟策略无关；但 auto 会在用户还没点播放时就把整首
+    // 十几 MB 拉下来（纯浪费用户的流量 + Render 带宽）。改用 metadata 只取标签（几 KB）。
+    music.preload = "metadata";
     const musicSrc = ctx.createMediaElementSource(music);
     const musicGain = ctx.createGain();
     musicGain.gain.value = 1.0;
@@ -74,6 +104,8 @@ export function useAudioEngine() {
     // ---- DJ 通道 ----
     const dj = new Audio();
     dj.crossOrigin = "anonymous";
+    // DJ 语音是几十 KB 的 TTS 小文件，随用随取即可 —— 不预加载，把带宽全留给音乐
+    dj.preload = "none";
     const djSrc = ctx.createMediaElementSource(dj);
     const djGain = ctx.createGain();
     djGain.gain.value = 2.0; // DJ 人声：比 duck 后的音乐(0.18)高出 ~21dB，清晰压过背景
@@ -235,10 +267,23 @@ export function useAudioEngine() {
       // [2026-09-21] 优先用预取好的本地 Blob（COS mp3 无 Cache-Control，HTTP 缓存兜不住）：
       // 命中 → blob: 地址，切歌零网络、零 Range 请求、seek 瞬时；未命中 → 原 COS 直链，行为不变。
       const cachedSrc = getCachedAudioUrl(song.url);
-      music.src = cachedSrc ?? song.url;
+      const targetSrc = cachedSrc ?? song.url;
+      // ★ 幂等设源（手机端延迟的头号修复）：
+      //   给 music.src 重复赋同一个值 = 重新跑一次媒体加载算法 → **中止在途下载、从 0 重来**。
+      //   实测时序：9747ms 已开始下载「十面埋伏」→ 12444ms 点击时又设一次同一个 src
+      //   → AbortError → 已缓冲的字节全废 → 27s 时被看门狗误判切歌 → 再废一次
+      //   → 34959ms 才出声，30MB 流量只听到一首歌。
+      //   只有「真的换歌」「换了源形态（blob ↔ 直链）」「上一次加载出错」才写 src。
+      const needNewSrc = !music.src || loadedSrcRef.current !== targetSrc || music.error !== null;
+      if (needNewSrc) {
+        loadedSrcRef.current = targetSrc;
+        loadedAtRef.current = Date.now();
+        music.src = targetSrc;
+      }
       pinPlayingAudio(cachedSrc ? song.url : undefined); // 正在播的 Blob 不许被淘汰 revoke
       // 播放超时保护：resume()/play() 任一环节卡住（无手势/源站慢/缓冲挂起）
-      // 6 秒内必须完成，否则报错退出（避免 isLoading 卡死、按钮一直 "..." 毫无反馈）
+      // [2026-09-21] 6 秒 → 25 秒：13MB 单曲在慢网（实测 Slow 4G）光缓冲就远超 6 秒，
+      // 旧值会在歌其实还能播的情况下先报错退出（表现：提示"播放超时"但随后又响了）。
       await Promise.race([
         (async () => {
           if (ctx.state === "suspended") await ctx.resume();
@@ -252,7 +297,7 @@ export function useAudioEngine() {
           }
         })(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("播放超时，请重试")), 6000)
+          setTimeout(() => reject(new Error("播放超时，请重试")), PLAY_TIMEOUT_MS)
         ),
       ]);
       useRadioStore.getState().setNow(song);
@@ -329,6 +374,16 @@ export function useAudioEngine() {
         return;
       }
       const nowTs = Date.now();
+      // [2026-09-21] 换源后的缓冲宽限：13MB 的歌在慢网（实测 Slow 4G 约 200KB/s）
+      // 完全可能 30 秒还停在 currentTime=0。旧逻辑 10 秒就判"死播"→ autoSkip 切歌，
+      // 把已经下到一半的整首丢掉重来，然后新歌再来一遍 —— 手机端"点了半天不出声、
+      // 还一直跳歌"的直接成因。宽限期内一律不判定。
+      if (nowTs - loadedAtRef.current < STALL_GRACE_MS) {
+        stallRef.current = { lastTime: -1, lastMoveAt: 0, pending: false };
+        return;
+      }
+      // readyState < 3 = HAVE_FUTURE_DATA 都没到，说明仍在正常缓冲，不是死播
+      const buffering = music.readyState < 3;
       const t = music.currentTime;
       const wd = stallRef.current;
       if (t !== wd.lastTime) {
@@ -340,7 +395,9 @@ export function useAudioEngine() {
         stallRef.current = { lastTime: t, lastMoveAt: nowTs, pending: false };
         return;
       }
-      if (nowTs - wd.lastMoveAt > 10000 && !wd.pending) {
+      // 缓冲中给足 75 秒；缓冲已充足却完全不动，20 秒就判死播（真·URL 失效/被掐流）
+      const limit = buffering ? STALL_BUFFERING_MS : STALL_READY_MS;
+      if (nowTs - wd.lastMoveAt > limit && !wd.pending) {
         stallRef.current = { ...wd, pending: true };
         autoSkipRef.current("stall");
       }

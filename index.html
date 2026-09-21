@@ -8,9 +8,48 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>AI 电台 · AI Radio</title>
+    <!--
+      [2026-09-21 手机端延迟] 静态首屏 splash。
+      背景：JS 打包 85KB + CSS 14KB，在 Slow 4G + 4x CPU 降频下实测
+      「开始电台」引导层要 4.1~9.5 秒才画出来，这段时间用户看到的是纯黑屏，
+      主观上就是"半天打不开"。这里用内联样式先画一帧同色系占位（不动任何 JS 资源），
+      首帧（实测 1.7s）就有反馈；React 挂载后由 App 移除（淡出 260ms）。
+      刻意不放按钮 —— 避免用户点到一个还没接上事件的假按钮。
+    -->
+    <style>
+      html, body { margin: 0; background: #050505; }
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.06), #050505 70%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        transition: opacity .26s ease-out;
+      }
+      #boot-splash.is-gone { opacity: 0; pointer-events: none; }
+      #boot-splash .bs-title {
+        font-size: 42px; font-weight: 800; letter-spacing: -.03em; margin: 0;
+        background: linear-gradient(135deg, #fff, #999);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      #boot-splash .bs-sub { font-size: 14px; color: rgba(255,255,255,.55); margin: 0; }
+      #boot-splash .bs-dots { display: flex; gap: 7px; }
+      #boot-splash .bs-dots i {
+        width: 7px; height: 7px; border-radius: 50%; background: #9d00ff;
+        animation: bs-pulse 1.15s ease-in-out infinite;
+      }
+      #boot-splash .bs-dots i:nth-child(2) { animation-delay: .16s; background: #00f3ff; }
+      #boot-splash .bs-dots i:nth-child(3) { animation-delay: .32s; }
+      @keyframes bs-pulse { 0%, 100% { opacity: .22; transform: scale(.75); } 50% { opacity: 1; transform: scale(1.15); } }
+      @media (prefers-reduced-motion: reduce) { #boot-splash .bs-dots i { animation: none; opacity: .7; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-splash" role="status" aria-live="polite">
+      <h1 class="bs-title">AI 电台</h1>
+      <div class="bs-dots"><i></i><i></i><i></i></div>
+      <p class="bs-sub">正在接入电台…</p>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

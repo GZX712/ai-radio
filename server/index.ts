@@ -66,6 +66,34 @@ function startNeteaseKeepalive() {
   keepaliveTimer = setInterval(ping, 5 * 60 * 1000);
 }
 
+// ============== Render 自身保活（消除冷启动） ==============
+// [2026-09-21] 背景：Render 免费版「15 分钟没有【入站】请求」就 spin down，
+// 下次访问要等 30~50 秒冷启动才出页面。上面那个 keepalive 只 ping 了网易云 API
+// （出站请求），**对 Render 自己的休眠计时器毫无作用** —— 实测热实例 dcl 3033ms、
+// 冷实例 dcl 8326ms（Walkman 手机端实测 9459ms 才画出引导层），用户主观感受就是
+// "手机打不开 / 延迟太久"。
+//
+// 做法：定时 ping 自己的公网地址（= 入站请求）重置休眠计时器。
+// 只在 07:00–24:00（北京时间）保活：既覆盖 17:30 自动开播和日常收听时段，
+// 又把实例时长控制在约 527h/月（免费额度 750h/月），留足余量。
+let selfPingTimer: ReturnType<typeof setInterval> | null = null;
+function startSelfKeepalive() {
+  if (selfPingTimer) return;
+  const base = process.env.RENDER_EXTERNAL_URL;
+  if (!base) return; // 本地开发 / 未部署：跳过
+  const ping = () => {
+    const hour = Number(
+      new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", hour: "2-digit", hour12: false }).format(new Date())
+    ) % 24;
+    if (hour < 7 || hour >= 24) return; // 夜间不保活（省实例时长）
+    fetch(`${base}/api/health`, { signal: AbortSignal.timeout(10_000) })
+      .then((r) => console.log(`[selfkeepalive] awake ${r.status}`))
+      .catch((err) => console.warn("[selfkeepalive] ping fail:", err instanceof Error ? err.message : err));
+  };
+  ping();
+  selfPingTimer = setInterval(ping, 10 * 60 * 1000); // 10 分钟 < Render 的 15 分钟阈值
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT) || 8787;
@@ -1011,7 +1039,20 @@ wss.on("connection", (ws, req) => {
 
 // ============== 静态资源（始终服务 dist，让 iPhone/微信直接访问 8787） ==============
 const dist = path.resolve(__dirname, "../dist");
-app.use(express.static(dist, { maxAge: "1h", setHeaders: (res) => res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate") }));
+// [2026-09-21 手机端延迟] 原来 dist 下一律 no-store → 每次打开都重下 85KB JS + 14KB CSS。
+// 改成按文件分流：Vite 产物（dist/assets/*）名字带内容哈希 → 一年 immutable，
+// 构建一换名字就变，不存在脏缓存；只有入口相关文件才 no-store。
+app.use(
+  express.static(dist, {
+    setHeaders: (res, filePath) => {
+      if (/[\\/]assets[\\/]/.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+    },
+  })
+);
 app.get(/^(?!\/api\/|\/audio\/|\/ws).*/, (_req, res) =>
   res.sendFile(path.join(dist, "index.html"))
 );
@@ -1023,6 +1064,9 @@ server.listen(PORT, "0.0.0.0", () => {
 
   // 部署到 Render 时启动 netease 服务保活（防 spin down）
   if (IS_DEPLOYED) startNeteaseKeepalive();
+
+  // Render 自身保活：消除 15 分钟休眠 → 30~50 秒冷启动（手机端"打不开"的主因之一）
+  startSelfKeepalive();
 
   // 调度器启动：cron 17:30 + 切歌间隔计数
   setSchedulerBroadcast(broadcast);

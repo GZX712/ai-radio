@@ -3,8 +3,15 @@ import { radioApi } from "@/lib/api";
 import { prefetchAudio } from "@/lib/audioCache";
 import { useRadioStore } from "@/store/useRadioStore";
 
-/** 播到这个比例后开始预取下一首（85% ≈ 30 秒余量，足够拉完一首 10MB 的歌） */
-const THRESHOLD = 0.85;
+/**
+ * 播到这个比例后开始预取下一首。
+ *
+ * [2026-09-21] 0.85 → 0.5：单曲 10.6MB，85% 的余量在慢网下根本不够。
+ * 实测 Slow 4G（约 200KB/s）拉完一首 13MB 要 60 秒以上，而一首 4 分钟的歌
+ * 85% 只剩 36 秒 —— 预取必然赶不上，切歌照样白屏缓冲。提前到 50% 后
+ * 余量约 2 分钟，慢网也能备齐（Blob 最多留 2 首，代价可控）。
+ */
+const THRESHOLD = 0.5;
 
 /**
  * 下一首预取（封面 + 音频）。
@@ -40,6 +47,12 @@ export function useNextPrefetch() {
     if (!Number.isFinite(duration) || duration <= 0) return;
     if (progress / duration < THRESHOLD) return;
     if (doneRef.current === songmid) return;
+    // [2026-09-21] 弱网/省流模式不预取：
+    // 实测 Chrome 起播前要预读约 60 秒音频，慢网下当前曲自己都还在抢带宽；
+    // 此时再整首预取下一首（10MB 量级）会把正在播的那首饿死 → 反而卡顿。
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (conn?.saveData) return;
+    if (conn?.effectiveType && /(^|-)2g$/.test(conn.effectiveType)) return;
     doneRef.current = songmid;
 
     void (async () => {
