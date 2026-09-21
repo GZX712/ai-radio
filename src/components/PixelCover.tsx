@@ -40,7 +40,19 @@ export function PixelCover({ src, alt }: PixelCoverProps) {
 
   // ============ 触摸端：单张整图（最稳，永不重建 3D 网格） ============
   if (isCoarse) {
-    return <img key={src} className="full-cover" src={src} alt={alt} />;
+    // [2026-09-21] decoding=async 让解码离开主线程（切歌时不阻塞首帧）；
+    // fetchPriority=high 因为全屏封面是首屏最大可见元素，值得抢带宽
+    return (
+      <img
+        key={src}
+        className="full-cover"
+        src={src}
+        alt={alt}
+        decoding="async"
+        fetchPriority="high"
+        draggable={false}
+      />
+    );
   }
 
   // ============ 桌面端：single-canvas 像素显影 ============
@@ -93,6 +105,14 @@ function PixelRevealCanvas({ src, alt }: { src: string; alt: string }) {
         /* CORS 禁读时退化为深色格，显影仍可工作 */
       }
       ensureLoop();
+      // [2026-09-21] onload 只代表字节下载完，像素解码是惰性的：首次 drawImage 才同步解码，
+      // 会吃掉一帧（高 DPI 大图上尤其明显，观感就是切歌瞬间顿一下）。
+      // 这里背景预热解码，不 await、不阻塞、失败静默 —— 绘制路径完全不依赖它。
+      try {
+        void img.decode?.().catch(() => {});
+      } catch {
+        /* 老浏览器无 decode()：忽略 */
+      }
     };
     img.src = src;
     return () => {

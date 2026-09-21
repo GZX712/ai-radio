@@ -3,6 +3,7 @@ import { useRadioStore, WALLPAPERS, type WallpaperId } from "@/store/useRadioSto
 import { radioApi } from "@/lib/api";
 import { ReconnectingWS } from "@/lib/ws";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
+import { useNextPrefetch } from "@/hooks/useNextPrefetch";
 import { playEntranceSfx } from "@/lib/sfx";
 import type { NowPlaying } from "@/types";
 import { Player } from "@/components/Player";
@@ -30,6 +31,9 @@ export default function App() {
   const fmt = (s: number) =>
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
   const engine = useAudioEngine();
+  // [2026-09-21] 后段预取下一首（封面 + 音频）：曲库单首 10MB 量级，
+  // 等切歌才开始下载会白屏 + 缓冲 —— 提前 85% 进度的余量把资源备好
+  useNextPrefetch();
   const [ws, setWs] = useState<ReconnectingWS | null>(null);
   // 开始电台引导层：已认证的主人设备（手机/电脑）直接进电台，永不弹引导/绑定界面；
   // 只有新接入的（客人/未绑定）设备第一次打开才看到 —— 与主人体验区分开。

@@ -543,6 +543,18 @@ export class MusicQueue {
       consumed: this.consumed,
     };
   }
+
+  /**
+   * 预览"下一首"——只读，不消费预取池、不动 cursor、不改任何播放状态。
+   *
+   * [2026-09-21 观感优化] 给前端提前预取下一首封面/音频用。
+   * 曲库单首体积普遍 10MB 量级（平均 10.6MB，最大 16.6MB），
+   * 若等 /api/next 那一刻才开始下载，切歌必然白屏/缓冲 —— 这是"卡顿感"的主因之一。
+   * 提前拿到 URL 后，前端可在当前歌播到后段时静默预取，切歌时资源已在本地缓存。
+   */
+  peekNext(): NeteaseSong | null {
+    return this.prefetchPool[0]?.song ?? this.nextPool[0]?.song ?? null;
+  }
 }
 
 // 单例

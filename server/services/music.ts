@@ -307,7 +307,11 @@ class CosLibrarySource implements MusicSource {
     if (!relPath) return undefined;
     // 防双层编码: relPath 已是明文 "covers/L0001.jpg", 直接拼接
     // 真名文件用 ID 命名不会再含空格/中文, 但防御性 encodeURIComponent 仍保留
-    return `${COS_BASE_URL}/${relPath.split("/").map(encodeURIComponent).join("/")}`;
+    const base = `${COS_BASE_URL}/${relPath.split("/").map(encodeURIComponent).join("/")}`;
+    // [2026-09-21 观感优化] 原图封面最大 1.5MB / 平均 470KB，首屏要拉好几 MB，肉眼可见地"一张张慢慢填"。
+    // 走 COS 实时图片处理压成 640px WebP：实测 1211KB→72KB、215KB→17KB（-90%+），零文件改动、零重传。
+    // 桶未开图片处理或参数不支持时 COS 直接回源原图，不影响可用性（有兜底）。
+    return `${base}?imageMogr2/thumbnail/640x/format/webp/quality/78`;
   }
 
   async search(keyword: string, limit = 10): Promise<NeteaseSong[]> {

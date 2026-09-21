@@ -45,4 +45,12 @@ export const radioApi = {
   async prev(): Promise<SkipResult> {
     return parseSkipResponse(await request<unknown>("/prev", { method: "POST" }));
   },
+  /**
+   * 预览下一首（只读，不切歌也不推进队列）。
+   * [2026-09-21 观感优化] 用于在当前歌后段提前预取下一首的封面与音频：
+   * 曲库单首平均 10.6MB，等切歌那一刻才下载必然白屏 + 缓冲。
+   */
+  async peek(): Promise<NowPlaying | null> {
+    return parseResponse(await request<unknown>("/peek"));
+  },
 };

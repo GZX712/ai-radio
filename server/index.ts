@@ -215,6 +215,21 @@ app.get("/api/now", async (_req, res) => {
   }
 });
 
+/**
+ * 预览下一首（只读，不推进队列）—— 前端在当前歌后段提前预取封面/音频。
+ * [2026-09-21 观感优化] 曲库单首平均 10.6MB，等切歌才开始下载 → 白屏 + 缓冲。
+ */
+app.get("/api/peek", (_req, res) => {
+  try {
+    res.json({ code: 0, data: musicQueue.peekNext() });
+  } catch (err) {
+    res.status(500).json({
+      code: 500,
+      message: err instanceof Error ? err.message : "预览下一首失败",
+    });
+  }
+});
+
 app.post("/api/next", async (_req, res) => {
   try {
     const previousSong = await musicQueue.current();
