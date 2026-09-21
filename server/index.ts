@@ -31,6 +31,7 @@ import { triviaService, type TriviaCategory } from "./services/trivia";
 import { withDjLock } from "./services/djBusy";
 import { Readable } from "node:stream";
 import { musicService, neteaseNodeStatus, isCosLibraryMode, type NeteaseSong } from "./services/music";
+import { llm } from "./services/llm/doubao";
 import { regeneratePhraseBank, phraseBankStatus } from "./services/phraseBank";
 import { loadEnv } from "./services/env";
 
@@ -197,6 +198,8 @@ app.get("/api/health", (_req, res) => {
       ? { set: true, length: process.env.NETEASE_COOKIE.length, prefix: process.env.NETEASE_COOKIE.slice(0, 12) + "..." }
       : { set: false },
     envPlaylistId: process.env.PLAYLIST_ID || "(not set, using default)",
+    // [诊断 2026-09-21] LLM 通道状态：MiMo 余额耗尽(402) 时能否自动切到 DeepSeek
+    llm: llm.status(),
     musicMode: isCosLibraryMode()
       ? { cos: true, base: (process.env.COS_BASE_URL || "").replace(/\/+$/, "") }
       : { cos: false, neteaseNodes: neteaseNodeStatus().nodes.length },

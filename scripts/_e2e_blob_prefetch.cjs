@@ -98,6 +98,8 @@ const STEP_MS = 10_000;
       report.blobSeen = { at: Math.round((Date.now() - t0) / 1000) + "s", ct: blobAudio.ct, rs: blobAudio.rs, paused: blobAudio.paused };
     }
     if (report.blobSeen && blobAudio && blobAudio.ct > 3) break; // blob 已稳定播 3 秒 → 结论拿到
+    // 增量落盘：跑的过程中也能看到进度（不必等最后一次）
+    fs.writeFileSync(path.join(SHOT_DIR, "_e2e_prefetch.partial.json"), JSON.stringify(report, null, 2), "utf8");
   }
 
   report.peekCallCount = report.peekCalls.length;
