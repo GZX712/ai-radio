@@ -4,6 +4,7 @@ import { radioApi } from "@/lib/api";
 import { playRandomSfx } from "@/lib/sfx";
 import { playLaughTrack, stopLaughTrack } from "@/lib/laugh";
 import { saveResume, loadResume } from "@/lib/resume";
+import { getCachedAudioUrl, pinPlayingAudio } from "@/lib/audioCache";
 import type { NowPlaying } from "@/types";
 
 interface AudioNodes {
@@ -231,7 +232,11 @@ export function useAudioEngine() {
     useRadioStore.getState().setIsLoading(true);
     try {
       if (ctx.state === "suspended") await ctx.resume();
-      music.src = song.url;
+      // [2026-09-21] 优先用预取好的本地 Blob（COS mp3 无 Cache-Control，HTTP 缓存兜不住）：
+      // 命中 → blob: 地址，切歌零网络、零 Range 请求、seek 瞬时；未命中 → 原 COS 直链，行为不变。
+      const cachedSrc = getCachedAudioUrl(song.url);
+      music.src = cachedSrc ?? song.url;
+      pinPlayingAudio(cachedSrc ? song.url : undefined); // 正在播的 Blob 不许被淘汰 revoke
       // 播放超时保护：resume()/play() 任一环节卡住（无手势/源站慢/缓冲挂起）
       // 6 秒内必须完成，否则报错退出（避免 isLoading 卡死、按钮一直 "..." 毫无反馈）
       await Promise.race([

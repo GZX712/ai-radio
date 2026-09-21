@@ -1,11 +1,10 @@
 import { useEffect, useRef } from "react";
 import { radioApi } from "@/lib/api";
+import { prefetchAudio } from "@/lib/audioCache";
 import { useRadioStore } from "@/store/useRadioStore";
 
 /** 播到这个比例后开始预取下一首（85% ≈ 30 秒余量，足够拉完一首 10MB 的歌） */
 const THRESHOLD = 0.85;
-/** 预取用的 <link> 存活时长：够下载就行，之后撤掉不挂 DOM */
-const LINK_TTL_MS = 120_000;
 
 /**
  * 下一首预取（封面 + 音频）。
@@ -15,15 +14,18 @@ const LINK_TTL_MS = 120_000;
  * → 切歌瞬间必然白屏 + 缓冲，这是辛老师反馈"卡顿、影响观感"的直接来源。
  *
  * 做法：播到 85% 时问后端要一次「下一首是谁」（/api/peek，只读不推进队列），
- * 然后静默把封面与音频塞进浏览器缓存；真正切歌时资源已在本地，起播几乎无等待。
+ * 然后静默把封面与音频塞进本地缓存；真正切歌时资源已在本地，起播几乎无等待。
+ *
+ * 音频不是用 <link rel=prefetch>，而是整首 fetch 成 Blob 存在 src/lib/audioCache.ts ——
+ * 因为 COS 的 mp3 没有 Cache-Control（实测 header 为 null），<link> 预取进不了缓存，
+ * 切歌照样重下 10MB。Blob 由前端自持，切歌命中即零网络（详见该文件注释）。
  *
  * 安全性：预取完全 best-effort —— 失败、被取消、后端没准备都没副作用，
  * 切歌逻辑仍然走原来的 /api/next 路径，不依赖本 hook。
  *
  * ※ 实现要点：本 effect 只做「一次性副作用」，**不注册任何 cleanup**。
  *   progress 每 250ms 更新一次会让 effect 反复执行，若在 cleanup 里取消预取，
- *   预取会在启动后立刻被自己取消掉（曾经踩过）。这里靠 doneRef 按 songmid 去重，
- *    <link> 由定时器自行回收。
+ *   预取会在启动后立刻被自己取消掉（曾经踩过）。这里靠 doneRef 按 songmid 去重。
  */
 export function useNextPrefetch() {
   const progress = useRadioStore((s) => s.progress);
@@ -52,18 +54,9 @@ export function useNextPrefetch() {
           im.src = next.picUrl;
         }
 
-        // 2) 音频：<link rel=prefetch> 静默拉取。
-        // 注意：COS 音频目前未设 Cache-Control，能命中多少取决于浏览器会话缓存；
-        // 后端补上 cache-control 后此处收益会拉满。
-        if (next.url) {
-          const link = document.createElement("link");
-          link.rel = "prefetch";
-          link.as = "audio";
-          link.href = next.url;
-          link.crossOrigin = "anonymous";
-          document.head.appendChild(link);
-          window.setTimeout(() => link.remove(), LINK_TTL_MS);
-        }
+        // 2) 音频：整首拉成 Blob 存本地（切歌命中即零网络）。
+        // COS 音频无 Cache-Control，靠 HTTP 缓存兜不住，必须前端自持（见 audioCache.ts）
+        prefetchAudio(next.url);
       } catch {
         /* 预取失败：无副作用，切歌走原路径 */
       }
