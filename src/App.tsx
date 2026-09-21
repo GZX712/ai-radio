@@ -11,7 +11,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
-import { buildWsUrl, tryClaimFromUrl, bindCurrentDeviceAsOwner, isOwnerDevice } from "@/lib/deviceIdentity";
+import { buildWsUrl, tryClaimFromUrl, isOwnerDevice } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
 
 export default function App() {
@@ -40,15 +40,15 @@ export default function App() {
   const [started, setStarted] = useState<boolean>(() => {
     try { return isOwnerDevice(); } catch { return false; }
   });
-  // 主人设备绑定：仅「开始电台」页用，单设备级一次性
-  // - already：localStorage 已有 bond → 显示「✓ 本设备已为主人」，disable 按钮
-  // - idle/binding/done/error：供首次打开的设备点击「一键绑定」走状态机
-  const [bindingState, setBindingState] = useState<"already" | "idle" | "binding" | "done" | "error">(() => {
-    if (typeof window === "undefined") return "idle";
-    try {
-      return localStorage.getItem("radio_owner_bond") ? "already" : "idle";
-    } catch { return "idle"; }
-  });
+  // [2026-09-21 辛老师要求] 引导层上的「📍 这是我的设备，绑定为主人」按钮已下线。
+  // 两台主人设备均已绑定完毕，绑定状态由 localStorage 里的 bond 承担（无需 UI 展示）。
+  //
+  // 注意：这里**只是撤掉 UI 入口**，绑定能力与既有数据完全保留 ——
+  //   - bond 是 HMAC(deviceId) 无状态签名，已绑设备的凭证永久有效（不动 EGG_OWNER_SECRET 即可）；
+  //   - 后端 POST /api/device/claim 与 CLAIM_TOKEN 原样保留；
+  //   - deviceIdentity.tryClaimFromUrl 仍在，将来要加第三台设备时，
+  //     访问 /?claim=xradio-master-2026 一次即可绑定（见文件底部注释）。
+  // 详见 src/lib/deviceIdentity.ts 顶部说明。
   // APP 使用时长（打开页面即开始累计，每秒 +1）
   const [appTime, setAppTime] = useState(0);
   useEffect(() => {
@@ -88,29 +88,8 @@ export default function App() {
     }, 300);
   }, [engine]);
 
-  // 一键绑定本设备为主人：和「开始电台」合并为同一次手势
-  // - 同步：解锁音频 + 开电台（同 handleStart）
-  // - 异步：claim → bond 写 localStorage → reload 让 WS 重连带上 bond → 后端识别为 owner
-  // - 已绑定设备（state="already"）直接走 handleStart，不重复弹出
-  const handleBindAndStart = useCallback(() => {
-    handleStart();
-    if (bindingState !== "idle") return;
-    setBindingState("binding");
-    bindCurrentDeviceAsOwner()
-      .then((r: { ok: boolean; bond?: string; already?: boolean }) => {
-        if (r.ok) {
-          setBindingState("done");
-          // 600ms 后 reload：让 WS 用新 bond 重连，后端识别为 owner → 客人彩蛋永不触发
-          setTimeout(() => location.reload(), 600);
-        } else {
-          setBindingState("error");
-          useRadioStore.getState().setError("主人绑定失败，可稍后点击头部徽标重试");
-        }
-      })
-      .catch(() => {
-        setBindingState("error");
-      });
-  }, [engine, bindingState, handleStart]);
+  // [2026-09-21] 原 handleBindAndStart（一键 claim + 开电台）随绑定按钮一起移除。
+  // 现在引导层只有「▶ 开始电台」一个动作，未绑定设备（客人）点它就进入电台。
 
   // 播放控制命令执行（聊天/语音触发）
   const handleAction = useCallback((action: string, payload?: unknown) => {
@@ -386,41 +365,20 @@ export default function App() {
         />
       )}
 
-      {/* 开始电台引导层（iOS autoplay 解锁 + 主人设备一键绑定，三合一） */}
+      {/* 开始电台引导层（iOS autoplay 解锁 + 主人设备直达，二合一）
+          已绑定主人设备（手机/电脑）由 started 初始值直达电台、永不渲染本层；
+          其余设备（客人）只看到「▶ 开始电台」一个动作。
+          「📍 这是我的设备，绑定为主人」按钮已下线（辛老师：两台主人设备已绑好）。 */}
       {!started && (
         <div className="start-overlay" onClick={handleStart} role="presentation">
           <div className="start-card" onClick={(e) => e.stopPropagation()}>
             <h2 className="start-title">辛老师的 AI 电台</h2>
             <p className="start-sub">284 首你的歌 · 双语 DJ · 语音操控</p>
 
-            {/* 主人绑定区：一键 claim → reload 后永不再弹（仅未绑设备显示操作按钮） */}
-            <div className="start-bind-row">
-              {bindingState === "already" ? (
-                <span className="start-bind-chip owner-chip" title="本设备已永久绑定为电台主人">✓ 本设备已为主人</span>
-              ) : bindingState === "binding" ? (
-                <button type="button" className="start-bind-btn" disabled>⏳ 正在绑定为主人…</button>
-              ) : bindingState === "done" ? (
-                <button type="button" className="start-bind-btn owner-bound" disabled>✓ 绑定成功，即将刷新…</button>
-              ) : bindingState === "error" ? (
-                <button
-                  type="button"
-                  className="start-bind-btn"
-                  onClick={(e) => { e.stopPropagation(); setBindingState("idle"); }}
-                >↻ 重试绑定</button>
-              ) : (
-                <button
-                  type="button"
-                  className="start-bind-btn"
-                  onClick={(e) => { e.stopPropagation(); handleBindAndStart(); }}
-                  title="把当前浏览器标记为电台主人（辛老师本人的电脑/手机）"
-                >📍 这是我的设备，绑定为主人</button>
-              )}
-            </div>
-
             <button type="button" className="start-btn magnetic" onClick={handleStart}>
               ▶ 开始电台
             </button>
-            <p className="start-hint">点击「▶ 开始电台」直接听歌｜点击「📍 绑定为主人」同步解锁并永久认作主人</p>
+            <p className="start-hint">点击开始听歌，DJ 会先跟你打个招呼</p>
           </div>
         </div>
       )}
