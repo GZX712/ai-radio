@@ -69,6 +69,52 @@ export default function App() {
   // 持久化 handlePlay 引用（避免 effect 重跑）
   const handlePlayRef = useRef(engine.handlePlay);
   handlePlayRef.current = engine.handlePlay;
+  // [2026-09-25] 同法持久化 unlock / isUnlocked —— engine 对象每次渲染都是新的，
+  // 直接放进 effect 依赖会让手势监听被反复摘挂（点一下只生效半次）。
+  const unlockRef = useRef(engine.unlock);
+  unlockRef.current = engine.unlock;
+  const isUnlockedRef = useRef(engine.isUnlocked);
+  isUnlockedRef.current = engine.isUnlocked;
+
+  // ============ [2026-09-25 手机端「完全无声」修复] ============
+  // 现象：手机上进度条在走、UI 显示"正在播放"，但音乐和 DJ 一点声音都没有；电脑侧正常。
+  // 原因：主人设备（已绑）直达播放器，页面上**没有任何用户手势入口**；而 iOS Safari /
+  //      安卓 WebView / 微信在无手势时 AudioContext 恒为 suspended，WebAudio 一帧都
+  //      输出不了 → 音乐与 DJ 两个通道**一起哑**。电脑 Chrome 因 Media Engagement Index
+  //      直接放行 autoplay，所以只有手机中招。
+  // 对策（两层，互不依赖）：
+  //   ① 轮询解锁状态 —— AudioContext 不会把 statechange 事件推给 React；
+  //   ② 未解锁时挂捕获式手势监听，用户第一次触碰页面**任意位置**即解锁并续播；
+  //   ③ 同时给一条可见提示，避免用户不知道该点哪里（干等 = 以为坏了）。
+  const [audioUnlocked, setAudioUnlocked] = useState(true);
+
+  useEffect(() => {
+    if (!started) return;
+    const tick = () => setAudioUnlocked(isUnlockedRef.current());
+    tick();
+    const t = window.setInterval(tick, 700);
+    return () => window.clearInterval(t);
+  }, [started]);
+
+  useEffect(() => {
+    if (!started || audioUnlocked) return; // 已解锁就不再挂，彻底回避与暂停键的竞态
+    let last = 0;
+    const onGesture = () => {
+      const now = Date.now();
+      if (now - last < 400) return; // pointerdown 与 touchstart 对同一次触摸会连着触发
+      last = now;
+      unlockRef.current(); // 必须在手势的同步调用栈里 resume，晚一步 iOS 就不认
+      if (!useRadioStore.getState().isPlaying) {
+        handlePlayRef.current().catch(() => { /* 失败则由用户点按钮再试 */ });
+      }
+    };
+    document.addEventListener("pointerdown", onGesture, true);
+    document.addEventListener("touchstart", onGesture, true);
+    return () => {
+      document.removeEventListener("pointerdown", onGesture, true);
+      document.removeEventListener("touchstart", onGesture, true);
+    };
+  }, [started, audioUnlocked]);
 
   // 点击开始电台（iOS Safari 需要用户手势解锁音频）
   const handleStart = useCallback(() => {
@@ -381,6 +427,26 @@ export default function App() {
             <p className="start-hint">点击开始听歌，DJ 会先跟你打个招呼</p>
           </div>
         </div>
+      )}
+
+      {/* [2026-09-25] 音频未解锁时的显式入口。
+          主人设备直达播放器、页面上没有「开始电台」按钮，手机端因此拿不到手势 →
+          AudioContext 起不来 → 音乐和 DJ 一起无声。这条提示既是入口也是反馈，
+          用户点它（或点页面任意位置）即解锁。解锁成功后本层自动消失。 */}
+      {started && !audioUnlocked && (
+        <button
+          type="button"
+          className="audio-lock-hint"
+          onClick={() => {
+            unlockRef.current();
+            if (!useRadioStore.getState().isPlaying) {
+              handlePlayRef.current().catch(() => { /* 再点一次即可 */ });
+            }
+          }}
+        >
+          <span className="alh-icon" aria-hidden="true">🔊</span>
+          轻触开启声音
+        </button>
       )}
     </div>
   );

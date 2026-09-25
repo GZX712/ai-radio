@@ -34,6 +34,77 @@ interface AudioNodes {
   // DJ 通道（独立 MediaElementSource，与音乐在 WebAudio 内混音，避免 iOS 音频抢占）
   dj: HTMLAudioElement;
   djGain: GainNode;
+  /** 音乐元素是否已接入 WebAudio */
+  wired: boolean;
+  /** DJ 元素是否已接入 WebAudio（分开记：一个失败不该拖死另一个） */
+  djWired: boolean;
+}
+
+/**
+ * [2026-09-25 手机端「完全无声」根治] 把媒体元素接进 WebAudio —— 但**只在 ctx 真正
+ * running 之后**才接，且永不撤销。
+ *
+ * 为什么必须延迟接线：
+ *   `createMediaElementSource(el)` 一旦调用，该元素的音频就**只从 WebAudio graph 输出**，
+ *   而且**不可回退**（再调一次会抛 InvalidStateError，元素也无法恢复默认输出）。
+ *   手机（iOS Safari / 安卓 WebView / 微信 X5）在**没有用户手势**时 AudioContext 恒为
+ *   `suspended`，此时若已接线，就会出现最坏的组合：
+ *       媒体元素"在播"（`play()` resolve、进度条在走、UI 显示暂停键）
+ *       但一点声音都没有，而且**音乐与 DJ 两个通道一起哑**。
+ *   主人设备（已绑）直达播放器、页面上**没有任何手势入口**，正好踩中这个坑；
+ *   PC 的 Chrome 因 Media Engagement Index 直接放行 autoplay，所以电脑侧正常。
+ *
+ * 延迟接线后的行为：
+ *   - 拿到手势 → resume 成功 → 接线 → 正常混音 + analyser 波形（与之前完全一致）
+ *   - 始终拿不到手势 / resume 失败 → **保持不接线** → 元素走默认输出，至少能出声
+ *     （代价仅是 DJ 说话时音乐不再自动 duck，以及波形取不到数据）
+ */
+function ensureGraph(n: AudioNodes): void {
+  if (n.ctx.state !== "running") return; // 未解锁不接线 —— 这是整个修复的关键前提
+  if (!n.wired) {
+    try {
+      n.ctx
+        .createMediaElementSource(n.music)
+        .connect(n.musicGain)
+        .connect(n.analyser)
+        .connect(n.ctx.destination);
+      n.wired = true;
+    } catch {
+      /* 该环境不支持 MediaElementSource：保持未接线，music 直出 */
+    }
+  }
+  if (!n.djWired) {
+    try {
+      n.ctx.createMediaElementSource(n.dj).connect(n.djGain).connect(n.ctx.destination);
+      n.djWired = true;
+    } catch {
+      /* 同上：dj 直出 */
+    }
+  }
+}
+
+/**
+ * [2026-09-25] 尝试解锁 AudioContext —— **fire-and-forget，任何地方都不要 await 它**。
+ *
+ * 为什么不能 await：iOS 在**没有用户手势**时，`ctx.resume()` 返回的 promise 不是 reject
+ * 而是**一直 pending**（等手势来才兑现）。只要有一处 `await ctx.resume()`，整条播放流程
+ * 就会卡在那里 —— `loadAndPlay` 的 25 秒超时兜底一到期就抛「播放超时」，
+ * 结果**音乐根本没开始播、一点声音都没有**。这正是手机端"完全无声"的第二个成因。
+ *
+ * resume 只负责解锁 WebAudio 混音，元素本身能否出声不受它影响，
+ * 所以完全可以丢在后台跑；成功了就把两个元素接进 WebAudio（ensureGraph）。
+ */
+function tryResume(n: AudioNodes): void {
+  if (n.ctx.state !== "suspended") {
+    ensureGraph(n);
+    return;
+  }
+  void n.ctx
+    .resume()
+    .then(() => ensureGraph(n))
+    .catch(() => {
+      /* 无手势/被策略拒绝：保持未接线，元素走默认输出（至少有声音） */
+    });
 }
 
 /**
@@ -93,23 +164,23 @@ export function useAudioEngine() {
     // "Chrome 要预读约 60 秒音频"，跟策略无关；但 auto 会在用户还没点播放时就把整首
     // 十几 MB 拉下来（纯浪费用户的流量 + Render 带宽）。改用 metadata 只取标签（几 KB）。
     music.preload = "metadata";
-    const musicSrc = ctx.createMediaElementSource(music);
     const musicGain = ctx.createGain();
     musicGain.gain.value = 1.0;
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 128;
     analyser.smoothingTimeConstant = 0.8;
-    musicSrc.connect(musicGain).connect(analyser).connect(ctx.destination);
 
     // ---- DJ 通道 ----
     const dj = new Audio();
     dj.crossOrigin = "anonymous";
     // DJ 语音是几十 KB 的 TTS 小文件，随用随取即可 —— 不预加载，把带宽全留给音乐
     dj.preload = "none";
-    const djSrc = ctx.createMediaElementSource(dj);
     const djGain = ctx.createGain();
     djGain.gain.value = 2.0; // DJ 人声：比 duck 后的音乐(0.18)高出 ~21dB，清晰压过背景
-    djSrc.connect(djGain).connect(ctx.destination);
+
+    // ★ 这里**刻意不调** createMediaElementSource / connect —— 全部交给 ensureGraph()。
+    //   它只在 ctx 真正 running 时才接线，避免手机无手势时"两个通道一起哑"（详见其注释）。
+    //   电脑端 ctx 创建即 running，ensureGraph 会立即接线，行为与旧版逐字一致。
 
     // 音乐进度事件
     music.addEventListener("timeupdate", () => {
@@ -184,8 +255,11 @@ export function useAudioEngine() {
       useRadioStore.getState().setIsPlaying(true);
     });
 
-    const nodes: AudioNodes = { ctx, music, musicGain, analyser, dj, djGain };
+    const nodes: AudioNodes = { ctx, music, musicGain, analyser, dj, djGain, wired: false, djWired: false };
     nodesRef.current = nodes;
+    // 电脑端 ctx 创建即 running → 这里立刻接线（duck 与 analyser 波形与旧版无差别）；
+    // 手机端此刻还是 suspended → 不接线，等解锁手势后由 unlock()/loadAndPlay() 再调。
+    ensureGraph(nodes);
 
     // 注册音频压制回调（DJ 说话时音乐变小，说完恢复）
     useRadioStore.getState().setDuckCallbacks(
@@ -238,10 +312,12 @@ export function useAudioEngine() {
    * 1. resume AudioContext（iOS 初始 suspended，若等异步后再 resume 手势栈已断
    *    → 音乐元素"播放中"但 WebAudio 无声——手机端没声音的头号原因）
    * 2. 播一个静音 wav 解锁 media 元素 autoplay（iOS 要求元素曾被手势触发过 play）
+   * 3. [2026-09-25] resume 成功后调 ensureGraph() 把两个元素接进 WebAudio
+   *    （resume 是异步的，接线放在 .then 里 —— createMediaElementSource 本身不要求手势）
    */
   const unlock = (): void => {
-    const { ctx } = getNodes();
-    if (ctx.state === "suspended") void ctx.resume();
+    // fire-and-forget：resume 必须在手势的同步栈里**发起**，但绝不等它兑现（见 tryResume 注释）
+    tryResume(getNodes());
     try {
       const silent = new Audio();
       silent.volume = 0;
@@ -259,11 +335,14 @@ export function useAudioEngine() {
    * @param opts.seekTo 可选：从第几秒开始播（续播记忆恢复用；默认从头 0 秒）
    */
   const loadAndPlay = async (song: NowPlaying, opts?: { seekTo?: number }): Promise<void> => {
-    const { music, ctx } = getNodes();
+    const nodes = getNodes();
+    const { music } = nodes;
     const seekTo = opts?.seekTo && Number.isFinite(opts.seekTo) ? Math.max(0, opts.seekTo) : 0;
     useRadioStore.getState().setIsLoading(true);
     try {
-      if (ctx.state === "suspended") await ctx.resume();
+      // ★ 不 await：无手势时 iOS 的 resume() 会一直 pending，await 会把整条播放流程
+      //   卡到 25 秒超时（表现就是"完全没声音"）。解锁交由 tryResume 后台完成。
+      tryResume(nodes);
       // [2026-09-21] 优先用预取好的本地 Blob（COS mp3 无 Cache-Control，HTTP 缓存兜不住）：
       // 命中 → blob: 地址，切歌零网络、零 Range 请求、seek 瞬时；未命中 → 原 COS 直链，行为不变。
       const cachedSrc = getCachedAudioUrl(song.url);
@@ -286,7 +365,7 @@ export function useAudioEngine() {
       // 旧值会在歌其实还能播的情况下先报错退出（表现：提示"播放超时"但随后又响了）。
       await Promise.race([
         (async () => {
-          if (ctx.state === "suspended") await ctx.resume();
+          tryResume(nodes); // 同上：绝不 await（无手势时 iOS 的 resume 会永久 pending）
           await music.play();
           // play() 成功 = 数据已就绪，此时 seek 到续播点（若接近结尾，会自然触发 ended 切歌）
           if (seekTo > 2) {
@@ -446,7 +525,7 @@ export function useAudioEngine() {
     // —— 同会话"暂停→再播放"：audio 还停在这首歌 → 直接从暂停位置继续，不重载——
     if (music.paused && !music.ended && music.currentTime > 1) {
       try {
-        if (ctx.state === "suspended") await ctx.resume();
+        tryResume(getNodes()); // 不 await：见 tryResume 注释（无手势时 resume 会永久 pending）
         await music.play();
         useRadioStore.getState().setIsPlaying(true);
       } catch {
@@ -578,7 +657,7 @@ export function useAudioEngine() {
 
     const tryPlay = async (attempt: number): Promise<void> => {
       try {
-        if (ctx.state === "suspended") await ctx.resume();
+        tryResume(getNodes()); // 不 await（同上）：DJ 链路也不能被 resume 卡死
         await dj.play();
       } catch {
         // 播放失败：重试一次（iOS 常见），仍失败才跳下一条
@@ -620,8 +699,9 @@ export function useAudioEngine() {
       lastDjRef.current = { url, at: nowTs };
     }
 
-    const { ctx } = getNodes();
-    if (ctx.state === "suspended") await ctx.resume();
+    // DJ 走同一套解锁：不 await（无手势时 resume 会永久 pending）；接不上 WebAudio 时
+    // dj 元素走默认输出，至少能出声。
+    tryResume(getNodes());
     // 音乐暂停期间收到新 DJ 语音（用户切歌/回复触发）：丢弃旧的未说完，直接播新的
     if (djPausedRef.current) {
       djPausedRef.current = false;
@@ -635,9 +715,19 @@ export function useAudioEngine() {
     }
   };
 
+  /**
+   * [2026-09-25] AudioContext 是否已解锁（running）。
+   * 未解锁时 WebAudio 一帧都输出不了 → 手机端表现为「进度条在走但完全无声」。
+   * App 用它决定是否显示「轻触开启声音」提示、以及是否挂一次性手势兜底。
+   */
+  const isUnlocked = (): boolean => {
+    const n = nodesRef.current;
+    return !!n && n.ctx.state === "running";
+  };
+
   return {
     handlePlay, handlePause, handleToggle, handleSkip, handlePrev,
     handleSeek, handleSeekTo, setPlaybackRate, setVolume,
-    getAnalyser, playDj, stopDj, loadAndPlay, unlock,
+    getAnalyser, playDj, stopDj, loadAndPlay, unlock, isUnlocked,
   };
 }

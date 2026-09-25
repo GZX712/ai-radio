@@ -1538,6 +1538,50 @@ body::after {
   line-height: 1.45;
 }
 
+/* ===== [2026-09-25] 音频未解锁提示 =====
+   主人设备直达播放器、页面上没有「开始电台」按钮 → 手机拿不到用户手势 →
+   AudioContext 起不来 → 音乐与 DJ 一起无声。这条提示既是入口也是反馈。
+   故意放**顶部居中**：底部是播放控件区，放那边会挡住按钮反而制造"点了没反应"。 */
+.audio-lock-hint {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(18, 18, 20, 0.92);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  animation: alh-breathe 1.8s ease-in-out infinite;
+}
+
+.audio-lock-hint .alh-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.audio-lock-hint:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+@keyframes alh-breathe {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-lock-hint { animation: none; }
+}
+
 /* ============== Toast ============== */
 .toast {
   position: fixed;
