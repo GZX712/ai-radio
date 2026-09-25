@@ -11,7 +11,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { Toast } from "@/components/Toast";
 import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
-import { buildWsUrl, tryClaimFromUrl, isOwnerDevice } from "@/lib/deviceIdentity";
+import { buildWsUrl, tryClaimFromUrl, isOwnerDevice, getDeviceId, getOwnerBond } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
 
 export default function App() {
@@ -208,7 +208,10 @@ export default function App() {
   }, []);
 
   // 启动时恢复 DJ personality（localStorage → 后端），切歌等场景立即用用户音色
+  // [2026-09-25 客人路径排查] personality 是全局设置 → 只有主人设备才上报，
+  // 否则客人本机的默认音色会把主人调好的 DJ 音色冲掉（服务端也有 bond 验签双保险）。
   useEffect(() => {
+    if (!isOwnerDevice()) return;
     try {
       const raw = localStorage.getItem("ai-radio-dj-personality");
       if (!raw) return;
@@ -217,13 +220,16 @@ export default function App() {
       fetch("/api/dj/personality", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(p),
+        body: JSON.stringify({ ...p, deviceId: getDeviceId(), bond: getOwnerBond() }),
       }).catch(() => {});
     } catch { /* ignore */ }
   }, []);
 
   // 浏览器 GPS 精确定位（手机基站/网络位置）+ 逆地理编码城市名，上报后端用于天气解说
+  // [2026-09-25 客人路径排查] 天气定位是全站共用的 → 只有主人设备才上报，
+  // 否则客人授权定位后，全站天气解说会被改成客人的城市（服务端也有 bond 验签双保险）。
   useEffect(() => {
+    if (!isOwnerDevice()) return; // 客人不上报定位（也省得向客人要定位权限）
     if (!("geolocation" in navigator)) return;
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -240,7 +246,7 @@ export default function App() {
         fetch("/api/location", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lat: latitude, lon: longitude, city }),
+          body: JSON.stringify({ lat: latitude, lon: longitude, city, deviceId: getDeviceId(), bond: getOwnerBond() }),
         }).catch(() => {});
       },
       () => { /* 用户拒绝或无权限，回退 IP 定位 */ },

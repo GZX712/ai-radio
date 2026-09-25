@@ -392,8 +392,21 @@ async function triggerDJTransition(
   }
 }
 
+// [2026-09-25 客人路径排查] /api/dj/open 是**全局广播**（所有在线客户端都会播开场白）。
+// 前端只在「开始电台」按钮里触发它 = 每个客人点一次，主人的设备就被迫再听一遍开场白，
+// 且每次都烧一次 LLM+TTS。加 10 分钟全局冷却：窗口内直接跳过（音乐播放不受影响）。
+let lastDjOpenAt = 0;
+const DJ_OPEN_COOLDOWN_MS = 10 * 60 * 1000;
+
 app.post("/api/dj/open", async (_req, res) => {
   try {
+    const nowTs = Date.now();
+    if (nowTs - lastDjOpenAt < DJ_OPEN_COOLDOWN_MS) {
+      console.log("[DJ] 开场白冷却中（10 分钟内已播过），跳过本次广播");
+      res.json({ code: 0, data: { skipped: "cooldown", retryAfterMs: DJ_OPEN_COOLDOWN_MS - (nowTs - lastDjOpenAt) } });
+      return;
+    }
+    lastDjOpenAt = nowTs; // 先占位：即使生成失败也进入冷却，防并发双击/刷接口烧 LLM
     const currentSong = await musicQueue.current();
     const dj = await generateDJLine({
       scene: "open",
@@ -409,9 +422,18 @@ app.post("/api/dj/open", async (_req, res) => {
   }
 });
 
+// [2026-09-25 客人路径排查] 定位是**全局**的（weatherService 全站共用一份），
+// 修复前任何客人打开页面、授予定位权限，就会把全站天气解说的城市改成客人所在城市。
+// 现在只接受主人设备（bond 验签）上报；前端客人设备也已不再发起本请求。
 app.post("/api/location", (req, res) => {
   try {
-    const { lat, lon, city } = req.body as { lat?: number; lon?: number; city?: string };
+    const { lat, lon, city, deviceId, bond } = req.body as {
+      lat?: number; lon?: number; city?: string; deviceId?: string; bond?: string;
+    };
+    if (!verifyBond(typeof deviceId === "string" ? deviceId : "", typeof bond === "string" ? bond : null)) {
+      res.status(403).json({ code: 403, message: "仅主人设备可上报定位" });
+      return;
+    }
     if (typeof lat !== "number" || typeof lon !== "number" || Number.isNaN(lat) || Number.isNaN(lon)) {
       res.status(400).json({ code: 400, message: "缺少有效坐标" });
       return;
@@ -554,13 +576,22 @@ app.post("/api/phrase/refresh", (_req, res) => {
 });
 
 // 同步 DJ personality（用户选音色/性格后立即调用，后端所有 TTS 立即生效）
+// [2026-09-25 客人路径排查] personality 是**全局**的（setCurrentPersonality 影响
+// 所有客户端的 TTS），修复前任何客人改音色/发聊天都会把主人调好的 DJ 音色冲掉。
+// 现在只接受主人设备（bond 验签）写入。
 app.post("/api/dj/personality", (req, res) => {
-  const { gender, voice, traits, humorStyle } = (req.body || {}) as {
+  const { gender, voice, traits, humorStyle, deviceId, bond } = (req.body || {}) as {
     gender?: "male"|"female"|"neutral";
     voice?: string;
     traits?: string;
     humorStyle?: "financial"|"medical"|"legal"|"poker"|"british"|"savage"|"none";
+    deviceId?: string;
+    bond?: string;
   };
+  if (!verifyBond(typeof deviceId === "string" ? deviceId : "", typeof bond === "string" ? bond : null)) {
+    res.status(403).json({ code: 403, message: "仅主人设备可修改 DJ 音色" });
+    return;
+  }
   if (!gender) {
     res.status(400).json({ code: 400, message: "缺少 gender" });
     return;
@@ -980,7 +1011,9 @@ wss.on("connection", (ws, req) => {
             ? msg.personality as { gender: "male" | "female" | "neutral"; voice?: string; traits: string }
             : undefined;
           // 记住用户音色/性格选择（所有场景的 TTS 都用它）
-          if (personality) setCurrentPersonality(personality);
+          // [2026-09-25 客人路径排查] 全局音色只认主人：客人聊天自带的 personality
+          // （其本机 localStorage 默认值）不得覆盖主人调好的 DJ 音色。
+          if (personality && role === "owner") setCurrentPersonality(personality);
           // 前端 send chat 时会带本设备的会话历史 (history: [{role, content}]) 交给 LLM，
           // 让 DJ 看到上文、避免"答非所问"。
           // [2026-09-09·设备隔离] 上下文只取该设备自己带过来的会话历史 —— 服务端不再

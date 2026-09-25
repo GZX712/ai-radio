@@ -69,6 +69,9 @@ function ensureGraph(n: AudioNodes): void {
         .connect(n.analyser)
         .connect(n.ctx.destination);
       n.wired = true;
+      // 接线后音量由 musicGain 全权接管。未接线阶段 duck/setVolume 可能往
+      // 元素 volume 写过值（见 setDuckCallbacks），这里归位防止双重衰减。
+      n.music.volume = 1;
     } catch {
       /* 该环境不支持 MediaElementSource：保持未接线，music 直出 */
     }
@@ -262,17 +265,27 @@ export function useAudioEngine() {
     ensureGraph(nodes);
 
     // 注册音频压制回调（DJ 说话时音乐变小，说完恢复）
+    // [2026-09-25 客人路径排查] 未接线（手机未解锁）时 WebAudio gain 控不到声音，
+    // duck/unduck/setVolume 全部静默失效 —— 退到元素自身的 volume 兜底。
     useRadioStore.getState().setDuckCallbacks(
       () => {
-        // 音乐音量压到 0.18（≈ -15 dB），0.2 秒淡入。
-        // 之前 0.45（-7dB）音乐仍响 → DJ 被盖。
-        // 0.18 让 DJ 2.0 gain 干净压过音乐；保留极低背景"音乐未停"的衔接感
-        musicGain.gain.setTargetAtTime(0.18, ctx.currentTime, 0.2);
+        if (nodes.wired) {
+          // 音乐音量压到 0.18（≈ -15 dB），0.2 秒淡入。
+          // 之前 0.45（-7dB）音乐仍响 → DJ 被盖。
+          // 0.18 让 DJ 2.0 gain 干净压过音乐；保留极低背景"音乐未停"的衔接感
+          musicGain.gain.setTargetAtTime(0.18, ctx.currentTime, 0.2);
+        } else {
+          music.volume = useRadioStore.getState().volume * 0.18;
+        }
       },
       () => {
         // 恢复用户设定的音量，0.3 秒淡出
         const target = useRadioStore.getState().volume;
-        musicGain.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+        if (nodes.wired) {
+          musicGain.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+        } else {
+          music.volume = target;
+        }
       }
     );
 
@@ -598,9 +611,13 @@ export function useAudioEngine() {
   };
 
   const setVolume = (v: number): void => {
-    const { musicGain } = getNodes();
-    musicGain.gain.value = Math.max(0, Math.min(1, v));
-    useRadioStore.getState().setVolume(v);
+    const nodes = getNodes();
+    const clamped = Math.max(0, Math.min(1, v));
+    nodes.musicGain.gain.value = clamped;
+    // [2026-09-25] 未接线（手机未解锁）时 gain 不在信号链上，直接控元素音量，
+    // 否则音量滑条在"未解锁"窗口期是死的（拖了没反应）。
+    if (!nodes.wired) nodes.music.volume = clamped;
+    useRadioStore.getState().setVolume(clamped);
   };
 
   const getAnalyser = (): AnalyserNode | null => {

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 import { pushSettings } from "@/lib/settingsSync";
-import { isOwnerDevice } from "@/lib/deviceIdentity";
+import { isOwnerDevice, getDeviceId, getOwnerBond } from "@/lib/deviceIdentity";
 
 interface ChatMessage {
   id: number;
@@ -183,13 +183,16 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   personalityRef.current = personality;
   // 立即同步 personality 到后端（debounce 200ms 避免 traits 每次按键都请求）
   // 解决"选音色后 DJ 还是 Edge 音"——之前必须发消息才会同步
+  // [2026-09-25 客人路径排查] personality 是全局设置：客人设备不上报
+  // （服务端也有 bond 验签），避免客人的本机默认音色冲掉主人调好的 DJ 音色。
   const syncPersonalityToServer = (p: Personality) => {
+    if (!isOwnerDevice()) return;
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = window.setTimeout(() => {
       fetch("/api/dj/personality", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(p),
+        body: JSON.stringify({ ...p, deviceId: getDeviceId(), bond: getOwnerBond() }),
       }).catch(() => {});
     }, 200);
   };
