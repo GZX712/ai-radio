@@ -217,6 +217,11 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   const streamTimerRef = useRef<number | null>(null);
   // 当前手动播放的 chat-reply 消息 id（▶ 再点变 ⏸）
   const [playingReplyId, setPlayingReplyId] = useState<number | null>(null);
+  // [2026-09-25 DJ 回复时灵时不灵] 回复看门狗：发出聊天后 25s 没等到任何
+  // chat-reply（连接断过 / 服务器卡了）→ 关掉 thinking、给一条可点重发的提示。
+  // 旧行为：消息进了死连接就是永久沉默，用户只能干等或反复重发。
+  const replyWatchdogRef = useRef<number | null>(null);
+  const [lostText, setLostText] = useState<string | null>(null);
 
   const now = () => {
     const d = new Date();
@@ -232,6 +237,14 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   useEffect(() => {
     return ws.onMessage((msg) => {
       const m = msg as Record<string, unknown>;
+      // 任何 chat-reply 到达 → 回复链路是通的：撤看门狗 + 清「没送到」提示
+      if (m.type === "chat-reply") {
+        if (replyWatchdogRef.current !== null) {
+          window.clearTimeout(replyWatchdogRef.current);
+          replyWatchdogRef.current = null;
+        }
+        setLostText(null);
+      }
       if ((m.type === "dj" || m.type === "chat-reply") && m.en) {
         const reply = m as { en: string; zh: string; audioUrl?: string; action?: string; song?: unknown; funny?: boolean };
         setMessages((prev) => {
@@ -428,6 +441,14 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
         content: m.en, // 用英文喂给 LLM（DJ 主语种）
       }));
     ws.send({ type: "chat", text: t, personality, history: historyPayload });
+    // 回复看门狗：25s 没等到 chat-reply → 判定这条丢了（socket 僵尸 / 服务端异常），
+    // 关 thinking + 弹重发入口。正常链路实测 5-9s 回包，25s 余量充足。
+    if (replyWatchdogRef.current !== null) window.clearTimeout(replyWatchdogRef.current);
+    replyWatchdogRef.current = window.setTimeout(() => {
+      replyWatchdogRef.current = null;
+      useRadioStore.getState().setDjThinking(false);
+      setLostText(t);
+    }, 25000);
   };
 
   const handleSend = () => sendMessage(input);
@@ -522,6 +543,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort();
+      if (replyWatchdogRef.current !== null) window.clearTimeout(replyWatchdogRef.current);
     };
   }, []);
 
@@ -670,6 +692,22 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                 正在敲碗回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
               </span>
             </div>
+          </div>
+        )}
+        {lostText && (
+          <div className="chat-lost" role="alert">
+            <span className="chat-lost-text">📡 这条好像没送到 DJ 耳朵里（连接断了一下）</span>
+            <button
+              type="button"
+              className="chat-lost-retry"
+              onClick={() => {
+                const t = lostText;
+                setLostText(null);
+                sendMessage(t);
+              }}
+            >
+              ↻ 重发「{lostText.length > 12 ? lostText.slice(0, 12) + "…" : lostText}」
+            </button>
           </div>
         )}
       </div>

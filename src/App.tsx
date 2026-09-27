@@ -298,7 +298,11 @@ export default function App() {
         return;
       }
       if (m.type === "dj" || m.type === "chat-reply") {
-        useRadioStore.getState().setDjThinking(false);
+        // [2026-09-25] 只有 chat-reply 才撤「正在敲碗回复」——dj 自动串场（切歌/天气）
+        // 不该把用户在等的聊天回复 spinner 冲掉（否则会显得"发了消息没反应"）。
+        if (m.type === "chat-reply") {
+          useRadioStore.getState().setDjThinking(false);
+        }
         // 去掉"到达就随机播卡通音效"——改成：dj 类型自动播语音，
         // 若后端标了 funny（这条是笑话/怼人），语音播完自动接 sitcom 罐头笑声
         // （playDj 内部处理；chat-reply 由用户点 ▶ 播放，同样在 ChatPanel 传 laugh）

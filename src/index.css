@@ -1582,6 +1582,42 @@ body::after {
   .audio-lock-hint { animation: none; }
 }
 
+/* ============== 聊天回复丢失提示（回复看门狗触发） ============== */
+.chat-lost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 6px 0 2px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-lost-text {
+  font-size: 12.5px;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
+.chat-lost-retry {
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chat-lost-retry:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* ============== Toast ============== */
 .toast {
   position: fixed;
