@@ -324,6 +324,9 @@ function buildUserPrompt(ctx: DJContext): string {
     lines.push(`Listener said: "${msg}"`);
     lines.push(`Reply directly with REAL FEELING — acknowledge what they said first, then react in character. If they're down, be warm and comforting; if they joke, laugh and riff on it; if they tease, tease back. 2-3 sentences, engaged and natural, never a robot reciting a template.`);
     lines.push(`HARD RULE: if you mention a song, name ONLY its title — NEVER the artist name.`);
+    // [2026-10-05 答非所问根治] 多轮对话时 assistant 历史是"它自己输出过的 JSON 字符串"，
+    // 模型会模仿这个格式续写 —— 但聊几轮后仍可能滑回散文。结尾再钉一次格式：
+    lines.push(`FORMAT LOCK: your reply MUST be the same single-line JSON object as your previous replies in this conversation — {"en":"...","zh":"...","funny":...}. No prose, no markdown fences.`);
   } else if (ctx.scene === "hourly") {
     lines.push(`It's the top of the hour. Announce the time with a fresh improvised line — playful and free, don't just read the clock like a robot. 1-2 sentences.`);
   }
@@ -365,6 +368,15 @@ function parseBilingual(raw: string): { en: string; zh: string; funny: boolean }
       zh: zhMatch[1].trim(),
       funny: /funny["']?\s*[:：]\s*(true|"true")/i.test(text),
     };
+  }
+
+  // [2026-10-05] 纯文本兜底：模型聊了几轮后偶发抛开 JSON 直接用散文回复
+  // （多轮 few-shot 漂移）。整段拿来当回答 —— en/zh 同文，至少 DJ 答的是
+  // 用户问的这个问题，而不是掉进 fallback 模板池「答非所问」。
+  const prose = text.trim();
+  if (prose.length >= 8 && prose.length <= 800 && !prose.startsWith("{") && !prose.startsWith("```")) {
+    console.warn("[DJ] LLM 未按 JSON 输出，启用散文兜底:", prose.slice(0, 80));
+    return { en: prose, zh: prose, funny: false };
   }
   return null;
 }
@@ -743,13 +755,27 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
   let funny = false;
   try {
     // 拼 messages：system + (history) + 当前 user
-    // history = [{role:user|assistant, content:en}]，最多取 ctx.history 后 10 条，
+    // history = [{role:user|assistant, content}]，最多取 ctx.history 后 10 条，
     // 且只保留 content 非空（避免 LLM 出现"空回合"误解）
     // 解决"DJ 答非所问"：之前 chat 只传单条 user prompt，LLM 看不到上文 → 问"明天去哪玩"答"下午好"
+    //
+    // [2026-10-05 答非所问根治·服务端防线] assistant 历史必须是**模型自己输出过的
+    // JSON 字符串格式**。旧版前端传的是纯文本（en 散文）→ 模型把历史当 few-shot
+    // 模仿，聊 1-2 轮后就抛开 JSON 用散文回复 → parseBilingual 失败 → fallback
+    // 模板池 → 用户看到的全是「答非所问」的模板句。这里把非 JSON 的 assistant
+    // 历史统一包回 {"en":...,"zh":...} 信封，即使旧前端未升级也能把格式钉死。
     const historyMessages = (ctx.history ?? [])
       .filter((h) => typeof h.content === "string" && h.content.trim().length > 0)
       .slice(-10)
-      .map((h) => ({ role: h.role as "user" | "assistant", content: h.content }));
+      .map((h) => {
+        if (h.role === "assistant") {
+          const c = h.content.trim();
+          if (!c.startsWith("{")) {
+            return { role: "assistant" as const, content: JSON.stringify({ en: c, zh: c, funny: false }) };
+          }
+        }
+        return { role: h.role as "user" | "assistant", content: h.content };
+      });
     const messages = [
       ...historyMessages,
       { role: "user" as const, content: prompt },
@@ -759,12 +785,13 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
       messages,
       // 开场白用更高温度（更发散更即兴，每次打开 APP 都不一样）
       temperature: ctx.scene === "open" ? 1.0 : 0.9,
-      // 强制短话术：对话场景 140 → 200（修复 2026-09-05：140 太紧，长对话 history 累积
-      // 后 LLM 输出容易在 zh 字段被截断 → parseBilingual 收到 {"zh":""} → 中文消失）
-      maxTokens: ctx.scene === "chat" ? 200 : 120,
+      // [2026-10-05] chat 200 → 400：JSON 信封（en+zh+funny 双语文案）本身就要
+      // ~250 token，200 会在 zh 字段中间截断 → parseBilingual 失败 → fallback。
+      maxTokens: ctx.scene === "chat" ? 400 : 120,
     });
     const parsed = parseBilingual(raw);
-    if (!parsed) throw new Error("无法解析双语 JSON");
+    // [2026-10-05] 解析失败必须带原始输出前 120 字符进日志（Render log 可见真因）
+    if (!parsed) throw new Error(`无法解析双语 JSON: ${raw.slice(0, 120)}`);
     en = parsed.en;
     zh = parsed.zh;
     funny = parsed.funny;

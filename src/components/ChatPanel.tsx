@@ -433,12 +433,18 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     setInput("");
     useRadioStore.getState().setDjThinking(true);
     // 收集最近 10 条对话历史（user + DJ reply；不带 auto / 不带当前这条）
+    // [2026-10-05 答非所问根治] DJ 的回复必须以"模型自己输出过的 JSON 格式"回喂 ——
+    // 之前只喂 m.en 纯文本，模型把历史当 few-shot 模仿，聊 1-2 轮就抛开 JSON 用散文
+    // 回复 → 服务端 parseBilingual 失败 → 掉 fallback 模板池 → 用户看到答非所问。
     const historyPayload = messages
       .filter((m) => m.role === "user" || (m.role === "dj" && m.kind === "reply"))
       .slice(-10)
       .map((m) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.en, // 用英文喂给 LLM（DJ 主语种）
+        role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+        content:
+          m.role === "user"
+            ? m.en // 用户原话（中文）
+            : JSON.stringify({ en: m.en, zh: m.zh, funny: false }),
       }));
     ws.send({ type: "chat", text: t, personality, history: historyPayload });
     // 回复看门狗：25s 没等到 chat-reply → 判定这条丢了（socket 僵尸 / 服务端异常），

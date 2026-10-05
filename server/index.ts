@@ -796,6 +796,14 @@ function fireGuestGreeting(isNew: boolean, deviceId: string): void {
 function detectAction(text: string): { action: string; en: string; zh: string } | null {
   const t = text.toLowerCase().trim();
 
+  // [2026-10-05 答非所问] 问句/长句一律不拦：「现在放的这首歌叫什么名字」被旧规则
+  // 抢下、回一句死的「让我看看现在放什么。」（无语音、也没真告诉歌名）——这是
+  // 用户感知「DJ 卡壳、答非所问」的头号来源。疑问词或长句 → 交给 LLM 聊天
+  // （聊天链路本来就注入当前歌 + 背景档案，答得又准又有声音）。
+  if (/[吗呢嘛吧？?]/.test(t) || t.length > 15 || /(什么|怎么|为啥|为什么|哪|谁|几多|多少)/.test(t)) {
+    return null;
+  }
+
   // 切歌 / 下一首
   if (/(切歌|下一首|换歌|换一首|下一条|next|skip|change\s*song)/.test(t)) {
     return { action: "skip", en: "Switching tracks. Hold on.", zh: "好，换一首。" };
@@ -816,10 +824,7 @@ function detectAction(text: string): { action: string; en: string; zh: string } 
   if (/(小声|音量减|音量调小|声音小|volume\s*down|quieter)/.test(t)) {
     return { action: "volumeDown", en: "Turning it down a notch.", zh: "音量调小一点。" };
   }
-  // 现在放什么
-  if (/(什么歌|现在放|歌名|what'?s\s*playing|current\s*song|what\s*song)/.test(t)) {
-    return { action: "whatSong", en: "Let me check the queue.", zh: "让我看看现在放什么。" };
-  }
+  // [2026-10-05] 「现在放什么」分支已删除 —— 统一走 LLM 聊天回答（有真歌名+语音）
 
   return null;
 }
@@ -841,20 +846,35 @@ function detectSongQuestion(text: string): boolean {
 /**
  * 点歌识别："播放/来首/放首/想听 + 关键词"
  * 命中返回搜索关键词；闲聊返回 null
+ *
+ * [2026-10-05 答非所问] 关键词清洗两道：
+ *  1) 剥掉填充词（吧/呀/啊/呢/的/类似/差不多/这种/一首…）——旧版把「再来首类似的吧」
+ *     的「类似的吧」原样拿去搜库，必搜不到 → 回一句「翻遍黑胶堆也没有」，用户一脸懵。
+ *  2) 清洗后是「类似/差不多/随便」这类泛意图 → 返回 __SIMILAR__（调用侧用当前歌
+ *     的歌手名做搜索，实现"再来首同风格的"）；空关键词 → null 交给 LLM 聊天。
  */
 function detectSongRequest(text: string): { keyword: string } | null {
   const t = text.trim();
 
   // 播放/来首/放首/点一首/想听 XX
   const patterns = [
-    /(?:播放|来一首|来首|放首|放一首|点一首|点歌|想听|唱一首|放一下)\s*(.+?)[。！!？?]?$/,
-    /^(?:播放|来一首|来首|放首|放一首|点一首|想听)\s*(.+)$/,
+    /(?:播放|来一首|来首|放首|放一首|点一首|点歌|想听|唱一首|放一下|再来一首|再来首|换一首|换首)\s*(.+?)[。！!？?]?$/,
+    /^(?:播放|来一首|来首|放首|放一首|点一首|想听|再来一首|再来首)\s*(.+)$/,
   ];
   for (const p of patterns) {
     const m = t.match(p);
-    if (m && m[1] && m[1].length >= 2) {
-      const keyword = m[1].trim().replace(/[。！!？?，,]$/, "");
-      return { keyword };
+    if (m && m[1]) {
+      const keyword = m[1]
+        .trim()
+        .replace(/[。！!？?，,]+$/, "")
+        .replace(/^(类似的?|差不多的?|一样的?|这种的?|这样的?|那种的?|那样的?|这首|那首|一首|一个|点|些)+/, "")
+        .replace(/(吧|呀|啊|呢|的|哈|咯)+$/, "")
+        .trim();
+      // 泛意图：再来首类似的 → 用当前歌曲的歌手做同风格搜索
+      if (/^(类似|差不多|一样|这种|那样|这种风格|这种类型|好听|随便|都行)/.test(keyword) || keyword.length === 0) {
+        return { keyword: "__SIMILAR__" };
+      }
+      if (keyword.length >= 2) return { keyword };
     }
   }
   return null;
@@ -994,8 +1014,18 @@ wss.on("connection", (ws, req) => {
         // 1. 点歌请求优先（"播放一首温柔的音乐" / "来首周杰伦的歌"）
         const songReq = detectSongRequest(String(msg.text));
         if (songReq) {
-          await handleSongRequest(ws, songReq.keyword);
-          return;
+          // [2026-10-05] 「再来首类似的」→ 用当前歌的歌手名做同风格搜索；
+          // 当前没在播 → 不拦，落回 LLM 聊天让它聊。
+          let keyword = songReq.keyword;
+          if (keyword === "__SIMILAR__") {
+            const cur = await musicQueue.current().catch(() => null);
+            if (cur?.artist) keyword = cur.artist;
+            else keyword = "";
+          }
+          if (keyword) {
+            await handleSongRequest(ws, keyword);
+            return;
+          }
         }
 
         // 2. 播放控制命令（切歌/暂停/播放/音量等）
