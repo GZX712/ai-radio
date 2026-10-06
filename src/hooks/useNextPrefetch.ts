@@ -6,12 +6,15 @@ import { useRadioStore } from "@/store/useRadioStore";
 /**
  * 播到这个比例后开始预取下一首。
  *
- * [2026-09-21] 0.85 → 0.5：单曲 10.6MB，85% 的余量在慢网下根本不够。
- * 实测 Slow 4G（约 200KB/s）拉完一首 13MB 要 60 秒以上，而一首 4 分钟的歌
- * 85% 只剩 36 秒 —— 预取必然赶不上，切歌照样白屏缓冲。提前到 50% 后
- * 余量约 2 分钟，慢网也能备齐（Blob 最多留 2 首，代价可控）。
+ * [2026-10-06] 0.5 → 0.25：辛老师实测「连播一定数量后卡壳/网络延迟」。
+ * 慢网（200KB/s）拉一首 10MB 要 50 秒+，一首 3 分钟的歌 50% 只剩 90 秒余量，
+ * 再撞上手机网络长时间大流量被运营商 QoS 限速，预取必然赶不上 →
+ * 切歌现拉整首 = 卡壳。提前到 25% 后余量翻倍以上。
+ * （更根本的解法是音频重编码 318→128kbps，文件直接砍 60%，在待办里。）
  */
-const THRESHOLD = 0.5;
+const THRESHOLD = 0.25;
+/** 预取失败后至少隔这么久才重试（progress 每 250ms 刷一次，不能每次都重新拉 10MB） */
+const RETRY_AFTER_MS = 15_000;
 
 /**
  * 下一首预取（封面 + 音频）。
@@ -39,21 +42,25 @@ export function useNextPrefetch() {
   const duration = useRadioStore((s) => s.duration);
   const isPlaying = useRadioStore((s) => s.isPlaying);
   const songmid = useRadioStore((s) => s.now?.songmid);
-  /** 已预取过的歌：同一次播放里只触发一次 */
+  /** 已预取成功的歌：同一次播放里只成功一次 */
   const doneRef = useRef<string | null>(null);
+  /** [2026-10-06] 上次预取尝试的时刻（失败重试节流用；成功或换歌重置） */
+  const lastAttemptRef = useRef(0);
 
   useEffect(() => {
     if (!isPlaying || !songmid) return;
     if (!Number.isFinite(duration) || duration <= 0) return;
     if (progress / duration < THRESHOLD) return;
     if (doneRef.current === songmid) return;
+    // [2026-10-06] 失败重试节流：上次尝试 15 秒内不再发（拉 10MB 不是免费动作）
+    if (Date.now() - lastAttemptRef.current < RETRY_AFTER_MS) return;
     // [2026-09-21] 弱网/省流模式不预取：
     // 实测 Chrome 起播前要预读约 60 秒音频，慢网下当前曲自己都还在抢带宽；
     // 此时再整首预取下一首（10MB 量级）会把正在播的那首饿死 → 反而卡顿。
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     if (conn?.saveData) return;
     if (conn?.effectiveType && /(^|-)2g$/.test(conn.effectiveType)) return;
-    doneRef.current = songmid;
+    lastAttemptRef.current = Date.now();
 
     void (async () => {
       try {
@@ -69,7 +76,9 @@ export function useNextPrefetch() {
 
         // 2) 音频：整首拉成 Blob 存本地（切歌命中即零网络）。
         // COS 音频无 Cache-Control，靠 HTTP 缓存兜不住，必须前端自持（见 audioCache.ts）
-        prefetchAudio(next.url);
+        // [2026-10-06] 成功才盖 done 章；失败保持未标记，15s 后下一个 progress 节拍自动重试
+        const ok = await prefetchAudio(next.url);
+        if (ok) doneRef.current = songmid;
       } catch {
         /* 预取失败：无副作用，切歌走原路径 */
       }

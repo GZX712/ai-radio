@@ -3,7 +3,8 @@ import { useRadioStore } from "@/store/useRadioStore";
 import { radioApi } from "@/lib/api";
 import { playRandomSfx } from "@/lib/sfx";
 import { playLaughTrack, stopLaughTrack } from "@/lib/laugh";
-import { saveResume, loadResume } from "@/lib/resume";
+import { saveResume } from "@/lib/resume";
+import { isOwnerDevice } from "@/lib/deviceIdentity";
 import { getCachedAudioUrl, pinPlayingAudio } from "@/lib/audioCache";
 import type { NowPlaying } from "@/types";
 
@@ -24,10 +25,6 @@ const STALL_BUFFERING_MS = 75_000;
 const STALL_READY_MS = 20_000;
 /** 起播超时（原 6 秒对慢网太激进） */
 const PLAY_TIMEOUT_MS = 25_000;
-
-/** 静音 wav（~0.04s）：手势内给 media 元素"开闸"用（见 unlock/primeElement 注释） */
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQBAACAgICA";
 
 interface AudioNodes {
   ctx: AudioContext;
@@ -157,6 +154,14 @@ export function useAudioEngine() {
   //   用途二（看门狗宽限）：刚换源后的缓冲期 currentTime 天然为 0，不该判死播。
   const loadedSrcRef = useRef<string | null>(null);
   const loadedAtRef = useRef(0);
+  // [2026-10-06] music 元素是否真的成功播出过一次（play 事件为准）。
+  // isUnlocked 不能只看 AudioContext.state —— 安卓国产浏览器/部分 WebView 上
+  // WebAudio 与 media 元素是两套 autoplay 策略：ctx 创建即 running，
+  // 但 media.play() 无手势照样被 NotAllowedError 拒 → 提示条与手势兜底都不挂，
+  // 音乐永远不播（辛老师实测"重进电台不会自动播放"的真根因之一）。
+  const hasEverPlayedRef = useRef(false);
+  // [2026-10-06] 冷启动切歌只做一次（刷新=听新的，见 handlePlay 注释）
+  const coldStartRef = useRef(false);
 
   const getNodes = useCallback((): AudioNodes => {
     if (nodesRef.current) return nodesRef.current;
@@ -191,8 +196,6 @@ export function useAudioEngine() {
 
     // 音乐进度事件
     music.addEventListener("timeupdate", () => {
-      // [2026-10-05] 静音解锁音（data: URI）不是真歌：不记进度、不污染续播记忆
-      if (music.src.startsWith("data:")) return;
       const st = useRadioStore.getState();
       st.setProgress(music.currentTime);
       // 续播记忆：节流每 5 秒落盘（正在播放的进度），刷新/关闭后重开可续播
@@ -217,8 +220,6 @@ export function useAudioEngine() {
       useRadioStore.getState().setDuration(music.duration);
     });
     music.addEventListener("ended", () => {
-      // [2026-10-05] 静音解锁音播完≠歌播完：不许触发自动切歌
-      if (music.src.startsWith("data:")) return;
       useRadioStore.getState().setIsPlaying(false);
       useRadioStore.getState().setProgress(0);
       // 播完自动切下一首（随机歌单）：过渡语先开口（DJ 不缺席），音乐随后无缝起。
@@ -248,8 +249,6 @@ export function useAudioEngine() {
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
-      // [2026-10-05] 静音解锁音的暂停不落成续播记忆（会把真进度冲成 0）
-      if (music.src.startsWith("data:")) return;
       // 用户暂停/切歌：立刻把当前进度落盘（playing:false → 重开恢复位置等用户点）
       const cur = useRadioStore.getState().now;
       if (cur?.url) {
@@ -265,6 +264,7 @@ export function useAudioEngine() {
       }
     });
     music.addEventListener("play", () => {
+      hasEverPlayedRef.current = true; // 元素真出过声 → 此后才算"真解锁"
       useRadioStore.getState().setIsPlaying(true);
     });
 
@@ -331,44 +331,20 @@ export function useAudioEngine() {
   };
 
   /**
-   * iOS 音频解锁（必须在用户手势的同步代码里调用，不能等 await）：
-   * 1. resume AudioContext（iOS 初始 suspended，若等异步后再 resume 手势栈已断
-   *    → 音乐元素"播放中"但 WebAudio 无声——手机端没声音的头号原因）
-   * 2. [2026-10-05 重写] 静音 wav 改从 **music / dj 元素自身**播（旧版用扔掉的
-   *    临时 Audio —— 解锁的是临时元素，真元素依然上锁）。
-   *    为什么：iOS Safari / 严格安卓 WebView 的媒体解锁是**按元素**记的 —— 该元素
-   *    必须在手势里成功 play() 过一次，之后的程序化 play() 才放行（之后换 src 不会
-   *    重新上锁，howler.js 同款技巧）。旧写法下首次 handlePlay 的 play() 在严格浏览器
-   *    仍被 NotAllowedError 拒 —— 辛老师实测"点进电台没反应，再点一次播放键才行"。
-   * 3. [2026-09-25] resume 成功后调 ensureGraph() 把两个元素接进 WebAudio
-   *    （resume 是异步的，接线放在 .then 里 —— createMediaElementSource 本身不要求手势）
+   * 音频解锁（必须在用户手势的同步代码里调用，不能等 await）。
+   * [2026-10-06 简化] 只做 WebAudio resume（fire-and-forget，见 tryResume 注释）。
+   *
+   * 旧版的 primeElement（把手势借给静音 wav「开闸」）已删除 —— 它是三个 bug 的源头：
+   *   1) 它把 music.src 换成静音 data: URI，currentTime 随之归零 →
+   *      「暂停后再播放，进度从头再来」（辛老师实测）；
+   *   2) 它的 play() 几乎必然被紧随其后的真源 play() abort → 开闸永远不成功，
+   *      每次手势都重试一次「换静音 → 被换回」，激活状态被打乱；
+   *   3) iOS/安卓的媒体激活按「手势内的 play() 调用」记，handlePlay 紧接着就会对
+   *      真源发起 play()（同步微任务链内，手势仍有效）—— 真源 play 本身就是最好的
+   *      开闸动作，根本不需要静音替身。
    */
-  const primeElement = (el: HTMLAudioElement): void => {
-    // 正在播真内容 / 已开闸过 → 不动（换 src 会打断在播的歌）
-    if (!el.paused || el.dataset.primed === "1") return;
-    const prevVol = el.volume;
-    el.volume = 0;
-    el.src = SILENT_WAV;
-    el.play()
-      .then(() => {
-        el.dataset.primed = "1"; // 开闸成功：此后该元素程序化 play() 放行
-        el.pause();
-        el.volume = prevVol;
-      })
-      .catch(() => {
-        el.volume = prevVol; // 失败不标记，下次手势再试
-      });
-  };
-
   const unlock = (): void => {
-    const nodes = getNodes();
-    // fire-and-forget：resume 必须在手势的同步栈里**发起**，但绝不等它兑现（见 tryResume 注释）
-    tryResume(nodes);
-    primeElement(nodes.music);
-    // DJ 队列空闲时才开闸（在播的 DJ 不能换 src）
-    if (djQueueRef.current.length === 0 && !djPlayingRef.current) {
-      primeElement(nodes.dj);
-    }
+    tryResume(getNodes());
   };
 
   /**
@@ -395,11 +371,8 @@ export function useAudioEngine() {
       //   → AbortError → 已缓冲的字节全废 → 27s 时被看门狗误判切歌 → 再废一次
       //   → 34959ms 才出声，30MB 流量只听到一首歌。
       //   只有「真的换歌」「换了源形态（blob ↔ 直链）」「上一次加载出错」才写 src。
-      //   [2026-10-05] + 「src 是静音解锁音（data: URI）」：unlock 开闸时把 src 换成
-      //   静音 wav 了，这里必须换回来，否则会把静音当歌"播"还自以为成功。
       const needNewSrc =
         !music.src ||
-        music.src.startsWith("data:") ||
         loadedSrcRef.current !== targetSrc ||
         music.error !== null;
       if (needNewSrc) {
@@ -408,6 +381,12 @@ export function useAudioEngine() {
         music.src = targetSrc;
       }
       pinPlayingAudio(cachedSrc ? song.url : undefined); // 正在播的 Blob 不许被淘汰 revoke
+      // [2026-10-06] setNow 提前到 play() 之前：手机无手势时 play() 必被 autoplay 拒，
+      // 旧位置（play 成功后）会导致 now 不更新 —— 之后用户手势进来 handlePlay 拿不到
+      // 当前歌、走 /api/next 白推进一次队列（还跳过一首歌）。先更新 UI/状态，
+      // play 失败也有据可依。
+      useRadioStore.getState().setNow(song);
+      useRadioStore.getState().setProgress(seekTo);
       // 播放超时保护：resume()/play() 任一环节卡住（无手势/源站慢/缓冲挂起）
       // [2026-09-21] 6 秒 → 25 秒：13MB 单曲在慢网（实测 Slow 4G）光缓冲就远超 6 秒，
       // 旧值会在歌其实还能播的情况下先报错退出（表现：提示"播放超时"但随后又响了）。
@@ -427,9 +406,7 @@ export function useAudioEngine() {
           setTimeout(() => reject(new Error("播放超时，请重试")), PLAY_TIMEOUT_MS)
         ),
       ]);
-      useRadioStore.getState().setNow(song);
       useRadioStore.getState().setIsPlaying(true);
-      useRadioStore.getState().setProgress(seekTo);
       // 续播记忆：切到新歌立即落盘（progress 起点），此后由 timeupdate 节流持续更新
       saveResume({
         songmid: String(song.songmid ?? ""),
@@ -544,21 +521,22 @@ export function useAudioEngine() {
     const st = useRadioStore.getState();
     const { now } = st;
 
-    // —— 续播记忆恢复（本次会话还没成功播出过任何歌时，优先续播）——
-    // 用户"暂停/关闭/刷新后重开"时，优先接着上次没放完的那首从原进度继续，
-    // 而不是被 getNow 塞进 store 的后端 current 歌顶掉。
-    // [2026-10-05] 条件由 !music.src 改为 !bootedRef.current：页面加载时那次无手势的
-    // handlePlay 必败（autoplay 限制），但 src 已被写进元素 → 用户首次手势进来时旧条件
-    // 直接跳过续播、播了服务器 current —— 辛老师实测"重开电台不续上次那首，像第一次打开"。
-    if (!bootedRef.current) {
-      const resume = loadResume();
-      if (resume?.url) {
-        console.warn(`[audio] 恢复续播: ${resume.name} @${Math.round(resume.progress)}s`);
-        await loadAndPlay(
-          { songmid: resume.songmid, name: resume.name, artist: resume.artist, url: resume.url },
-          { seekTo: resume.progress }
-        );
-        return;
+    // —— 冷启动（本次会话还没成功播出过任何歌）——
+    // [2026-10-06 辛老师要求] 主人设备刷新/重开电台 = 「想听新的」：直接推进队列
+    // 切到下一首，不再恢复上次的续播记忆（旧行为：每次刷新都回到同一首歌，
+    // 歌单顺序固定 → 「刷新不更新歌曲」）。只做一次（coldStartRef），
+    // 无手势导致 play 失败后，用户首次手势进来不会再切第二遍。
+    // 客人设备不推进全局队列（会替主人切歌），照旧走 now/next。
+    if (!bootedRef.current && !coldStartRef.current && isOwnerDevice()) {
+      coldStartRef.current = true;
+      try {
+        const res = await radioApi.skip();
+        if (res.song) {
+          await loadAndPlay(res.song);
+          return;
+        }
+      } catch {
+        // skip 失败（网络/后端）→ 落回下面的 now/next 路径，不阻塞开播
       }
     }
 
@@ -690,9 +668,6 @@ export function useAudioEngine() {
     }
     dj.src = item.url;
     dj.onended = () => {
-      // [2026-10-05] 静音解锁音播完 ≠ DJ 话术播完：不进队列逻辑
-      // （primeElement 期间 onended 不会被赋新值，这是双保险）
-      if (dj.src.startsWith("data:")) return;
       // 这条是笑话/怼人 → 观众罐头笑（punchline 后立刻响）
       if (item.laugh) playLaughTrack();
       // DJ 气泡 ▶/⏸ 按钮：播完通知调用方清状态（按钮自动 ⏸ → ▶ 回弹）
@@ -774,13 +749,16 @@ export function useAudioEngine() {
   };
 
   /**
-   * [2026-09-25] AudioContext 是否已解锁（running）。
-   * 未解锁时 WebAudio 一帧都输出不了 → 手机端表现为「进度条在走但完全无声」。
-   * App 用它决定是否显示「轻触开启声音」提示、以及是否挂一次性手势兜底。
+   * [2026-10-06] 「真解锁」判定：AudioContext running **且** music 元素真播出过一次。
+   * 为什么两个条件都要：安卓国产浏览器/部分 WebView 上 WebAudio 与 media 元素是
+   * 两套 autoplay 策略 —— ctx 创建即 running（旧判定会认为已解锁），但无手势的
+   * media.play() 照样被 NotAllowedError 拒 → 提示条不挂、手势兜底不挂，
+   * 音乐永远不播（辛老师「重进电台不自动播放」的根因之一）。
+   * 以 play 事件为准：元素真出过声，才证明 media 通道也被放行。
    */
   const isUnlocked = (): boolean => {
     const n = nodesRef.current;
-    return !!n && n.ctx.state === "running";
+    return !!n && n.ctx.state === "running" && hasEverPlayedRef.current;
   };
 
   return {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
@@ -66,11 +66,27 @@ export function Player({
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // [2026-10-06] 进度条支持按住拖动（原来只有 onClick 点跳：
+  // 手机上「点」能跳但辛老师要的是拖拽手感 —— pointer 事件系鼠标/触摸通吃）。
+  // 拖动中只本地预览（不真 seek）：每帧 move 都写 currentTime 会触发 COS Range
+  // 请求风暴 + 与 timeupdate 回写打架；松手才一次性 seek。
+  const [dragPct, setDragPct] = useState<number | null>(null);
+  const pctFromPointer = (e: React.PointerEvent<HTMLDivElement>): number => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    onSeekTo(Math.max(0, Math.min(1, pct)));
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   };
+  const handleProgressDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId); // 拖出条外也能继续跟手
+    setDragPct(pctFromPointer(e));
+  };
+  const handleProgressMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    setDragPct((cur) => (cur === null ? cur : pctFromPointer(e)));
+  };
+  const handleProgressUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragPct !== null) onSeekTo(pctFromPointer(e)); // 松手这一刻才真正 seek
+    setDragPct(null);
+  };
+  const shownPercent = dragPct !== null ? dragPct * 100 : progressPercent;
 
   return (
     <main
@@ -97,9 +113,17 @@ export function Player({
 
       <Visualizer analyser={getAnalyser()} isPlaying={isPlaying} />
 
-      {/* 进度条 */}
-      <div className="progress-bar" onClick={handleProgressClick} role="slider" aria-label="Seek">
-        <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+      {/* 进度条（点击跳转 + 按住拖动） */}
+      <div
+        className="progress-bar"
+        onPointerDown={handleProgressDown}
+        onPointerMove={handleProgressMove}
+        onPointerUp={handleProgressUp}
+        onPointerCancel={handleProgressUp}
+        role="slider"
+        aria-label="Seek"
+      >
+        <div className="progress-fill" style={{ width: `${shownPercent}%` }} />
       </div>
       <div className="time-row">
         <span className="time">{formatTime(progress)}</span>

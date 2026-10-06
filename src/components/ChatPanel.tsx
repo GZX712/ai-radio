@@ -13,6 +13,8 @@ interface ChatMessage {
   en: string;
   zh: string;
   audioUrl?: string;
+  /** 这条回复生成时用的音色（重播时与当前音色比对：一致直播旧音频，不一致重合成） */
+  voice?: string;
   /** 这条是不是笑话/怼人（后端 LLM 自评）→ 播完接罐头笑声 */
   funny?: boolean;
   time: string;
@@ -269,6 +271,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
             en: reply.en,
             zh: reply.zh ?? "",
             audioUrl: reply.audioUrl,
+            voice: isReply ? personalityRef.current?.voice : undefined,
             funny: funnyFinal,
             time: now(),
           };
@@ -387,17 +390,21 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   };
 
   // 手动播放/暂停一条 chat-reply（▶ / ⏸）
+  // [2026-10-06 问题4] 重播先用「当前音色」重新合成，再播 —— 旧行为直接放
+  // 消息里当时生成的 audioUrl，DJ 换了声色后重播还是旧声（辛老师实测）。
+  // 重合成失败（TTS 挂了/网络断）回退播旧音频，保证按钮永远有反应。
   const toggleReplyPlay = (m: ChatMessage) => {
     if (!m.audioUrl) return;
     if (playingReplyId === m.id) {
       // 正在播这条 → 暂停
       stopDj();
       setPlayingReplyId(null);
-    } else {
-      // 播这条：先停别的，再播（funny 台词播完自动接罐头笑声）
-      stopDj();
+      return;
+    }
+    stopDj();
+    const playUrl = (url: string) =>
       playDj(
-        m.audioUrl,
+        url,
         m.en,
         m.zh,
         true, // force：手动 ▶ 必走强制
@@ -407,7 +414,31 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
       )
         .then(() => setPlayingReplyId(m.id))
         .catch(() => setPlayingReplyId(null));
+
+    // 音色跟消息生成时一致 → 直接播旧音频，零等待零费用；
+    // 不一致 → 现场重合成（带 8s 超时，慢了就回退旧音频）
+    if (m.voice === personality.voice) {
+      void playUrl(m.audioUrl);
+      return;
     }
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 8000);
+    fetch("/api/tts/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ en: m.en, zh: m.zh, voice: personality.voice }),
+      signal: ctrl.signal,
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        window.clearTimeout(timer);
+        const url = j?.data?.url as string | undefined;
+        void playUrl(url || m.audioUrl!);
+      })
+      .catch(() => {
+        window.clearTimeout(timer);
+        void playUrl(m.audioUrl!); // 重合成失败 → 旧音频兜底
+      });
   };
 
   // 发新消息：

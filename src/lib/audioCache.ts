@@ -78,13 +78,17 @@ function evict() {
 /**
  * 静默预取整首音频并缓存。best-effort：失败什么都不做，切歌走原直链路径。
  * 幂等：已在缓存或正在下载中直接返回。
+ * [2026-10-06] 返回 Promise<boolean>（true=已在缓存/本次拉取成功）——
+ * 调用方据此决定要不要稍后重试（旧版失败静默，错过就不再补 →
+ * 「连播几首后开始卡」的来源之一：预取失败的歌切到它时现拉 10MB）。
  */
-export function prefetchAudio(url: string | undefined): void {
-  if (!url || !/^https?:/i.test(url)) return; // 只管 http(s)，blob:/data: 无需缓存
-  if (cache.has(url) || inflight.has(url)) return;
+export function prefetchAudio(url: string | undefined): Promise<boolean> {
+  if (!url || !/^https?:/i.test(url)) return Promise.resolve(false); // 只管 http(s)，blob:/data: 无需缓存
+  if (cache.has(url)) return Promise.resolve(true);
+  if (inflight.has(url)) return Promise.resolve(false); // 下载中：不算成功也不算失败，调用方别重试
   inflight.add(url);
 
-  void (async () => {
+  return (async () => {
     try {
       const res = await fetch(url, { mode: "cors", credentials: "omit" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -94,12 +98,14 @@ export function prefetchAudio(url: string | undefined): void {
       // 下载期间可能已被别的路径缓存（并发/重复调用）→ 以先到的为准，丢弃本次
       if (cache.has(url)) {
         URL.revokeObjectURL(objectUrl);
-        return;
+        return true;
       }
       cache.set(url, { objectUrl, at: Date.now() });
       evict();
+      return true;
     } catch {
       /* 预取失败无副作用 */
+      return false;
     } finally {
       inflight.delete(url);
     }

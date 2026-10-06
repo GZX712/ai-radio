@@ -512,6 +512,39 @@ app.get("/api/voices", (_req, res) => {
   res.json({ code: 0, data: ttsService.getVoiceCatalog() });
 });
 
+// [2026-10-06 问题4] 用指定音色重合成一段已有文本（DJ 换声色后重播旧回复用）。
+// 旧行为：重播直接放消息里当时生成的 audioUrl —— 音色永远是「当时那个」，
+// 换了声色后重播还是旧声。现在前端重播时把 en/zh 原文 + 当前音色发过来，
+// 按目标音色的语种选文本（中文声线说 zh，其余说 en —— 与 dj.ts currentSpeakText 同规则），
+// 现场重新合成，音色永远跟当前设置走。
+app.post("/api/tts/speak", async (req, res) => {
+  try {
+    const { en, zh, voice } = req.body as { en?: string; zh?: string; voice?: string };
+    if (!voice) {
+      res.status(400).json({ code: 400, message: "缺少 voice 参数" });
+      return;
+    }
+    const catalog = ttsService.getVoiceCatalog() as Array<{ id: string; lang?: string }>;
+    const v = catalog.find((x) => x.id === voice);
+    if (!v) {
+      res.status(400).json({ code: 400, message: "未知音色" });
+      return;
+    }
+    const text = (v.lang === "zh" ? (zh || en || "") : (en || zh || "")).slice(0, 800);
+    if (!text.trim()) {
+      res.status(400).json({ code: 400, message: "缺少可合成文本" });
+      return;
+    }
+    const audio = await ttsService.synthesize(text, "preview", voice);
+    res.json({ code: 0, data: { url: audio.url, voice } });
+  } catch (err) {
+    res.status(500).json({
+      code: 500,
+      message: err instanceof Error ? err.message : "重合成失败",
+    });
+  }
+});
+
 // ============== MiMo 诊断 ==============
 // 在 Render 服务器上直接请求小米 API，返回详细状态（判断是环境变量/网络/IP 哪个问题）
 app.get("/api/dj/mimo-diag", async (_req, res) => {
