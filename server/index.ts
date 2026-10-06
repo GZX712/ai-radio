@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import http from "node:http";
+import { createHash } from "node:crypto";
 import { WebSocketServer } from "ws";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -517,6 +518,30 @@ app.get("/api/voices", (_req, res) => {
 // 换了声色后重播还是旧声。现在前端重播时把 en/zh 原文 + 当前音色发过来，
 // 按目标音色的语种选文本（中文声线说 zh，其余说 en —— 与 dj.ts currentSpeakText 同规则），
 // 现场重新合成，音色永远跟当前设置走。
+// [2026-10-06 问题2] 重合成结果缓存：同一音色+同一文本只合成一次。
+// 辛老师实测换音色重播要等 5s+（MiMo 合成耗时），同一条回复反复重播不该反复烧 TTS。
+// key = voice + 文本哈希；value = 已生成的音频 url（文件在实例磁盘上，实例存活期内有效）。
+// LRU 100 条：聊天回复文本离散度极高，100 条足够覆盖「最近聊的一屏」。
+const speakCache = new Map<string, string>();
+const SPEAK_CACHE_MAX = 100;
+const speakCacheKey = (voice: string, text: string): string =>
+  `${voice}:${createHash("sha1").update(text).digest("hex").slice(0, 16)}`;
+const speakCacheGet = (k: string): string | undefined => {
+  const v = speakCache.get(k);
+  if (v !== undefined) {
+    speakCache.delete(k); // LRU：命中即提到最新
+    speakCache.set(k, v);
+  }
+  return v;
+};
+const speakCacheSet = (k: string, v: string): void => {
+  speakCache.set(k, v);
+  if (speakCache.size > SPEAK_CACHE_MAX) {
+    const oldest = speakCache.keys().next().value;
+    if (oldest !== undefined) speakCache.delete(oldest);
+  }
+};
+
 app.post("/api/tts/speak", async (req, res) => {
   try {
     const { en, zh, voice } = req.body as { en?: string; zh?: string; voice?: string };
@@ -535,7 +560,14 @@ app.post("/api/tts/speak", async (req, res) => {
       res.status(400).json({ code: 400, message: "缺少可合成文本" });
       return;
     }
+    const ck = speakCacheKey(voice, text);
+    const hit = speakCacheGet(ck);
+    if (hit) {
+      res.json({ code: 0, data: { url: hit, voice, cached: true } });
+      return;
+    }
     const audio = await ttsService.synthesize(text, "preview", voice);
+    speakCacheSet(ck, audio.url);
     res.json({ code: 0, data: { url: audio.url, voice } });
   } catch (err) {
     res.status(500).json({

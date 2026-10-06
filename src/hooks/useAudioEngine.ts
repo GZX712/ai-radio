@@ -249,6 +249,7 @@ export function useAudioEngine() {
     });
     music.addEventListener("pause", () => {
       useRadioStore.getState().setIsPlaying(false);
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
       // 用户暂停/切歌：立刻把当前进度落盘（playing:false → 重开恢复位置等用户点）
       const cur = useRadioStore.getState().now;
       if (cur?.url) {
@@ -266,7 +267,20 @@ export function useAudioEngine() {
     music.addEventListener("play", () => {
       hasEverPlayedRef.current = true; // 元素真出过声 → 此后才算"真解锁"
       useRadioStore.getState().setIsPlaying(true);
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
     });
+
+    // [2026-10-06 问题4] ctx 被系统打断（来电/切后台/其他应用抢音频焦点）时，
+    // 若此刻本该在播，尽力把它拉回来。iOS 上无手势 resume 可能不兑现，
+    // 那是平台限制，尽力而为即可（App 层还有提示条兜底）。
+    ctx.onstatechange = () => {
+      const st = useRadioStore.getState();
+      // "interrupted" 是 iOS 私有状态（TS 类型里没有，故 as string 绕过）
+      const cs = ctx.state as string;
+      if ((cs === "interrupted" || cs === "suspended") && st.isPlaying) {
+        ctx.resume().then(() => ensureGraph(nodes)).catch(() => {});
+      }
+    };
 
     const nodes: AudioNodes = { ctx, music, musicGain, analyser, dj, djGain, wired: false, djWired: false };
     nodesRef.current = nodes;
@@ -387,6 +401,8 @@ export function useAudioEngine() {
       // play 失败也有据可依。
       useRadioStore.getState().setNow(song);
       useRadioStore.getState().setProgress(seekTo);
+      setupMediaSession();      // 幂等：首次真正播放时挂好 Media Session
+      updateMediaMetadata(song); // 锁屏/通知栏同步新歌名与封面
       // 播放超时保护：resume()/play() 任一环节卡住（无手势/源站慢/缓冲挂起）
       // [2026-09-21] 6 秒 → 25 秒：13MB 单曲在慢网（实测 Slow 4G）光缓冲就远超 6 秒，
       // 旧值会在歌其实还能播的情况下先报错退出（表现：提示"播放超时"但随后又响了）。
@@ -746,6 +762,55 @@ export function useAudioEngine() {
       useRadioStore.getState().duck();
       playNextDj();
     }
+  };
+
+  /**
+   * [2026-10-06 问题4] Media Session —— 手机切后台继续听的关键。
+   * 没有它，国产安卓浏览器把后台标签页当普通网页：直接冻结/静音媒体。
+   * 有了它（元数据 + 播放状态 + 控制 handler），浏览器认定「这是个媒体应用」：
+   * ① 切后台/锁屏音乐继续出声；② 通知栏/锁屏出现歌名封面与播放控制键。
+   */
+  const mediaSessionReadyRef = useRef(false);
+  const setupMediaSession = (): void => {
+    if (mediaSessionReadyRef.current || !("mediaSession" in navigator)) return;
+    mediaSessionReadyRef.current = true;
+    const ms = navigator.mediaSession;
+    // 锁屏/通知栏上的按钮直接接管播放控制
+    ms.setActionHandler("play", () => { void handlePlay(); });
+    ms.setActionHandler("pause", () => handlePause());
+    ms.setActionHandler("nexttrack", () => { void handleSkip(); });
+    ms.setActionHandler("previoustrack", () => { void handlePrev(); });
+    ms.setActionHandler("seekto", (d) => {
+      const { music } = getNodes();
+      if (typeof d.seekTime === "number" && Number.isFinite(music.duration)) {
+        music.currentTime = Math.max(0, Math.min(music.duration, d.seekTime));
+      }
+    });
+    // 回前台时自愈：ctx 若在后台被打断/挂起，这里拉起来；音乐若被系统暂停
+    // 而状态机认为还在播，补一脚 play（失败静默 —— iOS 需手势，由提示条兜底）。
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      const n = nodesRef.current;
+      if (!n) return;
+      tryResume(n);
+      const st = useRadioStore.getState();
+      if (st.isPlaying && n.music.paused) {
+        n.music.play().catch(() => {});
+      }
+    });
+  };
+
+  /** 切歌时同步锁屏/通知栏的歌名、歌手、封面 */
+  const updateMediaMetadata = (song: NowPlaying): void => {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.name,
+        artist: song.artist,
+        album: "AI Radio",
+        artwork: song.picUrl ? [{ src: song.picUrl, sizes: "512x512", type: "image/jpeg" }] : [],
+      });
+    } catch { /* 旧浏览器 MediaMetadata 构造异常：忽略，不影响播放 */ }
   };
 
   /**

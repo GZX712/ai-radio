@@ -39,6 +39,10 @@ body, html, #root {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.02em;
+  /* [2026-10-06] 禁掉浏览器 overscroll 原生行为（下拉刷新 / 边缘滑动导航）。
+     电台是单页应用，下拉刷新会把正在播的页面整个重载（黑屏 + 声音中断），
+     侧滑导航同理。滚动在应用内部容器里各自处理，不需要浏览器这层兜底。 */
+  overscroll-behavior: none;
 }
 
 /* ===== 全局：SVG 噪点纹理（feTurbulence，CRT 底噪） ===== */
@@ -863,6 +867,20 @@ body::after {
   background: #ef4444;
   border-color: #ef4444;
   color: #fff;
+}
+
+/* 换音色重合成中：蓝色呼吸，提示「正在生成语音，马上就好」 */
+.chat-reply-toggle.synth {
+  background: rgba(19, 135, 192, 0.18);
+  border-color: rgba(19, 135, 192, 0.5);
+  color: #7ec8f0;
+  cursor: wait;
+  animation: synth-breathe 1s ease-in-out infinite;
+}
+
+@keyframes synth-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 @keyframes dj-pulse {
@@ -1953,6 +1971,25 @@ body::after {
   border: 1px solid var(--border);
   height: 6px;
   position: relative;
+  /* [2026-10-06 黑屏修复] 必须抢下触摸手势的归属权：
+     缺了这条，手机浏览器会把进度条上的横拖当成系统级手势
+     （国产浏览器侧滑返回/前进、Chrome 边缘导航），页面直接被拖走 → 黑屏。
+     touch-action:none 声明「这条区域的手势归我 JS 管」，浏览器不再拦截。 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 扩大触控热区：视觉上只有 6px 高，但手指能按中的范围上下各扩 12px。
+   （6px 目标远小于 44px 推荐触控尺寸，旧版想拖中得碰运气） */
+.progress-bar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  bottom: -12px;
 }
 
 .progress-fill {

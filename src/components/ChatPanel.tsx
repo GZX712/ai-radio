@@ -219,6 +219,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   const streamTimerRef = useRef<number | null>(null);
   // 当前手动播放的 chat-reply 消息 id（▶ 再点变 ⏸）
   const [playingReplyId, setPlayingReplyId] = useState<number | null>(null);
+  // [2026-10-06 问题2] 正在「换音色重合成」的消息 id —— 合成要 3~8 秒，
+  // 按钮必须立刻给出反馈（⏳ 转圈），否则用户以为没点上会狂点。
+  const [synthReplyId, setSynthReplyId] = useState<number | null>(null);
   // [2026-09-25 DJ 回复时灵时不灵] 回复看门狗：发出聊天后 25s 没等到任何
   // chat-reply（连接断过 / 服务器卡了）→ 关掉 thinking、给一条可点重发的提示。
   // 旧行为：消息进了死连接就是永久沉默，用户只能干等或反复重发。
@@ -423,6 +426,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     }
     const ctrl = new AbortController();
     const timer = window.setTimeout(() => ctrl.abort(), 8000);
+    setSynthReplyId(m.id); // 按钮立刻变 ⏳，反馈「在合成了」
+    const doneSynth = () => setSynthReplyId((cur) => (cur === m.id ? null : cur));
     fetch("/api/tts/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,11 +437,13 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
       .then((r) => r.json())
       .then((j) => {
         window.clearTimeout(timer);
+        doneSynth();
         const url = j?.data?.url as string | undefined;
         void playUrl(url || m.audioUrl!);
       })
       .catch(() => {
         window.clearTimeout(timer);
+        doneSynth();
         void playUrl(m.audioUrl!); // 重合成失败 → 旧音频兜底
       });
   };
@@ -683,12 +690,13 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                 {m.role === "dj" && m.kind === "reply" && m.audioUrl && (
                   <button
                     type="button"
-                    className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""}`}
+                    className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""} ${synthReplyId === m.id ? "synth" : ""}`}
                     onClick={() => toggleReplyPlay(m)}
-                    aria-label={playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
-                    title={playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
+                    disabled={synthReplyId === m.id}
+                    aria-label={synthReplyId === m.id ? "正在用新音色合成语音" : playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
+                    title={synthReplyId === m.id ? "正在用当前音色重新合成…" : playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
                   >
-                    {playingReplyId === m.id ? "⏸" : "▶"}
+                    {synthReplyId === m.id ? "⏳" : playingReplyId === m.id ? "⏸" : "▶"}
                   </button>
                 )}
               </div>
