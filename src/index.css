@@ -745,12 +745,16 @@ body::after {
 }
 
 .chat-msg.dj .chat-msg-content {
-  background: rgba(115, 89, 192, 0.14);                 /* Fuchsia Blue #7359C0 主调 */
+  /* [2026-10-06] 0.14 → 0.62：同色相加深底座。14% 透明紫叠在杂乱壁纸上
+     白字必糊；结构/边框/圆角不动，只把底座坐实 */
+  background: rgba(115, 89, 192, 0.62);                 /* Fuchsia Blue #7359C0 主调 */
   box-shadow: 0 0 12px rgba(115, 89, 192, 0.18);
 }
 
 .chat-msg.user .chat-msg-content {
-  background: rgba(251, 166, 70, 0.16);                 /* Solar Fusion #FBA646 主调 */
+  /* [2026-10-06] 亮橙(#FBA646)上白字对比先天不足（~2:1），同色相压暗两档
+     再提不透明度：色相不变、白字可读、与 DJ 紫气泡明度拉齐 */
+  background: rgba(196, 118, 38, 0.58);                 /* Solar Fusion 压暗版 */
   box-shadow: 0 0 12px rgba(251, 166, 70, 0.22);
 }
 
