@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
@@ -71,19 +71,27 @@ export function Player({
   // 拖动中只本地预览（不真 seek）：每帧 move 都写 currentTime 会触发 COS Range
   // 请求风暴 + 与 timeupdate 回写打架；松手才一次性 seek。
   const [dragPct, setDragPct] = useState<number | null>(null);
+  // [2026-10-07 黑屏根治] 拖动状态必须用 ref 判定、坐标必须在事件同步栈里算出。
+  // 旧写法 setDragPct(cur => cur === null ? cur : pctFromPointer(e))：updater 由
+  // React 在渲染阶段异步执行，届时合成事件已回收、e.currentTarget === null →
+  // getBoundingClientRect 抛 TypeError → 整树卸载 → 辛老师手机上的「拖进度黑屏」。
+  const draggingRef = useRef(false);
   const pctFromPointer = (e: React.PointerEvent<HTMLDivElement>): number => {
     const rect = e.currentTarget.getBoundingClientRect();
     return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   };
   const handleProgressDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    draggingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId); // 拖出条外也能继续跟手
     setDragPct(pctFromPointer(e));
   };
   const handleProgressMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    setDragPct((cur) => (cur === null ? cur : pctFromPointer(e)));
+    if (!draggingRef.current) return;
+    setDragPct(pctFromPointer(e)); // 同步算出数值再 set，事件对象不进 updater
   };
   const handleProgressUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragPct !== null) onSeekTo(pctFromPointer(e)); // 松手这一刻才真正 seek
+    if (draggingRef.current) onSeekTo(pctFromPointer(e)); // 松手这一刻才真正 seek
+    draggingRef.current = false;
     setDragPct(null);
   };
   const shownPercent = dragPct !== null ? dragPct * 100 : progressPercent;

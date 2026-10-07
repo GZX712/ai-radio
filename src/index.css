@@ -284,7 +284,12 @@ body::after {
   position: relative;
   border-color: transparent;
 }
-.player[data-player-bg="on"]::before {
+/* [2026-10-07 根治] scrim 压暗层：原选择器 .player[data-player-bg="on"]::before
+   优先级 (0,2,1)，与默认主题 1755 行的 .player::before（conic 辉光）相同且行号
+   更早 → background/z-index 从未生效过，scrim 自写出之日起就是死的，亮壁纸下
+   白字全糊。提权到 .app .player[data-player-bg="on"]::before（0,3,1）压过所有
+   主题覆写，并显式复位各主题可能注入的 filter/opacity/padding/z-index。 */
+.app .player[data-player-bg="on"]::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -292,6 +297,9 @@ body::after {
   border-radius: 24px;
   pointer-events: none;
   z-index: 0;
+  filter: none;
+  opacity: 1;
+  padding: 0;
 }
 .player[data-player-bg="on"] > * { position: relative; z-index: 1; }
 
@@ -2492,6 +2500,18 @@ body::after {
   background: rgba(108, 124, 255, 0.14);
   color: #4a5068 !important;
   border: none;
+  box-shadow: var(--neu-out-sm);
+}
+/* [2026-10-07] 上面三个类名与实际气泡 class（.chat-msg-content）对不上，从未生效；
+   cream 下气泡实际走了默认主题的 0.62 紫底，而 cream 文字色（#6a7a9a 浅灰）是为
+   浅底设计的 → 英文叠在紫底上彻底看不清（辛老师截图实证）。补上对得上的选择器：
+   浅实底 + cream 既有深字 = 任何壁纸下都清晰。 */
+.app[data-wallpaper="cream"] .chat-msg.dj .chat-msg-content {
+  background: rgba(238, 241, 248, 0.88);
+  box-shadow: var(--neu-out-sm);
+}
+.app[data-wallpaper="cream"] .chat-msg.user .chat-msg-content {
+  background: rgba(255, 226, 185, 0.85);
   box-shadow: var(--neu-out-sm);
 }
 /* 用户消息气泡：凸起暖橙 */
