@@ -25,7 +25,9 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const RATES = [0.75, 1, 1.25, 1.5, 2];
+// [2026-10-07] 补 0.5x：iOS 锁屏/系统通知栏的倍速键有 0.5x 档，
+// 系统改后 ratechange 会同步进 store —— 选项里没有就显示不出来
+const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 /**
  * Premium 播放器 v3：上一首/暂停/切歌 + ±15s + 倍速 + 进度点击跳转

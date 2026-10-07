@@ -825,10 +825,36 @@ app.get("/api/device/now", (_req, res) => {
 });
 
 /**
+ * [2026-10-07 辛老师要求] 客人欢迎曲：客人被欢迎时，电台切到《水星记》。
+ * 复用点歌管线（search → getCompleteSong → playSong 广播，全客户端同步）。
+ * 与欢迎语同刻触发：歌曲先起（恰好是安静的钢琴前奏），DJ 欢迎语 duck 着念——
+ * 电台味最足的迎接方式。搜不到可播版本（版权受限）只记警告，不影响欢迎语。
+ */
+async function playGuestWelcomeSong(): Promise<void> {
+  try {
+    const results = await musicService.search("水星记 郭顶", 10);
+    for (const s of results) {
+      try {
+        const full = await musicService.getCompleteSong(s.songmid);
+        if (!full.url) continue; // 版权受限 → 试下一个搜索结果
+        broadcast({ type: "playSong", song: full });
+        console.log(`[DEVICE] 🎵 客人欢迎曲已切换：${full.name} — ${full.artist}`);
+        return;
+      } catch { /* 该结果不可播，试下一个 */ }
+    }
+    console.warn("[DEVICE] 欢迎曲《水星记》暂无可播版本（版权受限），跳过切歌");
+  } catch (err) {
+    console.warn("[DEVICE] 欢迎曲搜索失败:", err instanceof Error ? err.message : String(err));
+  }
+}
+
+/**
  * 客人彩蛋：DJ 语音欢迎（首次隆重 / 再来低调）。
  * 带 DJ 互斥锁避免与开播/切歌话术抢播；锁忙则 1.5s 后补一次，仍忙就放弃（下回接入再说）。
  */
 function fireGuestGreeting(isNew: boolean, deviceId: string): void {
+  // 欢迎曲不占 DJ 锁：先让《水星记》起，欢迎语随后 duck 着念
+  void playGuestWelcomeSong();
   const doGreet = (): Promise<boolean> =>
     withDjLock(async () => {
       try {

@@ -171,6 +171,12 @@ export function useAudioEngine() {
     // ---- 音乐通道 ----
     const music = new Audio();
     music.crossOrigin = "anonymous";
+    // [2026-10-07 变调修复①] 显式锁 preservesPitch：iOS 锁屏/控制中心有倍速快捷键、
+    // 安卓部分 ROM 通知栏也能改倍速 —— 一旦被误触，默认行为下速度变+音调也变
+    // （「莫名其妙变调」的头号嫌疑）。锁死 preservesPitch 后即使 rate 被改，
+    // 也只是稍快稍慢，音调绝不跑偏。老 Safari 用 webkit 前缀兜底。
+    music.preservesPitch = true;
+    (music as HTMLAudioElement & { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
     // preload=metadata（不用 auto）：实测 auto/metadata/none 三种策略的**起播耗时完全一致**
     // （Slow4G 13.3s / 12.9s / 13.1s；不限速 1.9s / 1.4s / 1.4s），因为起播瓶颈是
     // "Chrome 要预读约 60 秒音频"，跟策略无关；但 auto 会在用户还没点播放时就把整首
@@ -185,6 +191,8 @@ export function useAudioEngine() {
     // ---- DJ 通道 ----
     const dj = new Audio();
     dj.crossOrigin = "anonymous";
+    dj.preservesPitch = true;
+    (dj as HTMLAudioElement & { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
     // DJ 语音是几十 KB 的 TTS 小文件，随用随取即可 —— 不预加载，把带宽全留给音乐
     dj.preload = "none";
     const djGain = ctx.createGain();
@@ -270,9 +278,29 @@ export function useAudioEngine() {
       if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
     });
 
+    // [2026-10-07 变调修复②] 系统级倍速改动（iOS 锁屏/安卓通知栏的播放速度键）
+    // 不走我们的 setPlaybackRate → store 与元素脱节，用户看到 UI 还是 1x 却听着不对，
+    // 「莫名其妙」感正是这么来的。监听 ratechange：外部改了就同步进 store，
+    // 让倍速下拉框实时显示真实值 —— 能看见，就能一键调回 1x。
+    music.addEventListener("ratechange", () => {
+      const st = useRadioStore.getState();
+      if (Math.abs(music.playbackRate - st.playbackRate) > 0.001) {
+        console.warn(`[audio] 检测到外部倍速改动: ${st.playbackRate}x → ${music.playbackRate}x（已同步到 UI）`);
+        st.setPlaybackRate(music.playbackRate);
+      }
+    });
+
     // [2026-10-06 问题4] ctx 被系统打断（来电/切后台/其他应用抢音频焦点）时，
     // 若此刻本该在播，尽力把它拉回来。iOS 上无手势 resume 可能不兑现，
     // 那是平台限制，尽力而为即可（App 层还有提示条兜底）。
+    //
+    // [2026-10-07 变调修复③] 后台变调的真根因：ctx 被挂起/打断期间，media 元素
+    // 被系统媒体服务接管继续走，WebAudio 渲染时钟与元素媒体时钟**各走各的**；
+    // ctx 恢复 running 后直接复用旧管道 → 重采样错位 → 声音变调/变速（Chromium
+    // 与 WebKit 都有 MediaElementSource resume 漂移的已知问题）。
+    // 对策：检测到「从 suspended/interrupted 恢复 running」的瞬间，若正在接线播放，
+    // 对元素做一次 pause→play 快速重整，强制按新时钟重新喂流（人耳几乎无感）。
+    let prevCtxState = ctx.state as string;
     ctx.onstatechange = () => {
       const st = useRadioStore.getState();
       // "interrupted" 是 iOS 私有状态（TS 类型里没有，故 as string 绕过）
@@ -280,10 +308,20 @@ export function useAudioEngine() {
       if ((cs === "interrupted" || cs === "suspended") && st.isPlaying) {
         ctx.resume().then(() => ensureGraph(nodes)).catch(() => {});
       }
+      if (cs === "running" && (prevCtxState === "suspended" || prevCtxState === "interrupted")) {
+        if (nodes.wired && st.isPlaying && !nodes.music.paused) {
+          console.info(`[audio] ctx 从 ${prevCtxState} 恢复 → 重整媒体管道防变调`);
+          nodes.music.pause();
+          nodes.music.play().catch(() => {});
+        }
+      }
+      prevCtxState = cs;
     };
 
     const nodes: AudioNodes = { ctx, music, musicGain, analyser, dj, djGain, wired: false, djWired: false };
     nodesRef.current = nodes;
+    // 调试把手：探针/排障可直接操作 ctx 与元素（个人电台，无敏感面）
+    (window as unknown as { __radioNodes?: AudioNodes }).__radioNodes = nodes;
     // 电脑端 ctx 创建即 running → 这里立刻接线（duck 与 analyser 波形与旧版无差别）；
     // 手机端此刻还是 suspended → 不接线，等解锁手势后由 unlock()/loadAndPlay() 再调。
     ensureGraph(nodes);
