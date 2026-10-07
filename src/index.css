@@ -609,9 +609,6 @@ html, body { overflow-x: clip; }
 }
 
 /* ============== 对话窗口 ============== */
-/* [2026-10-07 底框规整] 聊天面板从播放器卡片内拆出，成为 .app 下独立兄弟卡片：
-   与播放器同 24px 圆角、同 20px 左右边距（吃 .app padding）、同 gap 节奏，
-   两张卡片边缘严格对齐，各自底边完整可见。 */
 .chat-panel {
   border-radius: 24px;
   background: rgba(255,255,255,0.025);
@@ -623,6 +620,25 @@ html, body { overflow-x: clip; }
   gap: 12px;
   padding: 16px;
   animation: slide-up 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* [2026-10-07 底框规整·一体卡] 辛老师拍板：聊天面板不拆出，跟播放器是一体的。
+   「不工整」的病根不是嵌套，而是聊天面板自带 背景+边框+毛玻璃 → 卡中卡双重框。
+   嵌在播放器内时洗掉它自己的卡片皮，只留顶部一条通栏分割线：
+   视觉上 = 一整张卡的上下两节。负边距让分割线顶到卡片内缘、
+   面板底部与卡片底边齐平（内容仍由 padding 留住呼吸）。 */
+.player .chat-panel {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin: 0 -20px -20px;
+  padding: 16px 20px 20px;
+}
+@media (max-width: 480px) {
+  .player .chat-panel { padding: 14px 20px 20px; }
 }
 
 .chat-header {

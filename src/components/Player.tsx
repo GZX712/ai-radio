@@ -97,7 +97,6 @@ export function Player({
   const shownPercent = dragPct !== null ? dragPct * 100 : progressPercent;
 
   return (
-    <>
     <main
       className="player"
       data-playing={isPlaying}
@@ -210,12 +209,12 @@ export function Player({
           aria-label="Volume"
         />
       </div>
+
+      {/* [2026-10-07 底框规整·一体卡] DJ Chat 留在播放器卡片内（辛老师拍板：不要拆成
+          两张独立卡，还是一体的）。「不工整」的病根不是嵌套，而是聊天面板自带
+          背景+边框+毛玻璃 → 卡中卡双重框。CSS 侧已把它洗成透明 + 顶部一条
+          通栏分割线，视觉上就是一整张卡的上下两节。 */}
+      {chatPanelSlot}
     </main>
-    {/* [2026-10-07 底框规整] DJ Chat 移出播放器卡片，作为 .app 下独立兄弟卡片：
-        原嵌在卡片内 → 卡片 867px 比屏高、底边圆角永不可见、半透明聊天板叠在
-        卡背景上双重框观感混乱。拆出后：播放器卡=紧凑播放区（底边完整可见），
-        聊天卡=同宽同圆角独立卡片，两边缘严格对齐（都吃 .app 的 20px padding）。 */}
-    {chatPanelSlot}
-    </>
   );
 }
