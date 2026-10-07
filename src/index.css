@@ -287,6 +287,7 @@ html, body { overflow-x: clip; }
 @media (max-width: 480px) {
   .header { align-items: flex-start; }
   .header-avatar { flex-shrink: 0; } /* 头像不许被挤扁 */
+  .header-brand > div { min-width: 0; } /* 文字列允许收缩，任何主题都不许溢出压按钮 */
   .header-name { white-space: nowrap; font-size: 14px; } /* 名称不许换行，360px 略缩字号 */
   .header-status { flex-wrap: wrap; }
   .header-status .role-badge { flex-basis: 100%; max-width: fit-content; margin-top: 4px; }
@@ -4318,5 +4319,60 @@ html, body { overflow-x: clip; }
   .settings-overlay .modal-body {
     /* 确保内部仍然可滚但弹性占满剩余高度 */
     -webkit-overflow-scrolling: touch;
+  }
+}
+/* ============================================================
+ * [2026-10-07 重装饰主题窄屏头部瘦身 · 全 UI 工整化]
+ * 病因：波普(pop)/复古漫画(comic) 把头部全做成 3px 描边+厚阴影胶囊，
+ *   名称牌 92px + 按钮组 225px，360/393px 屏超过可用宽度 → 名称牌
+ *   溢出叠到按钮组上（辛老师线上截图实锤）。
+ * 修法：≤480px 下对两主题头部胶囊统一瘦身（字号/内边距/描边/阴影全降一档）。
+ * ⚠️ 选择器与主题规则同优先级 (0,2,1)，必须放在全部主题之后靠书写顺序赢。
+ * ============================================================ */
+@media (max-width: 480px) {
+  .app[data-wallpaper="pop"] .header-name,
+  .app[data-wallpaper="comic"] .header-name {
+    font-size: 13px;
+    padding: 3px 8px;
+    border-width: 2px;
+    letter-spacing: 0.03em;
+  }
+  .app[data-wallpaper="pop"] .header-name { box-shadow: 2px 2px 0 #00d4d4; }
+  .app[data-wallpaper="comic"] .header-name { box-shadow: 2px 2px 0 #0a0a0a; }
+
+  .app[data-wallpaper="pop"] .header-status,
+  .app[data-wallpaper="comic"] .header-status {
+    font-size: 10px;
+    padding: 2px 7px;
+    margin-top: 6px;
+  }
+
+  .app[data-wallpaper="pop"] .header-avatar,
+  .app[data-wallpaper="comic"] .header-avatar {
+    width: 40px;
+    height: 40px;
+    border-width: 2px;
+  }
+  .app[data-wallpaper="pop"] .header-avatar { box-shadow: 2px 2px 0 #1a0533; }
+  .app[data-wallpaper="comic"] .header-avatar { box-shadow: 2px 2px 0 #0a0a0a; }
+
+  .app[data-wallpaper="pop"] .wallpaper-btn,
+  .app[data-wallpaper="comic"] .wallpaper-btn,
+  .app[data-wallpaper="pop"] .sfx-toggle,
+  .app[data-wallpaper="comic"] .sfx-toggle {
+    font-size: 11px;
+    padding: 3px 7px;
+    letter-spacing: 0.02em;
+  }
+  .app[data-wallpaper="pop"] .wallpaper-btn { box-shadow: 2px 2px 0 #00d4d4; }
+  .app[data-wallpaper="comic"] .wallpaper-btn { box-shadow: 2px 2px 0 #0a0a0a; }
+  .app[data-wallpaper="pop"] .sfx-toggle { box-shadow: 2px 2px 0 #1a0533; }
+  .app[data-wallpaper="comic"] .sfx-toggle { box-shadow: 2px 2px 0 #2962ff; }
+
+  .app[data-wallpaper="pop"] .header-timer,
+  .app[data-wallpaper="comic"] .header-timer {
+    font-size: 14px;
+    padding: 2px 7px;
+    border-width: 2px;
   }
 }
