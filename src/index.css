@@ -122,6 +122,13 @@ html, body { overflow-x: clip; }
   .start-title { font-size: 34px; }
   /* 所有居中弹窗：与主界面同 16px 呼吸边距（modal-overlay 自带 padding 16） */
   .modal-card { max-width: 100%; }
+  /* [2026-10-07 头部重叠根治] 单行头部在 ≤370px 屏上：品牌区(≈128px)+右侧组
+     (≈217px) 超过可用宽度 → 品牌容器被压扁、徽标溢出叠到壁纸按钮上（辛老师
+     手机+PC 都复现）。改两行布局：第一行 头像+名称+状态+身份徽标独占整行，
+     第二行 壁纸/音效/计时器右对齐——任何窄屏都不挤压、不重叠、不被切。 */
+  .header { flex-wrap: wrap; row-gap: 10px; }
+  .header-brand { flex: 1 1 100%; }
+  .header-right { flex: 0 1 auto; margin-left: auto; flex-shrink: 1; }
 }
 
 /* ============== 顶部：DJ 头像 + 名称 + 倒计时（Claudio 风格） ============== */
