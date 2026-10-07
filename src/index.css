@@ -122,13 +122,8 @@ html, body { overflow-x: clip; }
   .start-title { font-size: 34px; }
   /* 所有居中弹窗：与主界面同 16px 呼吸边距（modal-overlay 自带 padding 16） */
   .modal-card { max-width: 100%; }
-  /* [2026-10-07 头部重叠根治] 单行头部在 ≤370px 屏上：品牌区(≈128px)+右侧组
-     (≈217px) 超过可用宽度 → 品牌容器被压扁、徽标溢出叠到壁纸按钮上（辛老师
-     手机+PC 都复现）。改两行布局：第一行 头像+名称+状态+身份徽标独占整行，
-     第二行 壁纸/音效/计时器右对齐——任何窄屏都不挤压、不重叠、不被切。 */
-  .header { flex-wrap: wrap; row-gap: 10px; }
-  .header-brand { flex: 1 1 100%; }
-  .header-right { flex: 0 1 auto; margin-left: auto; flex-shrink: 1; }
+  /* 头部窄屏布局规则统一放在 .wallpaper-btn-label 之后的媒体查询里
+     （媒体查询与基础规则同优先级，必须写在基础规则后面才能覆盖） */
 }
 
 /* ============== 顶部：DJ 头像 + 名称 + 倒计时（Claudio 风格） ============== */
@@ -281,6 +276,25 @@ html, body { overflow-x: clip; }
   transition: background 0.25s ease;
 }
 .wallpaper-btn-label { line-height: 1; }
+
+/* [2026-10-07 头部布局 v2·辛老师拍板] 窄屏（≤480px）：
+   第一行 = 品牌区(头像+名称+状态) 与 壁纸/音效/计时器 并排；
+   身份徽标在状态行内换行、独占一行落在 "Speaking" 正下方
+   （徽标本就在文字列的 .header-status 里，flex-basis:100% 逼它换行 +
+   max-width:fit-content 保持胶囊自身宽度不被拉伸）。
+   右侧组同步瘦身（gap/内边距/计时器字号），360px 屏也放得下不挤压。
+   ⚠️ 必须位于基础规则之后——同优先级媒体查询靠书写顺序赢。 */
+@media (max-width: 480px) {
+  .header { align-items: flex-start; }
+  .header-avatar { flex-shrink: 0; } /* 头像不许被挤扁 */
+  .header-name { white-space: nowrap; font-size: 14px; } /* 名称不许换行，360px 略缩字号 */
+  .header-status { flex-wrap: wrap; }
+  .header-status .role-badge { flex-basis: 100%; max-width: fit-content; margin-top: 4px; }
+  .header-right { flex: 0 1 auto; margin-left: auto; flex-shrink: 1; gap: 8px; }
+  .header-timer { font-size: 18px; }
+  .sfx-toggle { padding: 4px 9px; }
+  .wallpaper-btn { padding: 4px 8px 4px 7px; }
+}
 
 /* ============== 播放器主体（极简封面 + 大字歌名） ============== */
 .player {
