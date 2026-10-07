@@ -66,6 +66,59 @@ export default function App() {
     const t = window.setTimeout(() => el.remove(), 320);
     return () => window.clearTimeout(t);
   }, []);
+
+  // [2026-10-07 辛老师要求] 手机端「下拉松开 = 刷新」自研手势。
+  // 背景：body 上有 overscroll-behavior:none（2026-10-06 为防误触刷新断歌禁了
+  // 浏览器原生下拉刷新）——原生继续禁着（避免双触发），这里做受控手势版：
+  //   · 只在【页面滚动在顶部】且【起点不在聊天列表/进度条/输入框/任何弹层】时生效
+  //   · 下拉 >80px 松手 → location.reload()（刷新=重新拉歌单，辛老师要的"刷新更新歌曲"）
+  //   · 顶部小胶囊给三态反馈：继续下拉 / 松开刷新 / 刷新中
+  const [ptr, setPtr] = useState<"idle" | "pulling" | "ready" | "refreshing">("idle");
+  useEffect(() => {
+    let startY = 0;
+    let pulling = false;
+    let maxDy = 0;
+    const THRESHOLD = 80;
+    const isBlocked = (t: EventTarget | null) =>
+      t instanceof Element &&
+      !!t.closest(
+        ".chat-list, .progress-bar, input, textarea, select, .modal-overlay, .settings-overlay, .start-overlay, .audio-lock-hint, .wallpaper-portal-isolated",
+      );
+    const onStart = (e: TouchEvent) => {
+      if (window.scrollY > 0 || isBlocked(e.target)) { pulling = false; return; }
+      startY = e.touches[0].clientY;
+      maxDy = 0;
+      pulling = true;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy <= 0 || window.scrollY > 0) { pulling = false; maxDy = 0; setPtr("idle"); return; }
+      e.preventDefault(); // 拦住原生橡皮筋/滚动，手势期间页面不动
+      maxDy = Math.max(maxDy, dy);
+      setPtr(dy > THRESHOLD ? "ready" : "pulling");
+    };
+    const onEnd = () => {
+      if (!pulling) return;
+      pulling = false;
+      if (maxDy > THRESHOLD) {
+        setPtr("refreshing");
+        window.setTimeout(() => location.reload(), 350);
+      } else {
+        setPtr("idle");
+      }
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
   // 持久化 handlePlay 引用（避免 effect 重跑）
   const handlePlayRef = useRef(engine.handlePlay);
   handlePlayRef.current = engine.handlePlay;
@@ -342,6 +395,14 @@ export default function App() {
 
   return (
     <div className="app" data-wallpaper={wallpaperId}>
+      {/* 下拉刷新提示胶囊（三态：继续下拉 / 松开刷新 / 刷新中） */}
+      {ptr !== "idle" && (
+        <div className={`ptr-indicator ptr-${ptr}`} role="status" aria-live="polite">
+          {ptr === "pulling" && "↓ 继续下拉"}
+          {ptr === "ready" && "↑ 松开刷新电台"}
+          {ptr === "refreshing" && "🔄 刷新中…"}
+        </div>
+      )}
       <header className="header">
         <div className="header-brand">
           <div className="header-avatar" aria-label="DJ">

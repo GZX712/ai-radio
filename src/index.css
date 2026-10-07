@@ -608,6 +608,45 @@ html, body { overflow-x: clip; }
   display: block;
 }
 
+/* =========================================================
+ * [2026-10-07] 下拉刷新提示胶囊（手势逻辑在 App.tsx）
+ * 固定在视口顶部中央，三态变色：拉未到阈值=暗色、到阈值=亮色、刷新中=呼吸
+ * ========================================================= */
+.ptr-indicator {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: rgba(20, 20, 28, 0.88);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  animation: ptr-in 0.18s ease-out;
+  pointer-events: none; /* 不挡手势 */
+}
+.ptr-ready {
+  background: rgba(115, 89, 192, 0.92);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+.ptr-refreshing { animation: ptr-in 0.18s ease-out, ptr-breath 0.7s ease-in-out infinite; }
+@keyframes ptr-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes ptr-breath {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 /* ============== 对话窗口 ============== */
 .chat-panel {
   border-radius: 24px;
