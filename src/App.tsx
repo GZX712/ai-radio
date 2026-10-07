@@ -295,6 +295,15 @@ export default function App() {
         // 后端告知本设备身份（主人 / 客人）——界面徽标 + 控制台可查
         setDeviceRole(m.role ?? "");
         console.info(`[DEVICE] 本设备身份: ${m.role ?? "unknown"}${m.isOwner ? "（主人）" : ""}`);
+        // [2026-10-07] 访客默认皮肤：Hello Kitty DJ 壁纸 + 黑白漫 DJ 头像。
+        // 只写内存 store（不落 localStorage，保访客无痕）；本机已自定义过的不覆盖。
+        if (m.role === "guest-new" || m.role === "guest-known") {
+          const st = useRadioStore.getState();
+          const patch: Partial<Pick<typeof st, "playerBgImage" | "djAvatar">> = {};
+          if (!st.playerBgImage) patch.playerBgImage = "/guest/wallpaper.jpg";
+          if (!st.djAvatar) patch.djAvatar = "/guest/dj-avatar.jpg";
+          if (Object.keys(patch).length) useRadioStore.setState(patch);
+        }
         return;
       }
       if (m.type === "dj" || m.type === "chat-reply") {
