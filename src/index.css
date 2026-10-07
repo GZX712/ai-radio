@@ -106,11 +106,30 @@ body::after {
   z-index: 1;
 }
 
+/* =========================================================
+ * [2026-10-07 全 UI 底框规整] 辛老师反馈：所有界面底框在手机上不工整。
+ * 一套保险规则，所有界面通吃：
+ * 1) 全局锁死横向溢出——任何异常宽元素都不许把页面顶歪、顶出右侧黑条；
+ * 2) 窄屏下 .app 显式 100% 宽 + 左右对称 20px 边距，卡片两边严格对齐；
+ * 3) 开播卡/弹窗全部加上「绝不出血」上限，任何屏宽都留边距、不被切。
+ * ========================================================= */
+html, body { overflow-x: clip; }
+
+@media (max-width: 480px) {
+  .app { width: 100%; max-width: none; }
+  /* 开播引导卡：窄屏不贴边、不溢出 */
+  .start-card { max-width: calc(100vw - 48px); }
+  .start-title { font-size: 34px; }
+  /* 所有居中弹窗：与主界面同 16px 呼吸边距（modal-overlay 自带 padding 16） */
+  .modal-card { max-width: 100%; }
+}
+
 /* ============== 顶部：DJ 头像 + 名称 + 倒计时（Claudio 风格） ============== */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 6px 0;
 }
 
@@ -118,6 +137,7 @@ body::after {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0; /* [2026-10-07] 窄屏允许压缩，防止把右侧计时器顶出屏外 */
 }
 
 .header-avatar {
@@ -198,6 +218,7 @@ body::after {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0; /* [2026-10-07] 右侧按钮组永不压缩/不被切 */
 }
 
 .sfx-toggle {
@@ -588,8 +609,11 @@ body::after {
 }
 
 /* ============== 对话窗口 ============== */
+/* [2026-10-07 底框规整] 聊天面板从播放器卡片内拆出，成为 .app 下独立兄弟卡片：
+   与播放器同 24px 圆角、同 20px 左右边距（吃 .app padding）、同 gap 节奏，
+   两张卡片边缘严格对齐，各自底边完整可见。 */
 .chat-panel {
-  border-radius: 20px;
+  border-radius: 24px;
   background: rgba(255,255,255,0.025);
   border: 1px solid var(--border);
   backdrop-filter: blur(20px);

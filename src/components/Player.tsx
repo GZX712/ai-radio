@@ -97,6 +97,7 @@ export function Player({
   const shownPercent = dragPct !== null ? dragPct * 100 : progressPercent;
 
   return (
+    <>
     <main
       className="player"
       data-playing={isPlaying}
@@ -209,9 +210,12 @@ export function Player({
           aria-label="Volume"
         />
       </div>
-
-      {/* DJ Chat 嵌入槽（位于控制区下方，与播放器共享卡片样式） */}
-      {chatPanelSlot}
     </main>
+    {/* [2026-10-07 底框规整] DJ Chat 移出播放器卡片，作为 .app 下独立兄弟卡片：
+        原嵌在卡片内 → 卡片 867px 比屏高、底边圆角永不可见、半透明聊天板叠在
+        卡背景上双重框观感混乱。拆出后：播放器卡=紧凑播放区（底边完整可见），
+        聊天卡=同宽同圆角独立卡片，两边缘严格对齐（都吃 .app 的 20px padding）。 */}
+    {chatPanelSlot}
+    </>
   );
 }
