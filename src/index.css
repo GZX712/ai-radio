@@ -4336,20 +4336,13 @@ html, body { overflow-x: clip; }
 @media (max-width: 480px) {
   .app[data-wallpaper="pop"] .header-name,
   .app[data-wallpaper="comic"] .header-name {
-    font-size: 13px;
-    padding: 3px 8px;
+    font-size: 15px;
+    padding: 4px 9px;
     border-width: 2px;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
   }
   .app[data-wallpaper="pop"] .header-name { box-shadow: 2px 2px 0 #00d4d4; }
   .app[data-wallpaper="comic"] .header-name { box-shadow: 2px 2px 0 #0a0a0a; }
-
-  .app[data-wallpaper="pop"] .header-status,
-  .app[data-wallpaper="comic"] .header-status {
-    font-size: 10px;
-    padding: 2px 7px;
-    margin-top: 6px;
-  }
 
   .app[data-wallpaper="pop"] .header-avatar,
   .app[data-wallpaper="comic"] .header-avatar {
@@ -4375,8 +4368,8 @@ html, body { overflow-x: clip; }
 
   .app[data-wallpaper="pop"] .header-timer,
   .app[data-wallpaper="comic"] .header-timer {
-    font-size: 14px;
-    padding: 2px 7px;
+    font-size: 13px;
+    padding: 2px 6px;
     border-width: 2px;
   }
 }

@@ -26,7 +26,7 @@ export default function App() {
   const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
   const djAvatar = useRadioStore((s) => s.djAvatar);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [deviceRole, setDeviceRole] = useState<string>(""); // owner | guest-new | guest-known | no-id（hello 下发）
+  const [, setDeviceRole] = useState<string>(""); // owner | guest-new | guest-known | no-id（hello 下发，现仅留控制台日志，UI 不再展示身份）
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
     isFinite(s) && s >= 0 ? `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}` : "0:00";
@@ -414,22 +414,9 @@ export default function App() {
               : <span className="header-avatar-fallback">DJ</span>}
           </div>
           <div>
+            {/* [2026-10-08 辛老师拍板] 头部左区只留「头像 + AI RADIO 名牌」，
+                Speaking 状态行与身份勋章全部移除——视觉做减法，名牌撑场面。 */}
             <div className="header-name">AI Radio</div>
-            <div className="header-status">
-              {isPlaying ? "Speaking" : "Online"}
-            </div>
-            {/* [2026-10-07 勋章美化] 身份勋章从状态胶囊里拆出来独立成行：
-                波普/复古漫画主题把 .header-status 做成黄底描边大胶囊，勋章塞在里面
-                会被裹成「大胶囊套小胶囊」的丑双层。独立成行后，勋章在各主题下
-                都保持「小标记」的体量，不抢戏。 */}
-            {(deviceRole === "owner" || deviceRole === "guest-new" || deviceRole === "guest-known") && (
-              <div className="header-role-row">
-                {deviceRole === "owner" && <span className="role-badge owner" title="本设备是电台主人">🏠 主人</span>}
-                {(deviceRole === "guest-new" || deviceRole === "guest-known") && (
-                  <span className="role-badge guest" title="本设备是访客（DJ 会语音欢迎）">👤 访客</span>
-                )}
-              </div>
-            )}
           </div>
         </div>
         <div className="header-right">
