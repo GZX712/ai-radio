@@ -417,11 +417,19 @@ export default function App() {
             <div className="header-name">AI Radio</div>
             <div className="header-status">
               {isPlaying ? "Speaking" : "Online"}
-              {deviceRole === "owner" && <span className="role-badge owner" title="本设备是电台主人">🏠 主人</span>}
-              {(deviceRole === "guest-new" || deviceRole === "guest-known") && (
-                <span className="role-badge guest" title="本设备是访客（DJ 会语音欢迎）">👤 访客</span>
-              )}
             </div>
+            {/* [2026-10-07 勋章美化] 身份勋章从状态胶囊里拆出来独立成行：
+                波普/复古漫画主题把 .header-status 做成黄底描边大胶囊，勋章塞在里面
+                会被裹成「大胶囊套小胶囊」的丑双层。独立成行后，勋章在各主题下
+                都保持「小标记」的体量，不抢戏。 */}
+            {(deviceRole === "owner" || deviceRole === "guest-new" || deviceRole === "guest-known") && (
+              <div className="header-role-row">
+                {deviceRole === "owner" && <span className="role-badge owner" title="本设备是电台主人">🏠 主人</span>}
+                {(deviceRole === "guest-new" || deviceRole === "guest-known") && (
+                  <span className="role-badge guest" title="本设备是访客（DJ 会语音欢迎）">👤 访客</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="header-right">

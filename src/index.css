@@ -289,8 +289,6 @@ html, body { overflow-x: clip; }
   .header-avatar { flex-shrink: 0; } /* 头像不许被挤扁 */
   .header-brand > div { min-width: 0; } /* 文字列允许收缩，任何主题都不许溢出压按钮 */
   .header-name { white-space: nowrap; font-size: 14px; } /* 名称不许换行，360px 略缩字号 */
-  .header-status { flex-wrap: wrap; }
-  .header-status .role-badge { flex-basis: 100%; max-width: fit-content; margin-top: 4px; }
   .header-right { flex: 0 1 auto; margin-left: auto; flex-shrink: 1; gap: 8px; }
   .header-timer { font-size: 18px; }
   .sfx-toggle { padding: 4px 9px; }
@@ -1770,8 +1768,14 @@ html, body { overflow-x: clip; }
 .toast-bad { border-color: #e74c3c; box-shadow: 0 0 14px rgba(231, 76, 60, 0.35); }
 
 /* 设备身份徽标（主人 🏠 / 访客 👤），自带宽色底，任何壁纸下都清晰 */
+/* [2026-10-07] 身份勋章独立行：从状态胶囊里拆出，落在 Speaking 正下方，
+   保持「小标记」体量，全主题通用 */
+.header-role-row {
+  margin-top: 4px;
+  line-height: 1;
+}
 .role-badge {
-  margin-left: 8px;
+  display: inline-block;
   padding: 1px 8px;
   border-radius: 8px;
   font-size: 10px;
@@ -4376,3 +4380,29 @@ html, body { overflow-x: clip; }
     border-width: 2px;
   }
 }
+
+/* ============================================================
+ * [2026-10-07 重装饰主题 · 身份勋章安静版]
+ * 波普(pop)/复古漫画(comic) 里勋章若沿用主题胶囊语言（厚描边+硬阴影）
+ * 会变成抢戏的大色块；且它已独立成行（.header-role-row），不该再套
+ * 状态胶囊的黄底。统一收成「白底小牌」：保留主题描边语言但体量最小化。
+ * 选择器 (0,2,1) 与主题规则同级，放文件末尾靠书写顺序赢。
+ * ============================================================ */
+.app[data-wallpaper="pop"] .role-badge,
+.app[data-wallpaper="comic"] .role-badge {
+  background: #ffffff;
+  border: 2px solid #1a0533;
+  border-radius: 999px;
+  box-shadow: 1.5px 1.5px 0 rgba(26, 5, 51, 0.55);
+  color: #1a0533;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 7px;
+  letter-spacing: 0.04em;
+}
+.app[data-wallpaper="pop"] .role-badge.owner { border-color: #b8860b; color: #8a6408; box-shadow: 1.5px 1.5px 0 rgba(184, 134, 11, 0.5); }
+.app[data-wallpaper="pop"] .role-badge.guest { border-color: #0891b2; color: #0e7490; box-shadow: 1.5px 1.5px 0 rgba(8, 145, 178, 0.45); }
+.app[data-wallpaper="comic"] .role-badge { border-color: #0a0a0a; color: #0a0a0a; box-shadow: 1.5px 1.5px 0 rgba(10, 10, 10, 0.5); }
+.app[data-wallpaper="comic"] .role-badge.owner { color: #8a6408; }
+.app[data-wallpaper="comic"] .role-badge.guest { color: #0e7490; }
