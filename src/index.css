@@ -2978,20 +2978,23 @@ html, body { overflow-x: clip; }
 .app[data-wallpaper="pop"] .player::after {
   box-shadow: none;
 }
+/* [2026-10-08 辛老师拍板·方案C] 名牌改波普招牌字：黄底描边大字 + 玫红硬阴影 + 微倾斜，
+   去胶囊化（右边已有三颗胶囊，左边破形才协调） */
 .app[data-wallpaper="pop"] .header-name {
-  color: #ffffff;
-  background: #1a0533;
-  padding: 5px 12px;
-  border: 3px solid #1a0533;
-  box-shadow: 3px 3px 0 #00d4d4;
-  border-radius: 24px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
   display: inline-block;
   font-family: "Impact", "JetBrains Mono", monospace;
-  letter-spacing: 0.06em;
-  text-shadow: none !important;
   font-weight: 900;
-  font-size: 16px;
-  line-height: 1.2;
+  font-size: 26px;
+  line-height: 40px;
+  letter-spacing: 0.1em;
+  color: #ffd93d;
+  -webkit-text-stroke: 1.5px #1a0533;
+  text-shadow: 3px 3px 0 #ff3366 !important;
+  transform: rotate(-2deg);
 }
 .app[data-wallpaper="pop"] .header-status {
   color: #1a0533;
@@ -3172,20 +3175,22 @@ html, body { overflow-x: clip; }
   pointer-events: none;
   z-index: 4;
 }
+/* [2026-10-08 辛老师拍板·方案C] 漫画主题配套招牌字：黄字黑描边 + 正红硬阴影 + 微倾斜 */
 .app[data-wallpaper="comic"] .header-name {
-  color: #0a0a0a;
-  background: #ffd93d;
-  padding: 5px 12px;
-  border: 3px solid #0a0a0a;
-  box-shadow: 3px 3px 0 #0a0a0a;
-  border-radius: 4px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
   display: inline-block;
-  text-shadow: none !important;
   font-family: "Impact", "JetBrains Mono", monospace;
   font-weight: 900;
-  font-size: 16px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
+  font-size: 26px;
+  line-height: 40px;
+  letter-spacing: 0.1em;
+  color: #ffd93d;
+  -webkit-text-stroke: 1.5px #0a0a0a;
+  text-shadow: 3px 3px 0 #ff3030 !important;
+  transform: rotate(-2deg);
 }
 .app[data-wallpaper="comic"] .header-status {
   color: #0a0a0a;
@@ -4336,13 +4341,11 @@ html, body { overflow-x: clip; }
 @media (max-width: 480px) {
   .app[data-wallpaper="pop"] .header-name,
   .app[data-wallpaper="comic"] .header-name {
-    font-size: 15px;
-    padding: 4px 9px;
-    border-width: 2px;
-    letter-spacing: 0.04em;
+    font-size: 18px;
+    letter-spacing: 0.07em;
+    text-shadow: 2.5px 2.5px 0 #ff3366 !important;
   }
-  .app[data-wallpaper="pop"] .header-name { box-shadow: 2px 2px 0 #00d4d4; }
-  .app[data-wallpaper="comic"] .header-name { box-shadow: 2px 2px 0 #0a0a0a; }
+  .app[data-wallpaper="comic"] .header-name { text-shadow: 2.5px 2.5px 0 #ff3030 !important; }
 
   .app[data-wallpaper="pop"] .header-avatar,
   .app[data-wallpaper="comic"] .header-avatar {
