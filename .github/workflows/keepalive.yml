@@ -1,0 +1,41 @@
+# ============================================================
+# Render 外部保活（GitHub Actions 版）
+# ------------------------------------------------------------
+# 背景：Render 免费版「15 分钟无入站请求」自动休眠。服务端内置的
+# selfPing 保活只在实例【运行中】有效 —— 一旦夜间睡死（省额度窗口），
+# 体内定时器随之死亡，第二天没人叫得醒它（信任边界缺陷）。
+# 本工作流提供【外部唤醒源】：
+#   · 北京时间 07:00–24:59（UTC 23:00–16:59）每 5 分钟 ping 主服务
+#   · 唤醒后主服务内部的 keepalive 会连锁保活网易云节点
+#   · 夜间不 ping = 保留 Render 750h/月免费额度（约 510h/月用量）
+# 注意：GitHub Actions 定时任务在仓库 60 天无活动后会被自动暂停，
+#       需要一次新提交（或手动 Run workflow）重新激活。
+# ============================================================
+name: Render Keepalive
+
+on:
+  schedule:
+    # 每 5 分钟（UTC 23:00–16:59 = 北京 07:00–24:59）
+    # GitHub cron 高峰期可能延迟数分钟，5 分钟间隔 + 主服务内部
+    # selfPing（10 分钟）双保险，均远小于 Render 的 15 分钟阈值
+    - cron: "*/5 23-16 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake ai-radio-server
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 70 https://ai-radio-server.onrender.com/api/health || true)
+            echo "attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "ai-radio-server is awake ✓"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::warning::ai-radio-server not responding after 3 attempts"
+          exit 1
