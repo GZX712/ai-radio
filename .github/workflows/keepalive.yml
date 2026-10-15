@@ -15,11 +15,13 @@ name: Render Keepalive
 
 on:
   schedule:
-    # 每 5 分钟（UTC 23:00–16:59 = 北京 07:00–24:59）
-    # GitHub cron 高峰期可能延迟数分钟，5 分钟间隔 + 主服务内部
-    # selfPing（10 分钟）双保险，均远小于 Render 的 15 分钟阈值
-    - cron: "*/5 23-16 * * *"
-  workflow_dispatch: {}
+    # 北京 08:00–00:59（UTC 0:00–16:59），每 5 分钟
+    - cron: "*/5 0-16 * * *"
+    # 北京 07:00–07:59（UTC 23:00–23:59），每 5 分钟
+    # （拆两个条目是因为 cron 范围不可跨零点回绕——旧的 "23-16" 反向
+    #   范围是非法表达式，曾导致 workflow 启动失败）
+    - cron: "*/5 23 * * *"
+  workflow_dispatch:
 
 jobs:
   ping:
