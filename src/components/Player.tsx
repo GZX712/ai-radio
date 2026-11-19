@@ -4,6 +4,7 @@ import { useRadioStore } from "@/store/useRadioStore";
 import { Visualizer } from "./Visualizer";
 import { PixelCover } from "./PixelCover";
 import { buildLetterCoverSvg } from "../lib/coverArt";
+import { t, useLang } from "@/lib/i18n";
 
 interface PlayerProps {
   onToggle: () => Promise<void>;
@@ -43,6 +44,7 @@ export function Player({
   getAnalyser,
   chatPanelSlot,
 }: PlayerProps) {
+  useLang(); // 语言切换 → 无障碍文案跟随
   const now = useRadioStore((s) => s.now);
   const isPlaying = useRadioStore((s) => s.isPlaying);
   const isLoading = useRadioStore((s) => s.isLoading);
@@ -147,7 +149,7 @@ export function Player({
           onClick={onPrev}
           className="btn-secondary"
           disabled={isLoading}
-          aria-label="上一首"
+          aria-label={t("上一首")}
         >
           ⏮
         </button>
@@ -155,7 +157,7 @@ export function Player({
           type="button"
           onClick={() => onSeek(-15)}
           className="btn-secondary"
-          aria-label="后退 15 秒"
+          aria-label={t("后退 15 秒")}
         >
           -15
         </button>
@@ -172,7 +174,7 @@ export function Player({
           type="button"
           onClick={() => onSeek(15)}
           className="btn-secondary"
-          aria-label="前进 15 秒"
+          aria-label={t("前进 15 秒")}
         >
           +15
         </button>
@@ -181,7 +183,7 @@ export function Player({
           onClick={onSkip}
           className="btn-secondary"
           disabled={isLoading}
-          aria-label="下一首"
+          aria-label={t("下一首")}
         >
           ⏭
         </button>

@@ -4,6 +4,7 @@ import {
   WALLPAPERS,
   type WallpaperId,
 } from "@/store/useRadioStore";
+import { t, useLang } from "@/lib/i18n";
 
 interface WallpaperPickerProps {
   current: WallpaperId;
@@ -25,6 +26,7 @@ interface WallpaperPickerProps {
  *   - 上传目的：图片只用于 Player 卡片背景（不是整页）
  */
 export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImage, onClose }: WallpaperPickerProps) {
+  useLang(); // 语言切换 → 面板文案跟随
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,7 +53,7 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
     new Promise((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(String(fr.result));
-      fr.onerror = () => reject(new Error("文件读取失败"));
+      fr.onerror = () => reject(new Error(t("文件读取失败")));
       fr.readAsDataURL(file);
     });
 
@@ -71,23 +73,23 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setErrMsg("仅支持图片文件（jpg/png/webp/gif）");
+      setErrMsg(t("仅支持图片文件（jpg/png/webp/gif）"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setErrMsg("图片过大（建议 ≤2MB），浏览器已拒绝");
+      setErrMsg(t("图片过大（建议 ≤2MB），浏览器已拒绝"));
       return;
     }
     try {
       const url = await readAsDataURL(file);
       const ok = onPlayerBgImage(url);
       if (!ok) {
-        setErrMsg("本地存储空间已满，请换一张更小的图");
+        setErrMsg(t("本地存储空间已满，请换一张更小的图"));
       } else {
         setErrMsg(null);
       }
     } catch (e) {
-      setErrMsg((e as Error).message || "上传失败");
+      setErrMsg((e as Error).message || t("上传失败"));
     }
   };
 
@@ -97,19 +99,19 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="选择壁纸"
+      aria-label={t("选择壁纸")}
     >
       <div
         className="modal-card wallpaper-picker"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2 className="modal-title">🎨 选择壁纸</h2>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="关闭">✕</button>
+          <h2 className="modal-title">{t("🎨 选择壁纸")}</h2>
+          <button type="button" className="modal-close" onClick={onClose} aria-label={t("关闭")}>✕</button>
         </div>
         <p className="modal-hint" style={{ marginTop: 0 }}>
-          切换配色方案，频谱紫色 LED 设计保留不变。<br />
-          选择会保存到本地，下次打开自动应用。
+          {t("切换配色方案，频谱紫色 LED 设计保留不变。")}<br />
+          {t("选择会保存到本地，下次打开自动应用。")}
         </p>
 
         {/* 滚动主体：grid 卡片 */}
@@ -153,8 +155,8 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
                 </div>
               </div>
               <div className="wallpaper-meta">
-                <div className="wallpaper-name">{wp.name}</div>
-                <div className="wallpaper-desc">{wp.desc}</div>
+                <div className="wallpaper-name">{t(wp.name)}</div>
+                <div className="wallpaper-desc">{t(wp.desc)}</div>
               </div>
             </button>
           ))}
@@ -168,8 +170,8 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
             onClick={handlePickClick}
             data-wallpaper="image"
             aria-pressed={isImageSet}
-            aria-label={isImageSet ? "点击更换 Player 卡片背景图" : "点击上传 Player 卡片背景图"}
-            title={isImageSet ? "点击更换图片" : "点击上传图片"}
+            aria-label={isImageSet ? t("点击更换 Player 卡片背景图") : t("点击上传 Player 卡片背景图")}
+            title={isImageSet ? t("点击更换图片") : t("点击上传图片")}
           >
             <div
               className="wallpaper-preview wallpaper-preview-image"
@@ -178,7 +180,7 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
               {!playerBgImage && (
                 <div className="wp-image-empty">
                   <span className="wp-image-plus">＋</span>
-                  <span className="wp-image-label">点击上传图片</span>
+                  <span className="wp-image-label">{t("点击上传图片")}</span>
                 </div>
               )}
               <div className="wp-led">
@@ -191,17 +193,17 @@ export function WallpaperPicker({ current, playerBgImage, onPick, onPlayerBgImag
                   type="button"
                   className="wp-image-clear"
                   onClick={handleClearClick}
-                  aria-label="清除自定义壁纸"
-                  title="清除图片"
+                  aria-label={t("清除自定义壁纸")}
+                  title={t("清除图片")}
                 >
                   ✕
                 </button>
               )}
             </div>
             <div className="wallpaper-meta">
-              <div className="wallpaper-name">🖼 自定义壁纸</div>
+              <div className="wallpaper-name">{t("🖼 自定义壁纸")}</div>
               <div className="wallpaper-desc">
-                {playerBgImage ? "点击更换 · Player 背景" : "上传图片 · Player 背景"}
+                {playerBgImage ? t("点击更换 · Player 背景") : t("上传图片 · Player 背景")}
               </div>
             </div>
           </button>

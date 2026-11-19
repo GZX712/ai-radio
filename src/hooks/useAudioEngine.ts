@@ -473,7 +473,13 @@ export function useAudioEngine() {
       });
       bootedRef.current = true; // 成功开播 → 进入"正常播放"阶段（启动阶段不再播 jingle）
     } catch (err) {
-      useRadioStore.getState().setError(err instanceof Error ? err.message : "播放失败");
+      // [2026-10-20] 无手势时的自动播放拦截（NotAllowedError）属浏览器预期行为 →
+      // 静默吞掉，等访客在「开始电台」手势里真正开播；其余错误照常提示
+      const msg = err instanceof Error ? err.message : "";
+      const autoplayBlocked = /not allowed|didn'?t interact|user gesture|autoplay/i.test(msg);
+      if (!autoplayBlocked) {
+        useRadioStore.getState().setError(msg || "播放失败");
+      }
     } finally {
       useRadioStore.getState().setIsLoading(false);
     }

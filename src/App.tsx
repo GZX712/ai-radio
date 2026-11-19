@@ -13,6 +13,7 @@ import { ParticleField } from "@/components/ParticleField";
 import { WallpaperPicker } from "@/components/WallpaperPicker";
 import { buildWsUrl, tryClaimFromUrl, isOwnerDevice, getDeviceId, getOwnerBond } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
+import { t, useLang, setLang } from "@/lib/i18n";
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -26,6 +27,7 @@ export default function App() {
   const setPlayerBgImage = useRadioStore((s) => s.setPlayerBgImage);
   const djAvatar = useRadioStore((s) => s.djAvatar);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const lang = useLang(); // 语言切换 → 整树重渲染（t() 读 i18n 模块内状态）
   const [, setDeviceRole] = useState<string>(""); // owner | guest-new | guest-known | no-id（hello 下发，现仅留控制台日志，UI 不再展示身份）
   const isPlaying = useRadioStore((s) => s.isPlaying);  const progress = useRadioStore((s) => s.progress);
   const fmt = (s: number) =>
@@ -401,9 +403,9 @@ export default function App() {
       {/* 下拉刷新提示胶囊（三态：继续下拉 / 松开刷新 / 刷新中） */}
       {ptr !== "idle" && (
         <div className={`ptr-indicator ptr-${ptr}`} role="status" aria-live="polite">
-          {ptr === "pulling" && "↓ 继续下拉"}
-          {ptr === "ready" && "↑ 松开刷新电台"}
-          {ptr === "refreshing" && "🔄 刷新中…"}
+          {ptr === "pulling" && t("↓ 继续下拉")}
+          {ptr === "ready" && t("↑ 松开刷新电台")}
+          {ptr === "refreshing" && t("🔄 刷新中…")}
         </div>
       )}
       <header className="header">
@@ -424,24 +426,24 @@ export default function App() {
             type="button"
             className="wallpaper-btn"
             onClick={() => setPickerOpen(true)}
-            title={`当前壁纸：${WALLPAPERS.find(w => w.id === wallpaperId)?.name ?? wallpaperId}`}
-            aria-label="切换壁纸"
+            title={t("当前壁纸：") + (WALLPAPERS.find(w => w.id === wallpaperId)?.name ?? wallpaperId)}
+            aria-label={t("切换壁纸")}
           >
             <span className="wallpaper-btn-dot" style={{
               background: WALLPAPERS.find(w => w.id === wallpaperId)?.palette[0] ?? "#9d00ff",
             }} />
-            <span className="wallpaper-btn-label">壁纸</span>
+            <span className="wallpaper-btn-label">{t("壁纸")}</span>
           </button>
           <button
             type="button"
             className={`sfx-toggle ${sfxEnabled ? "on" : "off"}`}
             onClick={toggleSfx}
-            title={sfxEnabled ? "搞笑音效：开（点击关闭）" : "搞笑音效：关（点击开启）"}
-            aria-label="搞笑音效开关"
+            title={sfxEnabled ? t("搞笑音效：开（点击关闭）") : t("搞笑音效：关（点击开启）")}
+            aria-label={t("搞笑音效开关")}
           >
-            {sfxEnabled ? "😄 音效开" : "🔇 音效关"}
+            {sfxEnabled ? t("😄 音效开") : t("🔇 音效关")}
           </button>
-          <div className="header-timer" title="本次使用时长">{fmt(appTime)}</div>
+          <div className="header-timer" title={t("本次使用时长")}>{fmt(appTime)}</div>
         </div>
       </header>
 
@@ -496,13 +498,29 @@ export default function App() {
       {!started && (
         <div className="start-overlay" onClick={handleStart} role="presentation">
           <div className="start-card" onClick={(e) => e.stopPropagation()}>
-            <h2 className="start-title">辛老师的 AI 电台</h2>
-            <p className="start-sub">284 首你的歌 · 双语 DJ · 语音操控</p>
+            {/* [2026-10-20] 访客入口语言选择：选定后整个界面 chrome 跟随该语言；
+                DJ 对话本身自带 {en, zh} 双字段，不参与切换。 */}
+            <div className="lang-picker" role="group" aria-label={t("选择界面语言")}>
+              <button
+                type="button"
+                className={`lang-btn ${lang === "zh" ? "active" : ""}`}
+                aria-pressed={lang === "zh"}
+                onClick={() => setLang("zh")}
+              >中文</button>
+              <button
+                type="button"
+                className={`lang-btn ${lang === "en" ? "active" : ""}`}
+                aria-pressed={lang === "en"}
+                onClick={() => setLang("en")}
+              >English</button>
+            </div>
+            <h2 className={`start-title${lang === "en" ? " lang-en" : ""}`}>{t("辛老师的 AI 电台")}</h2>
+            <p className="start-sub">{t("284 首你的歌 · 双语 DJ · 语音操控")}</p>
 
             <button type="button" className="start-btn magnetic" onClick={handleStart}>
-              ▶ 开始电台
+              ▶ {t("开始电台")}
             </button>
-            <p className="start-hint">点击开始听歌，DJ 会先跟你打个招呼</p>
+            <p className="start-hint">{t("点击开始听歌，DJ 会先跟你打个招呼")}</p>
           </div>
         </div>
       )}
@@ -523,7 +541,7 @@ export default function App() {
           }}
         >
           <span className="alh-icon" aria-hidden="true">🔊</span>
-          轻触开启声音
+          {t("轻触开启声音")}
         </button>
       )}
     </div>

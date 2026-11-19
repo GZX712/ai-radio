@@ -1,4 +1,5 @@
 import { EdgeTTS } from "node-edge-tts";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -113,6 +114,20 @@ export const ttsService = {
       ...MIMO_VOICES.map((v) => ({ ...v, engine: "mimo" as const, free: true })),
       ...EDGE_VOICES.map((v) => ({ ...v, engine: "edge" as const, free: true })),
     ];
+  },
+
+  /**
+   * [2026-11-19] 预合成音频是否真的还在磁盘上。
+   * 背景：Render 免费版磁盘是临时的，每次部署/重启会清空 public/audio；
+   * 而 data/phrase-bank.json（入库 git）里存的是 100 条历史 audioUrl →
+   * 重启后全部指向 404，前端 <audio> 加载失败 → 切歌串场静默无声。
+   * 调用侧先用它验活，缺文件就实时重合成，彻底消除"没声音"。
+   */
+  audioExists(url?: string): boolean {
+    if (!url) return false;
+    const name = url.split("/").pop();
+    if (!name) return false;
+    return existsSync(path.join(OUTPUT_DIR, name));
   },
 
   async cleanup(maxAgeMs = 24 * 60 * 60 * 1000): Promise<number> {

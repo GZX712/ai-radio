@@ -4,6 +4,7 @@ import type { ReconnectingWS } from "@/lib/ws";
 import { useRadioStore, type WallpaperId } from "@/store/useRadioStore";
 import { pushSettings } from "@/lib/settingsSync";
 import { isOwnerDevice, getDeviceId, getOwnerBond } from "@/lib/deviceIdentity";
+import { t, useLang, voiceName, voiceDesc } from "@/lib/i18n";
 
 interface ChatMessage {
   id: number;
@@ -156,6 +157,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
     }
   }
   const [input, setInput] = useState("");
+  const lang = useLang(); // 语言切换 → 本组件重渲染（界面文案跟随访客选择）
   const [hideZh, setHideZh] = useState(false);
   const [isOpen, setIsOpen] = useState(true); // 默认展开对话窗口
   const [isListening, setIsListening] = useState(false);
@@ -217,6 +219,10 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
   // "3D 流式打字" 动效标记：reply 到达后 1.7s 内该 id 的文本 reveal 出
   const streamingIdRef = useRef<number | null>(null);
   const streamTimerRef = useRef<number | null>(null);
+  // [2026-11-19] playDj 走 ref：自动朗读要用它，但不能塞进 WS 订阅的依赖数组
+  // （引擎每次渲染都给新函数引用 → 会让 onMessage 反复重订阅，存在极小丢消息窗口）
+  const playDjRef = useRef(playDj);
+  useEffect(() => { playDjRef.current = playDj; }, [playDj]);
   // 当前手动播放的 chat-reply 消息 id（▶ 再点变 ⏸）
   const [playingReplyId, setPlayingReplyId] = useState<number | null>(null);
   // [2026-10-06 问题2] 正在「换音色重合成」的消息 id —— 合成要 3~8 秒，
@@ -301,6 +307,20 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
         });
         // 播放控制命令 → 执行对应动作（切歌/暂停/播放/音量/点歌）
         if (reply.action) onAction(reply.action, reply.song);
+
+        // [2026-11-19 辛老师反馈「DJ 回复没有声音」] 之前只有 type==="dj"（切歌/开场）
+        // 会自动播，chat-reply 必须手动点气泡里的 ▶ —— 大多数人根本不知道要点，
+        // 体感就是「DJ 只会打字」。现在回复到达即自动朗读，▶ 保留做重播/暂停。
+        // force=false：沿用 5 秒同 URL 去重，避免和 type="dj" 广播撞成双声。
+        if (m.type === "chat-reply" && reply.audioUrl) {
+          void playDjRef.current(
+            reply.audioUrl,
+            reply.en,
+            reply.zh ?? "",
+            false,
+            reply.funny === true,
+          ).catch(() => { /* 被浏览器拦或文件坏：静默失败，▶ 仍可手动播 */ });
+        }
       }
     });
   }, [ws, onAction]);
@@ -614,8 +634,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
           <button
             type="button"
             className="chat-dj-avatar-btn"
-            aria-label="DJ 性格设置"
-            title="点击打开 DJ 性格设置（可在此上传/更换头像、选音色、调性格）"
+            aria-label={t("DJ 性格设置")}
+            title={t("点击打开 DJ 性格设置（可在此上传/更换头像、选音色、调性格）")}
             onClick={() => setShowSettings(true)}
           >
             {djAvatar ? (
@@ -637,30 +657,30 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
           <label
             htmlFor="avatar-file"
             className="chat-avatar-btn"
-            aria-label="上传我的头像"
-            title="点击上传/更换头像"
+            aria-label={t("上传我的头像")}
+            title={t("点击上传/更换头像")}
             role="button"
           >
             {userAvatar ? (
-              <img src={userAvatar} alt="我" className="chat-avatar-mini" />
+              <img src={userAvatar} alt={t("我")} className="chat-avatar-mini" />
             ) : (
-              <span className="chat-avatar-fallback">你</span>
+              <span className="chat-avatar-fallback">{t("你")}</span>
             )}
           </label>
           <button
             type="button"
             className="caption-toggle"
             onClick={() => setHideZh((v) => !v)}
-            aria-label={hideZh ? "显示中文" : "隐藏中文"}
+            aria-label={hideZh ? t("显示中文") : t("隐藏中文")}
           >
-            {hideZh ? "显示中文" : "隐藏中文"}
+            {hideZh ? t("显示中文") : t("隐藏中文")}
           </button>
           <button type="button" className="chat-close" aria-label="Close" onClick={() => setIsOpen(false)}>✕</button>
         </div>
       </div>
       <div className="chat-list" ref={listRef}>
         {messages.length === 0 && !djThinking && !testThinking && (
-          <div className="chat-empty">跟 DJ 聊聊，或按 🎤 语音说话</div>
+          <div className="chat-empty">{t("跟 DJ 聊聊，或按 🎤 语音说话")}</div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={`chat-msg ${m.role}`}>
@@ -669,9 +689,9 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
               <div className={`chat-avatar ${m.role}`}>
                 {m.role === "user" ? (
                   userAvatar ? (
-                    <img src={userAvatar} alt="我" />
+                    <img src={userAvatar} alt={t("我")} />
                   ) : (
-                    <span>你</span>
+                    <span>{t("你")}</span>
                   )
                 ) : djAvatar ? (
                   <img src={djAvatar} alt="DJ" />
@@ -693,8 +713,8 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                     className={`chat-reply-toggle ${playingReplyId === m.id ? "playing" : ""} ${synthReplyId === m.id ? "synth" : ""}`}
                     onClick={() => toggleReplyPlay(m)}
                     disabled={synthReplyId === m.id}
-                    aria-label={synthReplyId === m.id ? "正在用新音色合成语音" : playingReplyId === m.id ? "暂停这段回复" : "播放这段回复"}
-                    title={synthReplyId === m.id ? "正在用当前音色重新合成…" : playingReplyId === m.id ? "点击暂停这段回复" : "点击听 DJ 的这段回复"}
+                    aria-label={synthReplyId === m.id ? t("正在用新音色合成语音") : playingReplyId === m.id ? t("暂停这段回复") : t("播放这段回复")}
+                    title={synthReplyId === m.id ? t("正在用当前音色重新合成…") : playingReplyId === m.id ? t("点击暂停这段回复") : t("点击听 DJ 的这段回复")}
                   >
                     {synthReplyId === m.id ? "⏳" : playingReplyId === m.id ? "⏸" : "▶"}
                   </button>
@@ -734,35 +754,37 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                 </span>
               </div>
               <span className="chat-text">
-                正在敲碗回复<span className="dots"><i>.</i><i>.</i><i>.</i></span>
+                {t("正在敲碗回复")}<span className="dots"><i>.</i><i>.</i><i>.</i></span>
               </span>
             </div>
           </div>
         )}
         {lostText && (
           <div className="chat-lost" role="alert">
-            <span className="chat-lost-text">📡 这条好像没送到 DJ 耳朵里（连接断了一下）</span>
+            <span className="chat-lost-text">{t("📡 这条好像没送到 DJ 耳朵里（连接断了一下）")}</span>
             <button
               type="button"
               className="chat-lost-retry"
               onClick={() => {
-                const t = lostText;
+                const text = lostText;
                 setLostText(null);
-                sendMessage(t);
+                sendMessage(text);
               }}
             >
-              ↻ 重发「{lostText.length > 12 ? lostText.slice(0, 12) + "…" : lostText}」
+              {lang === "en"
+                ? `↻ Resend "${lostText.length > 12 ? lostText.slice(0, 12) + "…" : lostText}"`
+                : `↻ 重发「${lostText.length > 12 ? lostText.slice(0, 12) + "…" : lostText}」`}
             </button>
           </div>
         )}
       </div>
       <div className="chat-input-row">
-        <input ref={inputRef} type="text" className="chat-input" placeholder="打字或点 🎤 说话..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} aria-label="Type a message" />
+        <input ref={inputRef} type="text" className="chat-input" placeholder={t("打字或点 🎤 说话...")} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} aria-label="Type a message" />
         <button
           type="button"
           className={`chat-mic ${isListening ? "mic-active" : ""}`}
           onClick={handleMic}
-          aria-label={isListening ? "停止录音" : "语音输入"}
+          aria-label={isListening ? t("停止录音") : t("语音输入")}
         >
           🎤
         </button>
@@ -782,13 +804,13 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
             onClick={(e) => e.stopPropagation()}
           >
             <header className="modal-header">
-              <h3 className="modal-title">🎙 DJ 性格设置</h3>
+              <h3 className="modal-title">{t("🎙 DJ 性格设置")}</h3>
               <button type="button" className="modal-close" onClick={() => setShowSettings(false)} aria-label="Close">✕</button>
             </header>
             <div className="modal-body">
-              <label className="modal-label">DJ 头像（点击更换，影响所有 DJ 气泡左侧）</label>
+              <label className="modal-label">{t("DJ 头像（点击更换，影响所有 DJ 气泡左侧）")}</label>
               <div className="modal-avatar-row">
-                <label htmlFor="dj-avatar-file-modal" className="modal-avatar-tile" role="button" title="点击上传 DJ 头像">
+                <label htmlFor="dj-avatar-file-modal" className="modal-avatar-tile" role="button" title={t("点击上传 DJ 头像")}>
                   {djAvatar ? (
                     <img src={djAvatar} alt="DJ" className="modal-avatar-img" />
                   ) : (
@@ -802,7 +824,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                     className="modal-btn-secondary modal-btn-small"
                     onClick={clearDjAvatar}
                   >
-                    清除 DJ 头像
+                    {t("清除 DJ 头像")}
                   </button>
                 )}
                 <input
@@ -816,7 +838,7 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                 />
               </div>
 
-              <label className="modal-label">性别</label>
+              <label className="modal-label">{t("性别")}</label>
               <div className="modal-genders">
                 {GENDERS.map((g) => (
                   <button
@@ -830,14 +852,14 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                       voice: GENDER_DEFAULT_VOICE[g.value],
                     }))}
                   >
-                    <span className="gender-emoji">{g.emoji}</span> {g.label}
+                    <span className="gender-emoji">{g.emoji}</span> {t(g.label)}
                   </button>
                 ))}
               </div>
 
-              <label className="modal-label">音色（点 ▶ 试听）</label>
+              <label className="modal-label">{t("音色（点 ▶ 试听）")}</label>
               {voiceCatalog.length === 0 ? (
-                <div className="modal-hint">音色加载中...</div>
+                <div className="modal-hint">{t("音色加载中...")}</div>
               ) : (
                 <div className="voice-simple-list">
                   {voiceCatalog
@@ -854,15 +876,15 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                           {personality.voice === v.id ? "✓" : "○"}
                         </span>
                         <span className="voice-item-name">
-                          {v.name}
+                          {voiceName(v.id, v.name)}
                           {v.engine === "mimo" && <span className="voice-badge-mimo">MiMo</span>}
                         </span>
-                        <span className="voice-item-desc">{v.desc}</span>
+                        <span className="voice-item-desc">{voiceDesc(v.id, v.desc)}</span>
                         <button
                           type="button"
                           className="voice-preview"
                           onClick={(e) => { e.stopPropagation(); previewVoice(v.id); }}
-                          aria-label={`试听 ${v.name}`}
+                          aria-label={`${t("试听")} ${voiceName(v.id, v.name)}`}
                         >
                           {previewingVoice === v.id ? "⏳" : "▶"}
                         </button>
@@ -870,22 +892,22 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                     ))}
                 </div>
               )}
-              <div className="modal-hint">MiMo 音色需配置 API Key（限时免费）；未配置时自动用 Edge-TTS</div>
+              <div className="modal-hint">{t("MiMo 音色需配置 API Key（限时免费）；未配置时自动用 Edge-TTS")}</div>
 
-              <label className="modal-label">性格特征（逗号分隔）</label>
+              <label className="modal-label">{t("性格特征（逗号分隔）")}</label>
               <textarea
                 className="modal-textarea"
                 rows={3}
-                placeholder="风趣、毒舌、BBC 风格、温暖、简洁..."
+                placeholder={t("风趣、毒舌、BBC 风格、温暖、简洁...")}
                 value={personality.traits}
                 onChange={(e) => updatePersonality((p) => ({ ...p, traits: e.target.value }))}
               />
               <div className="modal-hint">
-                例如：<code>风趣, 毒舌, BBC 旁白</code> → DJ 会按这些特征即兴发挥
+                {t("例如：")}<code>{t("风趣, 毒舌, BBC 旁白")}</code> {t("→ DJ 会按这些特征即兴发挥")}
               </div>
 
               {/* 幽默风格：跨领域专业术语包装话术 */}
-              <label className="modal-label">幽默风格（用专业领域包装日常）</label>
+              <label className="modal-label">{t("幽默风格（用专业领域包装日常）")}</label>
               <div className="modal-humors">
                 {HUMOR_STYLES.map((h) => (
                   <button
@@ -893,22 +915,21 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
                     type="button"
                     className={`humor-chip ${personality.humorStyle === h.value ? "active" : ""}`}
                     onClick={() => updatePersonality((p) => ({ ...p, humorStyle: h.value }))}
-                    title={h.desc}
+                    title={t(h.desc)}
                   >
                     <span className="humor-emoji">{h.emoji}</span>
-                    <span>{h.label}</span>
+                    <span>{t(h.label)}</span>
                   </button>
                 ))}
               </div>
               <div className="modal-hint">
-                例「金融」风格：聊失恋 → DJ 回「您的情绪正在破发，建议长线持有」；
-                例「医学」风格：聊失眠 → DJ 回「建议暂停摄入午夜碳水，先做一次基础 CT」
+                {t("例「金融」风格：聊失恋 → DJ 回「您的情绪正在破发，建议长线持有」；例「医学」风格：聊失眠 → DJ 回「建议暂停摄入午夜碳水，先做一次基础 CT」")}
               </div>
 
               </div>
             <footer className="modal-actions">
-              <button type="button" className="modal-btn-secondary" onClick={() => setShowSettings(false)}>取消</button>
-              <button type="button" className="modal-btn-primary" onClick={saveSettings}>保存</button>
+              <button type="button" className="modal-btn-secondary" onClick={() => setShowSettings(false)}>{t("取消")}</button>
+              <button type="button" className="modal-btn-primary" onClick={saveSettings}>{t("保存")}</button>
             </footer>
           </div>
         </div>,

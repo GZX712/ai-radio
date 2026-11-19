@@ -562,7 +562,9 @@ app.post("/api/tts/speak", async (req, res) => {
     }
     const ck = speakCacheKey(voice, text);
     const hit = speakCacheGet(ck);
-    if (hit) {
+    // [2026-11-19] 缓存里的 URL 可能已被清盘（Render 临时磁盘）→ 验活后再返回，
+    // 否则前端拿到 404 地址，点 ▶ 静默无声。
+    if (hit && ttsService.audioExists(hit)) {
       res.json({ code: 0, data: { url: hit, voice, cached: true } });
       return;
     }

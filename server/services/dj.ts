@@ -734,7 +734,12 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
     if (fromBank) {
       // 音色修复：话术库音频预合成用的是默认音色；用户选了其他音色 → 实时用当前音色重新合成，避免声音在 MiMo/Edge 间跳
       const wantVoice = currentPersonality.voice || undefined;
-      if (wantVoice && fromBank.voice !== wantVoice) {
+      // [2026-11-19 切歌没声音根治] 预合成音频会被清空（Render 免费版磁盘临时 +
+      // public/audio 未入库），而 phrase-bank.json 在库里 → 重启后 100 条 audioUrl
+      // 全是 404，前端 audio 加载失败就静默。所以先验活：文件不在就实时重合成。
+      const bankAudioOk = ttsService.audioExists(fromBank.audioUrl);
+      const voiceMismatch = !!wantVoice && fromBank.voice !== wantVoice;
+      if (!bankAudioOk || voiceMismatch) {
         try {
           const audio = await ttsService.synthesize(
             currentSpeakText(fromBank.en, fromBank.zh),
@@ -748,14 +753,17 @@ export async function generateDJLine(ctx: DJContext): Promise<DJOutput> {
         } catch (err) {
           // [修复 2026-09-07] 之前 catch 静默吞错 → 退回老预合成音频（混读），
           // 跟 chat 单语回复听感完全两个声音。Render log 现在能看到 TTS 真死因。
-          console.warn(`[DJ-transition] phraseBank 重合成失败 → 退回预合成音频(可能混读):`,
+          console.warn(`[DJ-transition] phraseBank 实时合成失败:`,
             err instanceof Error ? err.message : String(err));
-          /* 重新合成失败 → 退回预合成音频（至少能播） */
+          /* 合成失败 → 有旧预合成音频就退回它，否则落到下面即兴兜底（必须保证有声音） */
         }
       }
-      lastDjEn = fromBank.en;
-      // 切歌过渡语多为冷笑话性质 → 播完配罐头笑声
-      return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank", funny: true };
+      if (bankAudioOk) {
+        lastDjEn = fromBank.en;
+        // 切歌过渡语多为冷笑话性质 → 播完配罐头笑声
+        return { en: fromBank.en, zh: fromBank.zh, audioUrl: fromBank.audioUrl, provider: "phraseBank", funny: true };
+      }
+      console.warn("[DJ-transition] 话术库音频缺失且实时合成失败 → 走即兴兜底");
     }
     const fast = improvCache.pop() ?? (await fallbackDJLine(ctx));
     warmImprovCache().catch(() => {});

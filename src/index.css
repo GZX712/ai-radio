@@ -1622,6 +1622,53 @@ html, body { overflow-x: clip; }
   align-items: center;
 }
 
+/* [2026-10-20] 访客入口语言选择：中文 / English
+   颜色全部走主题变量 —— 深色皮肤是白胶囊，波普/漫画等浅色皮肤自动反转为深胶囊 */
+.lang-picker {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.lang-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 9px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text);
+}
+
+.lang-btn.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* 英文标题比中文长：收紧字距，字号略降（桌面 38 / 窄屏 30） */
+.start-title.lang-en {
+  font-size: 38px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .start-title.lang-en { font-size: 30px; }
+}
+
 .start-title {
   font-size: 42px;
   font-weight: 800;
