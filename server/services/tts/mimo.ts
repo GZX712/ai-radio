@@ -16,6 +16,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIMO_BASE_URL = process.env.MIMO_BASE_URL || "https://api.xiaomimimo.com/v1";
 const MIMO_MODEL = process.env.MIMO_MODEL || "mimo-v2.5-tts";
 
+/**
+ * [2026-11-19] 输出格式开关 —— iOS 兜底用。
+ *
+ * 背景：MiMo 的 "mp3" 实测是 **MPEG-2 Layer III / 24kHz 单声道 / 55kbps**。
+ * 桌面 Chrome 解码毫无问题，但 iOS Safari / 微信 WKWebView 的硬件解码器
+ * 对「非 44.1/48kHz 的 MPEG-2 Layer III」支持参差 —— 属于必须留后手的一环。
+ *
+ * 用法：Render 后台加环境变量 `MIMO_TTS_FORMAT=wav` 即可全量切成 PCM WAV
+ *      （iOS 100% 支持，代价是体积约 6 倍：10 秒 ≈ 480KB）。
+ *      默认仍走 mp3，不改变现网流量画像。
+ */
+const MIMO_TTS_FORMAT: "mp3" | "wav" =
+  (process.env.MIMO_TTS_FORMAT || "mp3").toLowerCase() === "wav" ? "wav" : "mp3";
+
+/** 当前 MiMo 输出格式（供 tts.ts 命名文件 / 诊断用） */
+export function getMiMoFormat(): "mp3" | "wav" {
+  return MIMO_TTS_FORMAT;
+}
+
 export interface MiMoVoice {
   /** voice 参数值 */
   id: string;
@@ -79,7 +98,7 @@ export async function mimoSynthesize(text: string, voiceId: string, style?: stri
     body: JSON.stringify({
       model: MIMO_MODEL,
       messages,
-      audio: { format: "mp3", voice: voiceId },
+      audio: { format: MIMO_TTS_FORMAT, voice: voiceId },
     }),
     signal: AbortSignal.timeout(30000),
   });
@@ -107,7 +126,9 @@ export async function mimoSynthesizeToFile(
   const buf = await mimoSynthesize(text, voiceId, style);
   const OUTPUT_DIR = path.resolve(__dirname, "../../../public/audio");
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
-  const filename = `${prefix}-${Date.now()}-mimo.mp3`;
+  // 扩展名必须跟真实字节一致：express.static 靠它决定 Content-Type，
+  // 名不副实会让 iOS 直接拒绝（audio/mpeg 里塞 WAV 字节 = 必哑）。
+  const filename = `${prefix}-${Date.now()}-mimo.${getMiMoFormat()}`;
   const filepath = path.join(OUTPUT_DIR, filename);
   await fs.writeFile(filepath, buf);
   return { filename, filepath, url: `/audio/${filename}` };

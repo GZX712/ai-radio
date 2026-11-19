@@ -40,12 +40,14 @@ export function AudioDiag() {
       const n = (window as unknown as { __radioNodes?: AudioNodesLike }).__radioNodes;
       const ua = navigator.userAgent;
       const djSrc = (n?.dj?.currentSrc || n?.dj?.src || "").split("/").pop() || "空";
+      const lastErr = (window as unknown as { __djLastError?: string }).__djLastError || "无";
       setRows([
         ["环境", envName(ua)],
         ["ctx", n?.ctx?.state ?? "无"],
         ["dj", audioLine(n?.dj)],
         ["dj源", djSrc],
         ["dj音量", String(n?.dj?.volume ?? "?")],
+        ["dj错误", lastErr],
         ["music", audioLine(n?.music, false)],
         ["music音量", String(n?.music?.volume ?? "?")],
       ]);

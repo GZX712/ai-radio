@@ -94,6 +94,26 @@ function ensureGraph(n: AudioNodes): void {
 }
 
 /**
+ * [2026-11-19 结构性修复] 安全清空 DJ 元素 —— **绝不能再写 `el.src = ""`**。
+ *
+ * 为什么 `src = ""` 是反模式：
+ *   `src=""` 不是"清空"，按 HTML 规范它会解析成**当前文档的 URL**，
+ *   于是浏览器把整个 index.html 当音频去加载 → 立刻 MEDIA_ERR_SRC_NOT_SUPPORTED。
+ *   桌面 Chrome 宽容，下一次赋真 src 就恢复了；但 **iOS Safari / 微信 WKWebView
+ *   会把元素钉死在错误态**，后续换 src 也常常拉不回来 —— 而 `stopDj()` 是
+ *   「点 ▶ 播放」的必经前置（toggleReplyPlay 先 stopDj 再 playDj），
+ *   于是每次点播放都先自毁一次，表现就是：按钮变 ⏸、进度不走、一点声音都没有。
+ *
+ * 正确做法：removeAttribute("src") + load()，把元素退回 NETWORK_EMPTY 干净态，
+ * 再赋新源即可正常加载（这也是 MDN 推荐的媒体元素重置方式）。
+ */
+function clearDjSource(el: HTMLAudioElement): void {
+  try { el.pause(); } catch { /* 尚未开始加载时 pause 可能抛，忽略 */ }
+  try { el.removeAttribute("src"); } catch { /* noop */ }
+  try { el.load(); } catch { /* 部分老 WebView 不支持空 load，忽略即可 */ }
+}
+
+/**
  * [2026-09-25] 尝试解锁 AudioContext —— **fire-and-forget，任何地方都不要 await 它**。
  *
  * 为什么不能 await：iOS 在**没有用户手势**时，`ctx.resume()` 返回的 promise 不是 reject
@@ -129,8 +149,24 @@ export function useAudioEngine() {
   // DJ 语音队列：入队 + 当前正在播的字幕同步
   // laugh=true 表示该条是笑话/怼人台词 → 播完后接 sitcom 罐头笑声
   // onEnded 是该条播完后回调（用于按钮状态回弹："播完"清空 playingReplyId）
-  type DjItem = { url: string; en: string; zh: string; laugh?: boolean; onEnded?: () => void };
+  // [2026-11-19] resolve/reject：让 playDj 的 Promise 真实反映「到底出没出声」。
+  // 旧实现 playDj 立刻 resolve（内部没 await playNextDj），ChatPanel 的
+  // `.then(() => setPlayingReplyId(id))` 于是无条件把按钮切成 ⏸ ——
+  // 即使音频一个字都没播出来。用户看到"在播"状态却没有声音，再点一下变成暂停，
+  // 彻底无从下手。这是「点了没声音」体验层面的第二个结构性缺陷。
+  type DjItem = {
+    url: string;
+    en: string;
+    zh: string;
+    laugh?: boolean;
+    onEnded?: () => void;
+    resolve?: () => void;
+    reject?: (e: unknown) => void;
+  };
   const djQueueRef = useRef<DjItem[]>([]);
+  // 正在播的那条（已从队列 shift 出来）—— stopDj 时要能 reject 它的 Promise，
+  // 否则被打断的播放会让调用方永远等不到结果（按钮卡在"播放中"）。
+  const currentDjItemRef = useRef<DjItem | null>(null);
   const djPlayingRef = useRef(false);
   // 音乐暂停时 DJ 同步暂停；恢复播放时丢弃未说完的（用户明确要求）
   const djPausedRef = useRef(false);
@@ -202,10 +238,47 @@ export function useAudioEngine() {
     //   一旦缺失就加载失败/静默无声 —— 桌面正常、手机哑的经典分叉点。
     dj.preservesPitch = true;
     (dj as HTMLAudioElement & { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
-    // DJ 语音是几十 KB 的 TTS 小文件，随用随取即可 —— 不预加载，把带宽全留给音乐
-    dj.preload = "none";
+    // [2026-11-19] preload 由 none 改为 auto：DJ 段子只有 50~100KB，预加载成本极低；
+    // 而 preload="none" 让 play() 独自承担「建连→下载→解码」全流程，
+    // iOS / 微信 WKWebView 上更容易在手势窗口过期后才拿到数据 → 静默失败。
+    dj.preload = "auto";
+    // 显式钉住音量：DJ 永不走音量滑块，任何代码路径都不该把它调低（防"在某处被写成 0"）
+    dj.volume = 1;
+    // [2026-11-19 iOS/微信加固] 把 dj 元素挂进文档（离屏 1px，不可见不可点）。
+    //   `new Audio()` 游离元素在桌面 Chrome 毫无问题，但 iOS Safari / 微信 WKWebView
+    //   对"未入文档的媒体元素"有多种区别对待：后台/锁屏时被优先挂起、
+    //   某些版本上 play() 的手势授权不落到游离元素上。
+    //   媒体元素入文档是 WebKit 的既有最佳实践，成本为零，先排除这一层。
+    //   用离屏定位而非 display:none —— 后者在部分内核里会让元素不参与加载。
+    try {
+      dj.style.cssText =
+        "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none";
+      document.body.appendChild(dj);
+    } catch { /* 文档尚未就绪（理论上不会，AudioContext 创建已在挂载后） */ }
     const djGain = ctx.createGain();
     djGain.gain.value = 1.0; // 仅保留节点占位：dj 不再接 WebAudio（见 ensureGraph 注释）
+
+    // [2026-11-19 结构性修复] DJ 元素此前**没有任何 error 监听** ——
+    // 加载失败/格式不支持/被策略拒绝时，浏览器只默默把元素置 error、不抛异常，
+    // play() 的 promise 有时连 reject 都不给 → 现象就是「点了播放，没声，也没报错」。
+    // 这里把四类真实错误码打到控制台并写入诊断浮层，真机截图即可定位。
+    dj.addEventListener("error", () => {
+      // clearDjSource() 会 removeAttribute + load()。规范上这不会触发 error，
+      // 但个别老 WebView 会补一个 code=4 的假错误 —— 没有 src 的报错一律不计，
+      // 否则真机诊断浮层会被这种噪音污染，反而掩盖真问题。
+      if (!dj.getAttribute("src")) return;
+      const err = dj.error;
+      const code = err?.code ?? 0;
+      const label =
+        code === 1 ? "MEDIA_ERR_ABORTED（加载被中止）"
+        : code === 2 ? "MEDIA_ERR_NETWORK（网络错误）"
+        : code === 3 ? "MEDIA_ERR_DECODE（解码失败·格式不支持）"
+        : code === 4 ? "MEDIA_ERR_SRC_NOT_SUPPORTED（源不被支持）"
+        : `未知错误 code=${code}`;
+      const src = (dj.currentSrc || dj.src || "").split("/").pop() || "空";
+      console.warn(`[DJ-audio] ${label} src=${src} msg=${err?.message ?? "-"}`);
+      (window as unknown as { __djLastError?: string }).__djLastError = `${code} ${label}`;
+    });
 
     // ★ 这里**刻意不调** createMediaElementSource / connect —— 全部交给 ensureGraph()。
     //   它只在 ctx 真正 running 时才接线，避免手机无手势时"两个通道一起哑"（详见其注释）。
@@ -376,12 +449,27 @@ export function useAudioEngine() {
   const stopDj = (): void => {
     const nodes = nodesRef.current;
     if (nodes) {
-      nodes.dj.pause();
-      nodes.dj.src = "";
+      // [2026-11-19] 停止 = pause + 归零，**不清 src**。
+      //   ① 旧版 `src = ""` 会把 index.html 当音频加载，iOS 上把元素打入永久错误态
+      //     （而 stopDj 是「点 ▶」的必经前置 → 每次播放都先自毁一次）；
+      //   ② 这里若改用 removeAttribute+load()，会多一次元素状态翻转，
+      //     紧接着赋新源时 iOS 偶发来不及重建解码器。
+      //   pause+归零最轻，且下一次赋 src 就是标准的"换源播放"路径。
+      //   真正释放资源放在队列播完时（clearDjSource）。
+      try { nodes.dj.pause(); } catch { /* noop */ }
+      try { nodes.dj.currentTime = 0; } catch { /* 未加载时归零会抛，忽略 */ }
       useRadioStore.getState().unDuck();
     }
     stopLaughTrack(); // 停止 DJ 的同时掐断罐头笑声（避免切歌后笑声还在响）
+    // [2026-11-19] 队列被丢弃 → 挂在这些项上的 playDj Promise 必须 reject，
+    // 否则调用方（ChatPanel 的 ▶ 按钮）会永远停在"加载中/在播"，再也不回弹。
+    for (const pending of djQueueRef.current) {
+      try { pending.reject?.(new Error("dj-stopped")); } catch { /* noop */ }
+    }
     djQueueRef.current = [];
+    // 正在播的那条同理（已出队，不在上面那个循环里）
+    try { currentDjItemRef.current?.reject?.(new Error("dj-stopped")); } catch { /* noop */ }
+    currentDjItemRef.current = null;
     djPlayingRef.current = false;
     // 用户主动暂停/切歌/换台 → 字幕立即消失（不留 5 秒）
     if (hideDjTimerRef.current !== null) {
@@ -718,22 +806,23 @@ export function useAudioEngine() {
     const item = djQueueRef.current.shift();
     if (!item) {
       djPlayingRef.current = false;
+      currentDjItemRef.current = null;
       const nodes = nodesRef.current;
       if (nodes) {
-        nodes.dj.src = "";
+        // [2026-11-19] 队列播完清源，同样不能用 src=""（见 clearDjSource 注释）
+        clearDjSource(nodes.dj);
         useRadioStore.getState().unDuck();
       }
       return;
     }
     // 字幕同步成"当前正在播"这条
     useRadioStore.getState().setDjBilingual(item.en, item.zh);
+    currentDjItemRef.current = item;
     const { dj, ctx } = getNodes();
     // [修复 DJ 重播] HTMLAudioElement 同 URL 重设 src 不会重新 load，
-    // 先清空 src + load() 强制重新加载（用户在 onended 后点 ▶ 重放同一段）
+    // 先清源 + load() 强制重新加载（用户在 onended 后点 ▶ 重放同一段）
     if (dj.src && dj.src !== "" && dj.src.endsWith(item.url.split("/").pop() || "")) {
-      try { dj.pause(); } catch { /* noop */ }
-      dj.src = "";
-      dj.load();
+      clearDjSource(dj);
     }
     dj.src = item.url;
     dj.onended = () => {
@@ -761,7 +850,11 @@ export function useAudioEngine() {
       try {
         tryResume(getNodes()); // 不 await（同上）：DJ 链路也不能被 resume 卡死
         await dj.play();
-      } catch {
+        // [2026-11-19] 真出声了才算成功 → 通知调用方（ChatPanel 才敢把按钮切成 ⏸）
+        try { item.resolve?.(); } catch { /* noop */ }
+        // 成功播放 → 清掉上一次的失败记录，诊断浮层只反映"当前这条"的真实结果
+        (window as unknown as { __djLastError?: string }).__djLastError = undefined;
+      } catch (e) {
         // 播放失败：重试一次（iOS 常见），仍失败才跳下一条
         if (attempt < 1) {
           await new Promise((r) => setTimeout(r, 300));
@@ -776,6 +869,9 @@ export function useAudioEngine() {
             const cur = useRadioStore.getState();
             if (cur.djEn === finishedEn && cur.djZh === finishedZh) cur.clearDj();
           }, 5000);
+          // [2026-11-19] 彻底失败要如实 reject：调用方据此把按钮弹回 ▶ 并给提示，
+          // 而不是让用户对着一个"正在播放"的假按钮干瞪眼。
+          try { item.reject?.(e); } catch { /* noop */ }
           playNextDj();
         }
       }
@@ -783,7 +879,16 @@ export function useAudioEngine() {
     void tryPlay(0);
   };
 
-  const playDj = async (
+  /**
+   * 播一段 DJ 语音。
+   *
+   * [2026-11-19 语义修正] 返回的 Promise 现在**只在元素真正开始出声后才 resolve**，
+   * 播不出来则 reject。旧版是 async 但内部不等 play()，函数瞬间 resolve ——
+   * 调用方 `.then(() => setPlayingReplyId(id))` 于是无条件把按钮切成 ⏸，
+   * 音频其实一个字都没响。这属于"代码书写层面的结构性问题"：
+   * 异步结果的语义没说清楚，UI 状态就跟着撒谎。
+   */
+  const playDj = (
     url: string,
     en = "",
     zh = "",
@@ -796,7 +901,8 @@ export function useAudioEngine() {
     if (!force) {
       const nowTs = Date.now();
       if (lastDjRef.current.url === url && nowTs - lastDjRef.current.at < 5000) {
-        return;
+        // 去重不是失败：这条刚刚已经播过，视为成功，别让按钮卡在加载态
+        return Promise.resolve();
       }
       lastDjRef.current = { url, at: nowTs };
     }
@@ -809,12 +915,14 @@ export function useAudioEngine() {
       djPausedRef.current = false;
       stopDj();
     }
-    djQueueRef.current.push({ url, en, zh, laugh, onEnded });
-    if (!djPlayingRef.current) {
-      djPlayingRef.current = true;
-      useRadioStore.getState().duck();
-      playNextDj();
-    }
+    return new Promise<void>((resolve, reject) => {
+      djQueueRef.current.push({ url, en, zh, laugh, onEnded, resolve, reject });
+      if (!djPlayingRef.current) {
+        djPlayingRef.current = true;
+        useRadioStore.getState().duck();
+        void playNextDj();
+      }
+    });
   };
 
   /**
