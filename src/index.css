@@ -974,6 +974,17 @@ html, body { overflow-x: clip; }
 
 .chat-reply-toggle:hover { background: rgba(255, 159, 28, 0.2); transform: scale(1.08); }
 
+/* [2026-11-19] 自动朗读被浏览器拦截时的提示：按钮橙色呼吸 3 秒，
+   让人一眼看到「点这里能听」。不加提示的话，iOS 静音策略会让用户以为 DJ 又哑了。 */
+.chat-reply-toggle.autoplay-hint {
+  animation: replyHintPulse 1s ease-in-out 3;
+}
+
+@keyframes replyHintPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 159, 28, 0); }
+}
+
 .chat-reply-toggle.playing {
   background: #ef4444;
   border-color: #ef4444;

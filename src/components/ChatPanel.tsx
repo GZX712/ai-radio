@@ -319,7 +319,16 @@ export function ChatPanel({ ws, onAction, playDj, stopDj, wallpaperId }: ChatPan
             reply.zh ?? "",
             false,
             reply.funny === true,
-          ).catch(() => { /* 被浏览器拦或文件坏：静默失败，▶ 仍可手动播 */ });
+          ).catch(() => {
+            // 被浏览器拦截（iOS 严格手势策略）或文件坏：不弹错误打断聊天，
+            // 让这条的 ▶ 按钮呼吸 3 秒，明确告诉用户「点这里能听」。
+            const btns = document.querySelectorAll<HTMLElement>(".chat-reply-toggle");
+            const last = btns[btns.length - 1];
+            if (last) {
+              last.classList.add("autoplay-hint");
+              window.setTimeout(() => last.classList.remove("autoplay-hint"), 3200);
+            }
+          });
         }
       }
     });
