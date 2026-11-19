@@ -78,12 +78,18 @@ function ensureGraph(n: AudioNodes): void {
     }
   }
   if (!n.djWired) {
-    try {
-      n.ctx.createMediaElementSource(n.dj).connect(n.djGain).connect(n.ctx.destination);
-      n.djWired = true;
-    } catch {
-      /* 同上：dj 直出 */
-    }
+    // [2026-11-19 iOS 无声修复] **DJ 永久不接 WebAudio**。
+    // 原实现在 ctx running 时把 dj 接进 createMediaElementSource → 元素的输出被
+    // AudioContext 全权接管，此后一旦 ctx 被系统打断（iOS 锁屏/来电/切后台/音频抢占，
+    // iOS 特有的是 "interrupted" 状态，代码里只判 running 永远等不到恢复），
+    // 就会出现最诡异的现象：**元素在播（进度在走、按钮变 ⏸）、但一点声音都没有**；
+    // 且 createMediaElementSource 不可回退，元素再也无法直出。
+    // 桌面 Chrome 的 ctx 几乎不会中断，所以只有手机上暴露。
+    //
+    // 取舍：dj 不需要 analyser 数据，也不受音量滑块控制（一直是 100%）；
+    // 直出后 ①不受 ctx 状态影响 ②不受 iOS 静音拨片影响（WebAudio 才受）
+    // ③音乐被 duck 到 0.18，DJ 以 1.0 直出依然清晰压过背景。
+    n.djWired = false;
   }
 }
 
@@ -190,13 +196,16 @@ export function useAudioEngine() {
 
     // ---- DJ 通道 ----
     const dj = new Audio();
-    dj.crossOrigin = "anonymous";
+    // [2026-11-19 iOS 无声修复] 刻意**不设** crossOrigin：
+    //   dj 音频始终同源（/audio/*.mp3），本来就不需要 CORS；而 iOS Safari 对
+    //   带 crossOrigin 的同源请求比桌面 Chrome 严格得多（会要求 ACAO 头），
+    //   一旦缺失就加载失败/静默无声 —— 桌面正常、手机哑的经典分叉点。
     dj.preservesPitch = true;
     (dj as HTMLAudioElement & { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
     // DJ 语音是几十 KB 的 TTS 小文件，随用随取即可 —— 不预加载，把带宽全留给音乐
     dj.preload = "none";
     const djGain = ctx.createGain();
-    djGain.gain.value = 2.0; // DJ 人声：比 duck 后的音乐(0.18)高出 ~21dB，清晰压过背景
+    djGain.gain.value = 1.0; // 仅保留节点占位：dj 不再接 WebAudio（见 ensureGraph 注释）
 
     // ★ 这里**刻意不调** createMediaElementSource / connect —— 全部交给 ensureGraph()。
     //   它只在 ctx 真正 running 时才接线，避免手机无手势时"两个通道一起哑"（详见其注释）。

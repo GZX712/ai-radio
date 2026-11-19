@@ -14,6 +14,10 @@ import { WallpaperPicker } from "@/components/WallpaperPicker";
 import { buildWsUrl, tryClaimFromUrl, isOwnerDevice, getDeviceId, getOwnerBond } from "@/lib/deviceIdentity";
 import { pullSettings, pushSettings } from "@/lib/settingsSync";
 import { t, useLang, setLang } from "@/lib/i18n";
+import { AudioDiag } from "@/components/AudioDiag";
+
+/** ?diag=1 → 显示音频诊断浮层（真机排障用，正常访问不出现） */
+const DIAG_ON = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("diag");
 
 export default function App() {
   const setNow = useRadioStore((s) => s.setNow);
@@ -472,6 +476,9 @@ export default function App() {
       <ParticleField count={12} />
       {/* 数字雨已删除（用户要求去除右下角青色矩形） */}
       <Toast />
+      {/* [2026-11-19] 手机端音频诊断浮层：仅 ?diag=1 时出现，用于定位
+          "iOS 上元素在播但没声音"这类桌面无法复现的问题 */}
+      {DIAG_ON && <AudioDiag />}
 
       {/* 壁纸选择面板（fixed 定位，独立于 DOM 层级） */}
       {pickerOpen && (
